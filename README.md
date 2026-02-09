@@ -48,3 +48,31 @@ npm start
 - `src/` – React application
 - `tailwind.config.cjs`, `postcss.config.cjs` – Tailwind / PostCSS config
 - `vite.config.mjs` – Vite config
+
+## Content alignment and sync
+
+- Centralized content lives in `src/siteContent.json`:
+  - `organizationName`
+  - `programs` (formerly campaigns)
+  - `partners` (Partners & Sponsors)
+  - `donationTiers` (optional; for website use)
+- Optional remote sync: create a `.env` file with:
+
+```bash
+VITE_SITE_CONTENT_URL=https://your-website.com/content/siteContent.json
+```
+
+Behavior:
+- The app loads local `src/siteContent.json` by default.
+- If `VITE_SITE_CONTENT_URL` is set and reachable, it overrides programs, partners, and organizationName at runtime.
+- UI/UX is unchanged; only content values are updated.
+
+## Updating content
+
+- Edit `src/siteContent.json` for local changes, or
+- Update the JSON at your website URL to propagate changes automatically to the desktop app.
+
+## Demo login
+
+- Email: `admin@papaya.com`
+- Password: `admin123`

@@ -19,8 +19,19 @@ import {
   FiLogOut,
   FiBell,
   FiSearch,
+  FiFileText,
+  FiImage,
+  FiChevronDown,
+  FiChevronRight,
 } from 'react-icons/fi'
 import papayaLogo from './assets/logo.jpg'
+import siteContent from './siteContent.json'
+import NewsManager from './NewsManager.jsx'
+import { uiText } from './content/uiText'
+import { sf10StudentsMock, sf10RecordsMock } from './content/sf10Content'
+import { alumniMock } from './content/alumniContent'
+import SF10Section, { SF10View } from './SF10Section.jsx'
+import AlumniSection from './AlumniSection.jsx'
 
 const initialDonors = [
   { id: 'DR-001', name: 'Juan Dela Cruz', email: 'juan@example.com' },
@@ -222,38 +233,16 @@ const initialMessages = [
   },
 ]
 
-const initialNotifications = [
-  {
-    id: 'NT-001',
-    type: 'Donation',
-    message: 'New donation received for Scholarship Fund 2025 (₱5,000).',
-    time: '2 min ago',
-    createdAt: '2025-01-26T10:30:00',
-    read: false,
-    entityType: 'donation',
-    entityId: 'DN-001',
-  },
-  {
-    id: 'NT-002',
-    type: 'Failed Payment',
-    message: 'Payment attempt failed for Medical Assistance campaign.',
-    time: '10 min ago',
-    createdAt: '2025-01-26T10:20:00',
-    read: false,
-    entityType: 'donation',
-    entityId: 'DN-003',
-  },
-  {
-    id: 'NT-003',
-    type: 'Campaign',
-    message: 'Medical Assistance campaign has reached its target.',
-    time: '1 hr ago',
-    createdAt: '2025-01-26T09:30:00',
-    read: true,
-    entityType: 'campaign',
-    entityId: 'CP-002',
-  },
-]
+const initialOrgChart = {
+  id: 'ORG-ROOT',
+  name: 'Papaya Academy, Inc.',
+  title: 'Organization',
+  children: [
+    { id: 'ORG-CEO', name: 'Devon Lane', title: 'Executive Director', children: [] },
+    { id: 'ORG-PROG', name: 'Programs', title: 'Programs Dept.', children: [] },
+    { id: 'ORG-FUND', name: 'Fundraising', title: 'Fundraising Dept.', children: [] },
+  ],
+}
 
 const initialSettings = {
   organizationName: 'Papaya Academy, Inc.',
@@ -306,18 +295,7 @@ const conversations = [
   { name: 'Annette Black', message: 'Duis at volutpat leo euismod.', time: '2 h ago' },
 ]
 
-const navItems = [
-  { icon: FiHome, label: 'Dashboard', key: 'dashboard' },
-  { icon: FiGift, label: 'Donations', key: 'donations' },
-  { icon: FiBriefcase, label: 'Donation Campaigns', key: 'campaigns' },
-  { icon: FiUsers, label: 'Donors', key: 'donors' },
-  { icon: FiUsers, label: 'Reports', key: 'reports' },
-  { icon: FiUsers, label: 'Corporate / Institutional Partners', key: 'partners' },
-  { icon: FiMail, label: 'Messages / Inquiries', key: 'messages' },
-  { icon: FiBell, label: 'Notifications', key: 'notifications' },
-  { icon: FiSettings, label: 'Settings', key: 'settings' },
-  { icon: FiLogOut, label: 'Logout', key: 'logout' },
-]
+// Sidebar structure is now rendered inline within the component with nested groups
 
 function App() {
   const [isLoggedIn, setIsLoggedIn] = useState(false)
@@ -327,20 +305,36 @@ function App() {
   const [isLoading, setIsLoading] = useState(false)
   const [selectedYear, setSelectedYear] = useState('2025')
   const [activePage, setActivePage] = useState('dashboard')
+  const [selectedSf10StudentId, setSelectedSf10StudentId] = useState(null)
+  const [selectedStatTab, setSelectedStatTab] = useState('donations')
+  const [openGroups, setOpenGroups] = useState({ website: true, about: true, donations: true })
 
   const [donations, setDonations] = useState(initialDonations)
-  const [campaigns, setCampaigns] = useState(initialCampaigns)
-  const [partners, setPartners] = useState(initialPartnerOrganizations)
+  const [campaigns, setCampaigns] = useState(
+    Array.isArray(siteContent?.programs) && siteContent.programs.length > 0
+      ? siteContent.programs
+      : initialCampaigns,
+  )
+  const [partners, setPartners] = useState(
+    Array.isArray(siteContent?.partners) && siteContent.partners.length > 0
+      ? siteContent.partners
+      : initialPartnerOrganizations,
+  )
   const [donors] = useState(initialDonors)
   const [messages, setMessages] = useState(initialMessages)
-  const [notifications, setNotifications] = useState(initialNotifications)
-  const [settings, setSettings] = useState(initialSettings)
+  const [orgChart, setOrgChart] = useState(initialOrgChart)
+  const [settings, setSettings] = useState({
+    ...initialSettings,
+    organizationName: siteContent?.organizationName || initialSettings.organizationName,
+  })
 
   const [selectedDonationId, setSelectedDonationId] = useState(null)
   const [selectedCampaignId, setSelectedCampaignId] = useState(null)
   const [selectedDonorId, setSelectedDonorId] = useState(null)
   const [selectedPartnerId, setSelectedPartnerId] = useState(null)
   const [selectedMessageId, setSelectedMessageId] = useState(null)
+  const [sf10Students, setSf10Students] = useState(sf10StudentsMock)
+  const [sf10Records, setSf10Records] = useState(sf10RecordsMock)
 
   const [isSavingSettings, setIsSavingSettings] = useState(false)
 
@@ -357,25 +351,57 @@ function App() {
     }
   }, [])
 
-  const addNotification = ({ type, message, entityType, entityId }) => {
-    const now = new Date()
-    const id = `NT-${String(notifications.length + 1).padStart(3, '0')}`
-    const time = now.toLocaleTimeString('en-PH', { hour: '2-digit', minute: '2-digit' })
+  // Optional: fetch site content from remote URL if provided (keeps desktop in sync with website)
+  useEffect(() => {
+    const url = import.meta?.env?.VITE_SITE_CONTENT_URL
+    if (!url) return
+    let cancelled = false
+    ;(async () => {
+      try {
+        const res = await fetch(url, { headers: { 'cache-control': 'no-cache' } })
+        if (!res.ok) return
+        const data = await res.json()
+        if (cancelled || !data) return
+        if (Array.isArray(data.programs) && data.programs.length) {
+          setCampaigns(data.programs)
+        }
+        if (Array.isArray(data.partners) && data.partners.length) {
+          setPartners(data.partners)
+        }
+        if (data.organizationName) {
+          setSettings((prev) => ({ ...prev, organizationName: data.organizationName }))
+        }
+      } catch {
+        // silent fallback to local content
+      }
+    })()
+    return () => {
+      cancelled = true
+    }
+  }, [])
 
-    setNotifications((prev) => [
-      {
-        id,
-        type,
-        message,
-        time,
-        createdAt: now.toISOString(),
-        read: false,
-        entityType,
-        entityId,
-      },
-      ...prev,
-    ])
-  }
+  useEffect(() => {
+    const url = import.meta?.env?.VITE_ORG_CHART_URL
+    if (!url) return
+    let cancelled = false
+    let intervalId
+    const fetchOrg = async () => {
+      try {
+        const res = await fetch(url, { headers: { 'cache-control': 'no-cache' } })
+        if (!res.ok) return
+        const data = await res.json()
+        if (cancelled || !data) return
+        setOrgChart(data)
+      } catch {
+      }
+    }
+    fetchOrg()
+    intervalId = setInterval(fetchOrg, 5000)
+    return () => {
+      cancelled = true
+      if (intervalId) clearInterval(intervalId)
+    }
+  }, [])
 
   const handleLogin = (event) => {
     event.preventDefault()
@@ -436,20 +462,39 @@ function App() {
     }
   }
 
-  const chartData = buildChartData(donations, selectedYear)
+  const donationsChartData = buildChartData(donations, selectedYear)
+  const trafficChartData = buildTrafficData(selectedYear)
+  const inquiriesChartData = buildInquiriesChartData(messages, selectedYear)
+  const engagementChartData = buildEngagementChartData(donations, selectedYear)
+  const currentChartData =
+    selectedStatTab === 'donations'
+      ? donationsChartData
+      : selectedStatTab === 'traffic'
+      ? trafficChartData
+      : selectedStatTab === 'inquiries'
+      ? inquiriesChartData
+      : engagementChartData
 
-  const totalDonationsYear = chartData.reduce((sum, entry) => sum + entry.donations, 0)
+  const totalDonationsYear = donationsChartData.reduce((sum, entry) => sum + entry.donations, 0)
 
   const currentMonthName = new Date().toLocaleString('en-US', { month: 'short' })
   const currentMonthData =
-    chartData.find((entry) => entry.month === currentMonthName) || chartData[chartData.length - 1] || null
+    donationsChartData.find((entry) => entry.month === currentMonthName) ||
+    donationsChartData[donationsChartData.length - 1] ||
+    null
   const totalDonationsMonth = currentMonthData ? currentMonthData.donations : 0
 
   const donorsWithStats = buildDonorStats(donors, donations)
   const activeCampaignCount = campaigns.filter((campaign) => campaign.status === 'Active').length
   const registeredDonorsCount = donorsWithStats.length
 
-  const unreadNotificationsCount = notifications.filter((notification) => !notification.read).length
+  const sf10ByStudentId = sf10Records.reduce((index, record) => {
+    index[String(record.studentId)] = record
+    return index
+  }, {})
+
+  const selectedSf10Student = sf10Students.find((s) => String(s.id) === String(selectedSf10StudentId)) || null
+  const selectedSf10Record = selectedSf10StudentId ? sf10ByStudentId[String(selectedSf10StudentId)] || null : null
 
   const donorsById = donorsWithStats.reduce((index, donor) => {
     index[donor.id] = donor
@@ -460,26 +505,42 @@ function App() {
 
   const pageTitleMap = {
     dashboard: 'Dashboard',
-    donations: 'Donations',
-    campaigns: 'Donation Campaigns',
+    donations: 'Online Donations',
+    donations_reports: 'Donation Reports',
+    campaigns: 'Programs',
     donors: 'Donors',
-    reports: 'Reports',
-    partners: 'Corporate / Institutional Partners',
-    messages: 'Messages / Inquiries',
-    notifications: 'Notifications',
+    reports: 'Donation Reports',
+    partners: 'About Us — Partners & Sponsors',
+    news: 'News & Updates',
+    messages: 'Messages / Website Inquiries',
+    orgchart: 'About Us — Organizational Chart',
+    sf10: uiText.sf10.title,
+    alumni: uiText.alumni.title,
     settings: 'Settings',
+    website_home: 'Website Content — Home Page',
+    website_about_story: 'About Us — Our Story',
+    website_about_mission: 'About Us — Mission & Vision',
+    media: 'Media Library',
   }
 
   const pageSubtitleMap = {
-    dashboard: 'Overview of your donations and donors',
+    dashboard: 'Overview of website and content performance',
     donations: 'Manage individual donations and payments',
-    campaigns: 'Manage donation campaigns and targets',
+    donations_reports: 'View summaries and export donation reports',
+    campaigns: 'Manage programs and targets',
     donors: 'Manage registered donors and giving history',
     reports: 'View summaries and export donation reports',
-    partners: 'Manage corporate and institutional partners',
-    messages: 'View and respond to donor inquiries and messages',
-    notifications: 'Review donation and campaign notifications',
+    partners: 'Manage partner organizations displayed on the website',
+    news: 'Create and manage website news articles',
+    messages: 'Display messages submitted via website contact forms',
+    orgchart: 'Organization structure (real-time sync if configured)',
+    sf10: uiText.sf10.subtitle,
+    alumni: uiText.alumni.subtitle,
     settings: 'Configure payment gateways and organization info',
+    website_home: 'Manage homepage content synced to the website',
+    website_about_story: 'Edit About Us — Our Story section',
+    website_about_mission: 'Edit About Us — Mission & Vision section',
+    media: 'Manage images and files for the website',
   }
 
   const headerTitle = pageTitleMap[activePage]
@@ -510,6 +571,16 @@ function App() {
     setActivePage('messages')
   }
 
+  const handleViewSf10 = (studentId) => {
+    setSelectedSf10StudentId(studentId)
+    setActivePage('sf10')
+  }
+
+  const handleBackToSf10List = () => {
+    setSelectedSf10StudentId(null)
+    setActivePage('sf10')
+  }
+
   const handleToggleMessageRead = (messageId) => {
     setMessages((prev) =>
       prev.map((message) =>
@@ -523,27 +594,8 @@ function App() {
     )
   }
 
-  const handleOpenNotification = (notification) => {
-    setNotifications((prev) =>
-      prev.map((n) =>
-        n.id === notification.id
-          ? {
-              ...n,
-              read: true,
-            }
-          : n,
-      ),
-    )
-
-    if (notification.entityType === 'donation' && notification.entityId) {
-      handleSelectDonation(notification.entityId)
-    } else if (notification.entityType === 'campaign' && notification.entityId) {
-      handleSelectCampaign(notification.entityId)
-    }
-  }
-
-  const handleNotificationsButtonClick = () => {
-    setActivePage('notifications')
+  const handleOrgChartButtonClick = () => {
+    setActivePage('orgchart')
   }
 
   if (!isLoggedIn) {
@@ -610,44 +662,227 @@ function App() {
   }
 
   return (
-    <div className="flex h-screen bg-slate-100 text-slate-900">
-      <aside className="w-64 bg-[#1B3E2A] text-slate-100 flex flex-col py-6 px-4">
+    <div className="flex h-screen overflow-hidden bg-slate-100 text-slate-900">
+      <aside className="w-64 shrink-0 sticky top-0 h-screen overflow-hidden bg-[#1B3E2A] text-slate-100 flex flex-col py-6 px-4">
         <div className="flex items-center gap-2 px-3 mb-8">
           <img
             src={papayaLogo}
             alt="Papaya Academy, Inc. logo"
             className="h-9 w-9 rounded-full object-cover bg-white p-[2px] shadow-[0_4px_14px_rgba(0,0,0,0.25)]"
           />
-          <div className="text-xl font-semibold tracking-tight">Papaya Academy Inc.</div>
+          <div className="text-xl font-semibold tracking-tight">Papaya Academy, Inc.</div>
         </div>
 
         <nav className="flex-1 space-y-1">
-          {navItems.map((item) => (
+          <button
+            className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium transition ${
+              activePage === 'dashboard' ? 'bg-white/10 text-white shadow-sm' : 'text-slate-100/80 hover:bg-white/5 hover:text-white'
+            }`}
+            onClick={() => setActivePage('dashboard')}
+          >
+            <FiHome className="h-4 w-4 shrink-0" />
+            <span className="truncate">Dashboard</span>
+          </button>
+
+          <div>
             <button
-              key={item.label}
-              className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium transition
-                ${
-                  activePage === item.key
-                    ? 'bg-white/10 text-white shadow-sm'
-                    : 'text-slate-100/80 hover:bg-white/5 hover:text-white'
-                }`}
-              onClick={() => {
-                if (item.key === 'logout') {
-                  confirmAndLogout()
-                } else {
-                  setActivePage(item.key)
-                }
-              }}
+              className="w-full flex items-center justify-between gap-3 px-3 py-2.5 rounded-xl text-sm font-medium text-slate-100/80 hover:bg-white/5 hover:text-white"
+              onClick={() => setOpenGroups((p) => ({ ...p, website: !p.website }))}
             >
-              <item.icon className="h-4 w-4 shrink-0" />
-              <span className="truncate">{item.label}</span>
+              <div className="flex items-center gap-3">
+                <FiFileText className="h-4 w-4 shrink-0" />
+                <span className="truncate">Website Content</span>
+              </div>
+              {openGroups.website ? <FiChevronDown className="h-4 w-4" /> : <FiChevronRight className="h-4 w-4" />}
             </button>
-          ))}
+            {openGroups.website && (
+              <div className="mt-1 space-y-1">
+                <button
+                  className={`w-full flex items-center gap-3 pl-10 pr-3 py-2.5 rounded-xl text-sm font-medium transition ${
+                    activePage === 'website_home' ? 'bg-white/10 text-white shadow-sm' : 'text-slate-100/80 hover:bg-white/5 hover:text-white'
+                  }`}
+                  onClick={() => setActivePage('website_home')}
+                >
+                  <FiHome className="h-4 w-4 shrink-0" />
+                  <span className="truncate">Home Page</span>
+                </button>
+
+                <div>
+                  <button
+                    className="w-full flex items-center justify-between gap-3 pl-6 pr-3 py-2.5 rounded-xl text-sm font-medium text-slate-100/80 hover:bg-white/5 hover:text-white"
+                    onClick={() => setOpenGroups((p) => ({ ...p, about: !p.about }))}
+                  >
+                    <div className="flex items-center gap-3 pl-4">
+                      <FiUsers className="h-4 w-4 shrink-0" />
+                      <span className="truncate">About Us</span>
+                    </div>
+                    {openGroups.about ? <FiChevronDown className="h-4 w-4" /> : <FiChevronRight className="h-4 w-4" />}
+                  </button>
+                  {openGroups.about && (
+                    <div className="mt-1 space-y-1">
+                      <button
+                        className={`w-full flex items-center gap-3 pl-14 pr-3 py-2.5 rounded-xl text-sm font-medium transition ${
+                          activePage === 'website_about_story' ? 'bg-white/10 text-white shadow-sm' : 'text-slate-100/80 hover:bg-white/5 hover:text-white'
+                        }`}
+                        onClick={() => setActivePage('website_about_story')}
+                      >
+                        <FiFileText className="h-4 w-4 shrink-0" />
+                        <span className="truncate">Our Story</span>
+                      </button>
+                      <button
+                        className={`w-full flex items-center gap-3 pl-14 pr-3 py-2.5 rounded-xl text-sm font-medium transition ${
+                          activePage === 'website_about_mission' ? 'bg-white/10 text-white shadow-sm' : 'text-slate-100/80 hover:bg-white/5 hover:text-white'
+                        }`}
+                        onClick={() => setActivePage('website_about_mission')}
+                      >
+                        <FiFileText className="h-4 w-4 shrink-0" />
+                        <span className="truncate">Mission & Vision</span>
+                      </button>
+                      <button
+                        className={`w-full flex items-center gap-3 pl-14 pr-3 py-2.5 rounded-xl text-sm font-medium transition ${
+                          activePage === 'orgchart' ? 'bg-white/10 text-white shadow-sm' : 'text-slate-100/80 hover:bg-white/5 hover:text-white'
+                        }`}
+                        onClick={() => setActivePage('orgchart')}
+                      >
+                        <FiUsers className="h-4 w-4 shrink-0" />
+                        <span className="truncate">Organizational Chart</span>
+                      </button>
+                      <button
+                        className={`w-full flex items-center gap-3 pl-14 pr-3 py-2.5 rounded-xl text-sm font-medium transition ${
+                          activePage === 'partners' ? 'bg-white/10 text-white shadow-sm' : 'text-slate-100/80 hover:bg-white/5 hover:text-white'
+                        }`}
+                        onClick={() => setActivePage('partners')}
+                      >
+                        <FiUsers className="h-4 w-4 shrink-0" />
+                        <span className="truncate">Partners & Sponsors</span>
+                      </button>
+                    </div>
+                  )}
+                </div>
+              </div>
+            )}
+          </div>
+
+          <button
+            className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium transition ${
+              activePage === 'campaigns' ? 'bg-white/10 text-white shadow-sm' : 'text-slate-100/80 hover:bg-white/5 hover:text-white'
+            }`}
+            onClick={() => setActivePage('campaigns')}
+          >
+            <FiBriefcase className="h-4 w-4 shrink-0" />
+            <span className="truncate">Programs</span>
+          </button>
+
+          <div>
+            <button
+              className="w-full flex items-center justify-between gap-3 px-3 py-2.5 rounded-xl text-sm font-medium text-slate-100/80 hover:bg-white/5 hover:text-white"
+              onClick={() => setOpenGroups((p) => ({ ...p, donations: !p.donations }))}
+            >
+              <div className="flex items-center gap-3">
+                <FiGift className="h-4 w-4 shrink-0" />
+                <span className="truncate">Donations</span>
+              </div>
+              {openGroups.donations ? <FiChevronDown className="h-4 w-4" /> : <FiChevronRight className="h-4 w-4" />}
+            </button>
+            {openGroups.donations && (
+              <div className="mt-1 space-y-1">
+                <button
+                  className={`w-full flex items-center gap-3 pl-10 pr-3 py-2.5 rounded-xl text-sm font-medium transition ${
+                    activePage === 'donations' ? 'bg-white/10 text-white shadow-sm' : 'text-slate-100/80 hover:bg-white/5 hover:text-white'
+                  }`}
+                  onClick={() => setActivePage('donations')}
+                >
+                  <FiGift className="h-4 w-4 shrink-0" />
+                  <span className="truncate">Online Donations</span>
+                </button>
+                <button
+                  className={`w-full flex items-center gap-3 pl-10 pr-3 py-2.5 rounded-xl text-sm font-medium transition ${
+                    activePage === 'donations_reports' ? 'bg-white/10 text-white shadow-sm' : 'text-slate-100/80 hover:bg-white/5 hover:text-white'
+                  }`}
+                  onClick={() => setActivePage('donations_reports')}
+                >
+                  <FiFileText className="h-4 w-4 shrink-0" />
+                  <span className="truncate">Donation Reports</span>
+                </button>
+              </div>
+            )}
+          </div>
+
+          <button
+            className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium transition ${
+              activePage === 'news' ? 'bg-white/10 text-white shadow-sm' : 'text-slate-100/80 hover:bg-white/5 hover:text-white'
+            }`}
+            onClick={() => setActivePage('news')}
+          >
+            <FiFileText className="h-4 w-4 shrink-0" />
+            <span className="truncate">News & Updates</span>
+          </button>
+
+          <button
+            className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium transition ${
+              activePage === 'sf10' ? 'bg-white/10 text-white shadow-sm' : 'text-slate-100/80 hover:bg-white/5 hover:text-white'
+            }`}
+            onClick={() => {
+              setSelectedSf10StudentId(null)
+              setActivePage('sf10')
+            }}
+          >
+            <FiFileText className="h-4 w-4 shrink-0" />
+            <span className="truncate">{uiText.nav.sf10}</span>
+          </button>
+
+          <button
+            className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium transition ${
+              activePage === 'alumni' ? 'bg-white/10 text-white shadow-sm' : 'text-slate-100/80 hover:bg-white/5 hover:text-white'
+            }`}
+            onClick={() => setActivePage('alumni')}
+          >
+            <FiUsers className="h-4 w-4 shrink-0" />
+            <span className="truncate">{uiText.nav.alumni}</span>
+          </button>
+
+          <button
+            className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium transition ${
+              activePage === 'messages' ? 'bg-white/10 text-white shadow-sm' : 'text-slate-100/80 hover:bg-white/5 hover:text-white'
+            }`}
+            onClick={() => setActivePage('messages')}
+          >
+            <FiMail className="h-4 w-4 shrink-0" />
+            <span className="truncate">Messages / Website Inquiries</span>
+          </button>
+
+          <button
+            className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium transition ${
+              activePage === 'media' ? 'bg-white/10 text-white shadow-sm' : 'text-slate-100/80 hover:bg-white/5 hover:text-white'
+            }`}
+            onClick={() => setActivePage('media')}
+          >
+            <FiImage className="h-4 w-4 shrink-0" />
+            <span className="truncate">Media Library</span>
+          </button>
+
+          <button
+            className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium transition ${
+              activePage === 'settings' ? 'bg-white/10 text-white shadow-sm' : 'text-slate-100/80 hover:bg-white/5 hover:text-white'
+            }`}
+            onClick={() => setActivePage('settings')}
+          >
+            <FiSettings className="h-4 w-4 shrink-0" />
+            <span className="truncate">Settings</span>
+          </button>
+
+          <button
+            className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium text-slate-100/80 hover:bg-white/5 hover:text-white`}
+            onClick={confirmAndLogout}
+          >
+            <FiLogOut className="h-4 w-4 shrink-0" />
+            <span className="truncate">Logout</span>
+          </button>
         </nav>
 
         <div className="mt-6 px-3">
           <div className="rounded-2xl bg-white/5 px-4 py-3 text-xs text-slate-100/80">
-            <div className="font-semibold text-white mb-1">Papaya Academy Inc. 2025</div>
+            <div className="font-semibold text-white mb-1">Papaya Academy, Inc. 2025</div>
             <p className="text-slate-100/70">
               Track your donations, alumni, and partners in a single dashboard.
             </p>
@@ -655,7 +890,7 @@ function App() {
         </div>
       </aside>
 
-      <main className="flex-1 flex flex-col px-6 py-5 gap-6 overflow-hidden">
+      <main className="flex-1 flex flex-col px-6 py-5 gap-6 overflow-y-auto min-h-0">
         <header className="flex items-center justify-between gap-4">
           <div>
             <h1 className="text-2xl font-semibold text-slate-900">{headerTitle}</h1>
@@ -675,15 +910,10 @@ function App() {
             </div>
             <button
               className="relative h-9 w-9 rounded-full bg-white border border-slate-200 flex items-center justify-center text-slate-500 hover:bg-slate-50"
-              title={`Donations notifications`}
-              onClick={handleNotificationsButtonClick}
+              title={`Organizational chart`}
+              onClick={handleOrgChartButtonClick}
             >
               <FiBell className="h-4 w-4" />
-              {unreadNotificationsCount > 0 && (
-                <span className="absolute -top-1 -right-1 flex h-4 min-w-[16px] items-center justify-center rounded-full bg-[#F2C94C] px-1 text-[10px] font-medium text-[#1B3E2A]">
-                  {unreadNotificationsCount}
-                </span>
-              )}
             </button>
             <div className="h-9 w-9 rounded-full bg-gradient-to-tr from-[#1B3E2A] to-[#28573F] text-sm font-semibold text-white flex items-center justify-center">
               D
@@ -691,31 +921,40 @@ function App() {
           </div>
         </header>
 
-        <div className="flex-1 flex gap-6 overflow-hidden">
-          <section className="flex-1 flex flex-col gap-6 overflow-hidden">
+        <div className="flex-1 flex gap-6 min-h-0">
+          <section className="flex-1 flex flex-col gap-6 min-h-0">
             {activePage === 'dashboard' && (
               <>
-                <div className="grid grid-cols-3 gap-4">
+                <div className="grid grid-cols-4 gap-4">
                   <SummaryCard
-                    title="Total Donations (This Year)"
-                    value={formatCurrency(totalDonationsYear)}
-                    subtitle={`This year (${selectedYear}) · This month: ${formatCurrency(totalDonationsMonth)}`}
+                    title="Website Visitors (Monthly)"
+                    value={String(
+                      (trafficChartData.find((e) => e.month === currentMonthName)?.visitors || 0).toLocaleString('en-PH')
+                    )}
+                    subtitle={`This month (${selectedYear})`}
                     tone="green"
-                    onClick={() => setActivePage('donations')}
+                    onClick={() => setActivePage('dashboard')}
                   />
                   <SummaryCard
-                    title="Active Donation Campaigns"
+                    title="Active Published Programs"
                     value={String(activeCampaignCount)}
-                    subtitle="Ongoing campaigns"
+                    subtitle="Live on website"
                     tone="amber"
                     onClick={() => setActivePage('campaigns')}
                   />
                   <SummaryCard
-                    title="Registered Donors"
-                    value={registeredDonorsCount.toLocaleString('en-PH')}
-                    subtitle="Total donors"
+                    title="Pending Website Inquiries"
+                    value={String(messages.filter((m) => !m.read).length)}
+                    subtitle="Unread messages"
                     tone="sky"
-                    onClick={() => setActivePage('donors')}
+                    onClick={() => setActivePage('messages')}
+                  />
+                  <SummaryCard
+                    title="Draft Website Content"
+                    value={String(0)}
+                    subtitle="Unpublished items"
+                    tone="sky"
+                    onClick={() => setActivePage('news')}
                   />
                 </div>
 
@@ -723,13 +962,51 @@ function App() {
                   <div className="flex items-center justify-between">
                     <div>
                       <h2 className="text-base font-semibold text-slate-900">Statistics</h2>
-                      <p className="text-xs text-slate-500">Monthly donations vs disbursements</p>
+                      <p className="text-xs text-slate-500">
+                        {selectedStatTab === 'donations' && 'Monthly donations vs disbursements'}
+                        {selectedStatTab === 'traffic' && 'Monthly website visitors'}
+                        {selectedStatTab === 'inquiries' && 'Monthly inquiry submissions'}
+                        {selectedStatTab === 'engagement' && 'Program engagement by donations (count)'}
+                      </p>
                     </div>
                     <div className="flex items-center gap-3 text-xs text-slate-500">
-                      <LegendDot color="bg-[#1B3E2A]" label="Donations Received" />
-                      <LegendDot color="bg-[#F2C94C]" label="Disbursements / Expenses" />
+                      {selectedStatTab === 'donations' && (
+                        <>
+                          <LegendDot color="bg-[#1B3E2A]" label="Donations Received" />
+                          <LegendDot color="bg-[#F2C94C]" label="Disbursements / Expenses" />
+                        </>
+                      )}
+                      {selectedStatTab === 'traffic' && <LegendDot color="bg-[#1B3E2A]" label="Visitors" />}
+                      {selectedStatTab === 'inquiries' && <LegendDot color="bg-[#1B3E2A]" label="Inquiries" />}
+                      {selectedStatTab === 'engagement' && <LegendDot color="bg-[#1B3E2A]" label="Engagement" />}
+                      <div className="ml-2 inline-flex items-center rounded-full bg-slate-50 border border-slate-200 p-0.5">
+                        <button
+                          className={`px-2 py-1 rounded-full ${selectedStatTab === 'donations' ? 'bg-white text-slate-700 border border-slate-200' : 'text-slate-500'}`}
+                          onClick={() => setSelectedStatTab('donations')}
+                        >
+                          Donations
+                        </button>
+                        <button
+                          className={`px-2 py-1 rounded-full ${selectedStatTab === 'traffic' ? 'bg-white text-slate-700 border border-slate-200' : 'text-slate-500'}`}
+                          onClick={() => setSelectedStatTab('traffic')}
+                        >
+                          Website Traffic
+                        </button>
+                        <button
+                          className={`px-2 py-1 rounded-full ${selectedStatTab === 'inquiries' ? 'bg-white text-slate-700 border border-slate-200' : 'text-slate-500'}`}
+                          onClick={() => setSelectedStatTab('inquiries')}
+                        >
+                          Inquiries
+                        </button>
+                        <button
+                          className={`px-2 py-1 rounded-full ${selectedStatTab === 'engagement' ? 'bg-white text-slate-700 border border-slate-200' : 'text-slate-500'}`}
+                          onClick={() => setSelectedStatTab('engagement')}
+                        >
+                          Engagement
+                        </button>
+                      </div>
                       <select
-                        className="ml-4 rounded-full border border-slate-200 bg-white px-3 py-1 text-xs focus:outline-none focus:ring-2 focus:ring-[#1B3E2A]"
+                        className="ml-2 rounded-full border border-slate-200 bg-white px-3 py-1 text-xs focus:outline-none focus:ring-2 focus:ring-[#1B3E2A]"
                         value={selectedYear}
                         onChange={(event) => setSelectedYear(event.target.value)}
                       >
@@ -741,7 +1018,7 @@ function App() {
 
                   <div className="flex-1 min-h-[260px]">
                     <ResponsiveContainer width="100%" height="100%">
-                      <AreaChart data={chartData} margin={{ top: 10, right: 10, left: 0, bottom: 0 }}>
+                      <AreaChart data={currentChartData} margin={{ top: 10, right: 10, left: 0, bottom: 0 }}>
                         <defs>
                           <linearGradient id="donations" x1="0" y1="0" x2="0" y2="1">
                             <stop offset="5%" stopColor="#1B3E2A" stopOpacity={0.5} />
@@ -750,6 +1027,22 @@ function App() {
                           <linearGradient id="disbursements" x1="0" y1="0" x2="0" y2="1">
                             <stop offset="5%" stopColor="#F2C94C" stopOpacity={0.5} />
                             <stop offset="95%" stopColor="#F2C94C" stopOpacity={0} />
+                          </linearGradient>
+                          <linearGradient id="visitors" x1="0" y1="0" x2="0" y2="1">
+                            <stop offset="5%" stopColor="#1B3E2A" stopOpacity={0.5} />
+                            <stop offset="95%" stopColor="#1B3E2A" stopOpacity={0} />
+                          </linearGradient>
+                          <linearGradient id="uniqueVisitors" x1="0" y1="0" x2="0" y2="1">
+                            <stop offset="5%" stopColor="#6EE7B7" stopOpacity={0.5} />
+                            <stop offset="95%" stopColor="#6EE7B7" stopOpacity={0} />
+                          </linearGradient>
+                          <linearGradient id="inquiries" x1="0" y1="0" x2="0" y2="1">
+                            <stop offset="5%" stopColor="#1B3E2A" stopOpacity={0.5} />
+                            <stop offset="95%" stopColor="#1B3E2A" stopOpacity={0} />
+                          </linearGradient>
+                          <linearGradient id="engagement" x1="0" y1="0" x2="0" y2="1">
+                            <stop offset="5%" stopColor="#1B3E2A" stopOpacity={0.5} />
+                            <stop offset="95%" stopColor="#1B3E2A" stopOpacity={0} />
                           </linearGradient>
                         </defs>
                         <CartesianGrid strokeDasharray="3 3" stroke="#e5e7eb" vertical={false} />
@@ -770,26 +1063,42 @@ function App() {
                           labelStyle={{ fontSize: 12, color: '#6b7280' }}
                           labelFormatter={(label) => `Month: ${label}`}
                           formatter={(value, name) => [
-                            formatCurrency(value),
-                            name === 'donations' ? 'Donations Received' : 'Disbursements / Expenses',
+                            selectedStatTab === 'donations'
+                              ? formatCurrency(value)
+                              : typeof value === 'number'
+                              ? value.toLocaleString('en-PH')
+                              : value,
+                            selectedStatTab === 'donations'
+                              ? name === 'donations'
+                                ? 'Donations Received'
+                                : 'Disbursements / Expenses'
+                              : selectedStatTab === 'traffic'
+                              ? name === 'visitors'
+                                ? 'Visitors'
+                                : 'Unique Visitors'
+                              : selectedStatTab === 'inquiries'
+                              ? 'Inquiries'
+                              : 'Engagement',
                           ]}
                         />
-                        <Area
-                          type="monotone"
-                          dataKey="donations"
-                          stroke="#1B3E2A"
-                          strokeWidth={2.5}
-                          fillOpacity={1}
-                          fill="url(#donations)"
-                        />
-                        <Area
-                          type="monotone"
-                          dataKey="disbursements"
-                          stroke="#F2C94C"
-                          strokeWidth={2.5}
-                          fillOpacity={1}
-                          fill="url(#disbursements)"
-                        />
+                        {selectedStatTab === 'donations' && (
+                          <>
+                            <Area type="monotone" dataKey="donations" stroke="#1B3E2A" strokeWidth={2.5} fillOpacity={1} fill="url(#donations)" />
+                            <Area type="monotone" dataKey="disbursements" stroke="#F2C94C" strokeWidth={2.5} fillOpacity={1} fill="url(#disbursements)" />
+                          </>
+                        )}
+                        {selectedStatTab === 'traffic' && (
+                          <>
+                            <Area type="monotone" dataKey="visitors" stroke="#1B3E2A" strokeWidth={2.5} fillOpacity={1} fill="url(#visitors)" />
+                            <Area type="monotone" dataKey="uniqueVisitors" stroke="#6EE7B7" strokeWidth={2.5} fillOpacity={1} fill="url(#uniqueVisitors)" />
+                          </>
+                        )}
+                        {selectedStatTab === 'inquiries' && (
+                          <Area type="monotone" dataKey="inquiries" stroke="#1B3E2A" strokeWidth={2.5} fillOpacity={1} fill="url(#inquiries)" />
+                        )}
+                        {selectedStatTab === 'engagement' && (
+                          <Area type="monotone" dataKey="engagement" stroke="#1B3E2A" strokeWidth={2.5} fillOpacity={1} fill="url(#engagement)" />
+                        )}
                       </AreaChart>
                     </ResponsiveContainer>
                   </div>
@@ -797,7 +1106,7 @@ function App() {
 
                 <div className="bg-white rounded-3xl shadow-sm p-5">
                   <div className="flex items-center justify-between mb-4">
-                    <h2 className="text-base font-semibold text-slate-900">Top Corporate Partners</h2>
+                    <h2 className="text-base font-semibold text-slate-900">Top Partners & Sponsors</h2>
                     <button className="text-xs text-[#1B3E2A] font-medium hover:text-[#163021]">
                       View all
                     </button>
@@ -814,7 +1123,7 @@ function App() {
                         <div className="text-sm font-semibold text-slate-900 truncate">
                           {partner.name}
                         </div>
-                        <div className="text-xs text-slate-500 truncate">{partner.label}</div>
+                        <div className="text-xs text-slate-500 truncate">{partner.type || partner.label}</div>
                       </div>
                     ))}
                   </div>
@@ -849,8 +1158,6 @@ function App() {
                     return
                   }
 
-                  const willReachGoal = campaign.collected >= parsed && campaign.collected < currentTarget
-
                   setCampaigns((prev) =>
                     prev.map((c) =>
                       c.id === campaignId
@@ -861,15 +1168,6 @@ function App() {
                         : c,
                     ),
                   )
-
-                  if (willReachGoal) {
-                    addNotification({
-                      type: 'Campaign',
-                      message: `${campaign.name} has reached its updated target.`,
-                      entityType: 'campaign',
-                      entityId: campaignId,
-                    })
-                  }
                 }}
                 onArchiveCampaign={(campaignId) => {
                   setCampaigns((prev) =>
@@ -884,9 +1182,9 @@ function App() {
                   )
                 }}
                 onAddCampaign={() => {
-                  const name = window.prompt('Campaign name:')
+                  const name = window.prompt('Program name:')
                   if (!name) return
-                  const targetInput = window.prompt('Target amount (PHP):', '100000')
+                  const targetInput = window.prompt('Target amount:', '100000')
                   if (!targetInput) return
                   const parsed = Number(targetInput.replace(/[^0-9.]/g, ''))
                   if (Number.isNaN(parsed) || parsed <= 0) {
@@ -914,7 +1212,9 @@ function App() {
                 searchQuery={searchQuery}
               />
             )}
-            {activePage === 'reports' && <ReportsSection donations={donations} campaigns={campaigns} />}
+            {(activePage === 'reports' || activePage === 'donations_reports') && (
+              <ReportsSection donations={donations} campaigns={campaigns} />
+            )}
             {activePage === 'partners' && (
               <PartnersSection
                 partners={partners}
@@ -940,6 +1240,7 @@ function App() {
                 }}
               />
             )}
+            {activePage === 'news' && <NewsManager />}
             {activePage === 'messages' && (
               <ContactsSection
                 messages={messages}
@@ -948,12 +1249,38 @@ function App() {
                 onToggleMessageRead={handleToggleMessageRead}
               />
             )}
-            {activePage === 'notifications' && (
-              <NotificationsSection
-                notifications={notifications}
-                onOpenNotification={handleOpenNotification}
-              />
+            {activePage === 'orgchart' && <OrgChartHtmlSection />}
+            {activePage === 'sf10' && (
+              <>
+                {!selectedSf10StudentId && (
+                  <SF10Section
+                    students={sf10Students}
+                    sf10ByStudentId={sf10ByStudentId}
+                    onViewSf10={handleViewSf10}
+                    onAddStudent={() => window.alert(uiText.sf10.placeholders.add)}
+                    onEditSf10={() => window.alert(uiText.sf10.placeholders.edit)}
+                    onRemoveStudent={(studentId) => {
+                      const confirmed = window.confirm(uiText.sf10.placeholders.remove)
+                      if (!confirmed) return
+                      setSf10Students((prev) => prev.filter((s) => String(s.id) !== String(studentId)))
+                      setSf10Records((prev) => prev.filter((r) => String(r.studentId) !== String(studentId)))
+                    }}
+                  />
+                )}
+                {selectedSf10StudentId && (
+                  <SF10View
+                    student={selectedSf10Student}
+                    record={selectedSf10Record}
+                    onBack={handleBackToSf10List}
+                  />
+                )}
+              </>
             )}
+            {activePage === 'alumni' && <AlumniSection alumni={alumniMock} />}
+            {activePage === 'website_home' && <WebsiteHomeSection />}
+            {activePage === 'website_about_story' && <StaticContentSection title="Our Story" />}
+            {activePage === 'website_about_mission' && <StaticContentSection title="Mission & Vision" />}
+            {activePage === 'media' && <MediaLibrarySection />}
             {activePage === 'settings' && (
               <SettingsSection
                 settings={settings}
@@ -1039,6 +1366,42 @@ function App() {
           )}
         </div>
       </main>
+    </div>
+  )
+}
+
+function WebsiteHomeSection() {
+  return (
+    <div className="bg-white rounded-3xl shadow-sm p-5 flex flex-col gap-4 flex-1 text-xs">
+      <div>
+        <h2 className="text-base font-semibold text-slate-900">Home Page</h2>
+        <p className="text-xs text-slate-500">Manage homepage content synced to the website</p>
+      </div>
+      <div className="text-xs text-slate-500">This is a placeholder for homepage content management.</div>
+    </div>
+  )
+}
+
+function StaticContentSection({ title }) {
+  return (
+    <div className="bg-white rounded-3xl shadow-sm p-5 flex flex-col gap-4 flex-1 text-xs">
+      <div>
+        <h2 className="text-base font-semibold text-slate-900">{title}</h2>
+        <p className="text-xs text-slate-500">Edit content for the About Us section</p>
+      </div>
+      <div className="text-xs text-slate-500">This is a placeholder for rich text editing and publishing.</div>
+    </div>
+  )
+}
+
+function MediaLibrarySection() {
+  return (
+    <div className="bg-white rounded-3xl shadow-sm p-5 flex flex-col gap-4 flex-1 text-xs">
+      <div>
+        <h2 className="text-base font-semibold text-slate-900">Media Library</h2>
+        <p className="text-xs text-slate-500">Manage images and files for the website</p>
+      </div>
+      <div className="text-xs text-slate-500">This is a placeholder for uploading and organizing media.</div>
     </div>
   )
 }
@@ -1156,7 +1519,7 @@ function DonationsSection({ donations, selectedDonationId, onSelectDonation, sea
             <tr>
               <th className="px-2 py-2 font-medium">Donation ID</th>
               <th className="px-2 py-2 font-medium">Donor Name</th>
-              <th className="px-2 py-2 font-medium">Campaign</th>
+              <th className="px-2 py-2 font-medium">Program</th>
               <th className="px-2 py-2 font-medium">Amount</th>
               <th className="px-2 py-2 font-medium">Payment Method</th>
               <th className="px-2 py-2 font-medium">Status</th>
@@ -1243,7 +1606,7 @@ function DonationsSection({ donations, selectedDonationId, onSelectDonation, sea
                 <div className="text-xs font-medium text-slate-800">{selectedDonation.donorName}</div>
               </div>
               <div>
-                <div className="text-[11px] text-slate-500">Campaign</div>
+                <div className="text-[11px] text-slate-500">Program</div>
                 <div className="text-xs font-medium text-slate-800">{selectedDonation.campaignName}</div>
               </div>
               <div>
@@ -1302,8 +1665,8 @@ function CampaignsSection({ campaigns, selectedCampaignId, onSelectCampaign, onE
     <div className="bg-white rounded-3xl shadow-sm p-5 flex flex-col gap-4 flex-1">
       <div className="flex items-center justify-between">
         <div>
-          <h2 className="text-base font-semibold text-slate-900">Donation Campaigns</h2>
-          <p className="text-xs text-slate-500">Manage active and archived campaigns</p>
+          <h2 className="text-base font-semibold text-slate-900">Programs</h2>
+          <p className="text-xs text-slate-500">Manage active and archived programs</p>
         </div>
       </div>
 
@@ -1311,7 +1674,7 @@ function CampaignsSection({ campaigns, selectedCampaignId, onSelectCampaign, onE
         <table className="min-w-full text-xs text-left text-slate-600">
           <thead className="text-[11px] uppercase text-slate-400">
             <tr>
-              <th className="px-2 py-2 font-medium">Campaign</th>
+              <th className="px-2 py-2 font-medium">Program</th>
               <th className="px-2 py-2 font-medium">Target Amount</th>
               <th className="px-2 py-2 font-medium">Total Collected</th>
               <th className="px-2 py-2 font-medium">Progress</th>
@@ -1389,7 +1752,7 @@ function CampaignsSection({ campaigns, selectedCampaignId, onSelectCampaign, onE
           >
             <div className="flex items-center justify-between mb-2">
               <div>
-                <div className="text-[11px] font-medium text-slate-500">Campaign details</div>
+                <div className="text-[11px] font-medium text-slate-500">Program details</div>
                 <div className="text-sm font-semibold text-slate-900">{selectedCampaign.name}</div>
               </div>
               <button
@@ -1419,9 +1782,9 @@ function CampaignsSection({ campaigns, selectedCampaignId, onSelectCampaign, onE
               </div>
             </div>
             <div className="mt-2">
-              <div className="text-[11px] font-medium text-slate-500 mb-1">Donations for this campaign</div>
+              <div className="text-[11px] font-medium text-slate-500 mb-1">Donations for this program</div>
               {selectedCampaign.donations.length === 0 ? (
-                <div className="text-xs text-slate-400">No donations linked to this campaign yet.</div>
+                <div className="text-xs text-slate-400">No donations linked to this program yet.</div>
               ) : (
                 <div className="overflow-x-auto -mx-1">
                   <table className="min-w-full text-[11px] text-left text-slate-600">
@@ -1462,7 +1825,7 @@ function CampaignsSection({ campaigns, selectedCampaignId, onSelectCampaign, onE
           >
             <div className="flex items-center justify-between mb-3">
               <div>
-                <div className="text-[11px] font-medium text-slate-500">Edit campaign</div>
+                <div className="text-[11px] font-medium text-slate-500">Edit program</div>
                 <div className="text-sm font-semibold text-slate-900">{editingCampaign.name}</div>
               </div>
               <button
@@ -1476,7 +1839,7 @@ function CampaignsSection({ campaigns, selectedCampaignId, onSelectCampaign, onE
 
             <div className="space-y-2">
               <div>
-                <div className="text-[11px] text-slate-500 mb-0.5">Target amount (PHP)</div>
+                <div className="text-[11px] text-slate-500 mb-0.5">Target amount</div>
                 <input
                   type="number"
                   className="w-full rounded-2xl border border-slate-200 px-2 py-1 text-xs focus:outline-none focus:ring-2 focus:ring-[#1B3E2A] focus:border-transparent"
@@ -1620,7 +1983,7 @@ function DonorsSection({ donors, selectedDonorId, onSelectDonor, searchQuery }) 
                 <div className="text-xs text-slate-700">{selectedDonor.lastDonation}</div>
               </div>
               <div>
-                <div className="text-[11px] text-slate-500">Campaigns supported</div>
+                <div className="text-[11px] text-slate-500">Programs supported</div>
                 <div className="text-xs text-slate-700">{selectedDonor.campaignsSupported}</div>
               </div>
             </div>
@@ -1634,7 +1997,7 @@ function DonorsSection({ donors, selectedDonorId, onSelectDonor, searchQuery }) 
                     <thead className="uppercase text-slate-400">
                       <tr>
                         <th className="px-1 py-1 font-medium">Donation ID</th>
-                        <th className="px-1 py-1 font-medium">Campaign</th>
+                        <th className="px-1 py-1 font-medium">Program</th>
                         <th className="px-1 py-1 font-medium">Amount</th>
                       </tr>
                     </thead>
@@ -1731,7 +2094,7 @@ function ReportsSection({ donations, campaigns }) {
   ]
 
   const exportReport = (type) => {
-    const header = ['Donation ID', 'Donor', 'Campaign', 'Amount', 'Method', 'Status', 'Date']
+    const header = ['Donation ID', 'Donor', 'Program', 'Amount', 'Method', 'Status', 'Date']
     const rows = filteredDonations.map((donation) => [
       donation.id,
       donation.donorName,
@@ -1797,13 +2160,13 @@ function ReportsSection({ donations, campaigns }) {
           </div>
         </div>
         <div className="space-y-1">
-          <div className="text-[11px] font-medium text-slate-500">Campaign</div>
+          <div className="text-[11px] font-medium text-slate-500">Program</div>
           <select
             className="w-full rounded-2xl border border-slate-200 px-2 py-1 text-xs focus:outline-none focus:ring-2 focus:ring-[#1B3E2A] focus:border-transparent"
             value={campaignFilter}
             onChange={(event) => setCampaignFilter(event.target.value)}
           >
-            <option value="all">All campaigns</option>
+            <option value="all">All programs</option>
             {campaigns.map((campaign) => (
               <option key={campaign.id} value={campaign.id}>
                 {campaign.name}
@@ -1993,7 +2356,7 @@ function PartnersSection({ partners, selectedPartnerId, onSelectPartner, onAddPa
     <div className="bg-white rounded-3xl shadow-sm p-5 flex flex-col gap-4 flex-1">
       <div className="flex items-center justify-between">
         <div>
-          <h2 className="text-base font-semibold text-slate-900">Corporate / Institutional Partners</h2>
+          <h2 className="text-base font-semibold text-slate-900">Partners & Sponsors</h2>
           <p className="text-xs text-slate-500">Partner organizations and contribution type</p>
         </div>
         <div className="flex items-center gap-2 text-xs">
@@ -2090,53 +2453,178 @@ function PartnersSection({ partners, selectedPartnerId, onSelectPartner, onAddPa
   )
 }
 
-function NotificationsSection({ notifications, onOpenNotification }) {
-  const sorted = notifications
-    .slice()
-    .sort((a, b) => {
-      const aDate = parseDateOrNull(a.createdAt)
-      const bDate = parseDateOrNull(b.createdAt)
-      if (!aDate || !bDate) return 0
-      return bDate.getTime() - aDate.getTime()
+function OrgChartSection({ orgChart }) {
+  const [expanded, setExpanded] = useState(new Set())
+
+  useEffect(() => {
+    const ids = new Set()
+    const walk = (node) => {
+      if (!node) return
+      ids.add(node.id)
+      if (Array.isArray(node.children)) node.children.forEach(walk)
+    }
+    walk(orgChart)
+    setExpanded(ids)
+  }, [orgChart])
+
+  const toggle = (id) => {
+    setExpanded((prev) => {
+      const next = new Set(prev)
+      if (next.has(id)) next.delete(id)
+      else next.add(id)
+      return next
     })
+  }
+
+  const OrgNode = ({ node, level = 0 }) => {
+    const hasChildren = Array.isArray(node.children) && node.children.length > 0
+    const isOpen = expanded.has(node.id)
+    return (
+      <div className="ml-0">
+        <div className="flex items-center gap-2 py-1">
+          {hasChildren ? (
+            <button
+              className="h-5 w-5 rounded border border-slate-200 text-[10px] text-slate-600 hover:bg-slate-50"
+              onClick={() => toggle(node.id)}
+              title={isOpen ? 'Collapse' : 'Expand'}
+            >
+              {isOpen ? '−' : '+'}
+            </button>
+          ) : (
+            <span className="h-5 w-5" />
+          )}
+          <div className="rounded-xl border border-slate-200 bg-white px-3 py-1">
+            <div className="text-sm font-semibold text-slate-900">{node.name}</div>
+            {node.title ? (
+              <div className="text-[11px] text-slate-500">{node.title}</div>
+            ) : null}
+          </div>
+        </div>
+        {hasChildren && isOpen && (
+          <div className="ml-6 border-l border-slate-200 pl-4">
+            {node.children.map((child) => (
+              <OrgNode key={child.id} node={child} level={level + 1} />
+            ))}
+          </div>
+        )}
+      </div>
+    )
+  }
 
   return (
     <div className="bg-white rounded-3xl shadow-sm p-5 flex flex-col gap-4 flex-1">
       <div className="flex items-center justify-between">
         <div>
-          <h2 className="text-base font-semibold text-slate-900">Notifications</h2>
-          <p className="text-xs text-slate-500">System alerts for donations and campaigns</p>
+          <h2 className="text-base font-semibold text-slate-900">Organizational Chart</h2>
+          <p className="text-xs text-slate-500">Live organization structure</p>
         </div>
       </div>
 
-      <div className="space-y-3 text-xs">
-        {sorted.length === 0 && (
-          <div className="text-[11px] text-slate-400">No notifications yet.</div>
-        )}
-        {sorted.map((notification) => (
-          <button
-            key={notification.id}
-            className={`w-full flex items-start gap-3 rounded-2xl border border-slate-100 px-3 py-2 text-left ${
-              notification.read ? 'bg-white' : 'bg-slate-50/60'
-            }`}
-            onClick={() => onOpenNotification(notification)}
-          >
-            <div className="h-7 w-7 rounded-xl bg-slate-900 text-[10px] font-semibold text-slate-100 flex items-center justify-center">
-              {notification.type === 'Donation'
-                ? 'DN'
-                : notification.type === 'Failed Payment'
-                ? 'FP'
-                : 'CP'}
+      {!orgChart ? (
+        <div className="text-[11px] text-slate-400">No organization data available.</div>
+      ) : (
+        <div className="text-xs">
+          <OrgNode node={orgChart} />
+        </div>
+      )}
+    </div>
+  )
+}
+
+function OrgChartHtmlSection() {
+  const Person = ({ name, role }) => (
+    <div className="rounded-xl border border-slate-200 bg-white px-3 py-2">
+      <div className="text-sm font-semibold text-slate-900">{name}</div>
+      {role ? <div className="text-[11px] text-slate-500">{role}</div> : null}
+    </div>
+  )
+
+  return (
+    <div className="flex flex-col gap-5">
+      <div className="bg-white rounded-3xl shadow-sm p-5 flex flex-col gap-4">
+        <div className="flex items-center justify-between">
+          <div>
+            <h2 className="text-base font-semibold text-slate-900">Papaya Academy — School Organization</h2>
+            <p className="text-xs text-slate-500">HTML layout based on the provided image</p>
+          </div>
+        </div>
+
+        <div className="space-y-4 text-xs">
+          <Person name="Sheryl Ann B. Queliza" role="School Principal" />
+
+          <div>
+            <div className="text-[11px] font-medium text-slate-500 mb-1">Teaching Staff</div>
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-2">
+              <Person name="Geenie G. Ramos" role="Grade 6 Adviser" />
+              <Person name="Daina Marie R. Lumbao" role="Grade 5 Adviser" />
+              <Person name="Erwin Q. Molabola" role="Grade 4 Adviser" />
+              <Person name="Marvin Christopher Agabin" role="Grade 3 Adviser" />
             </div>
-            <div className="flex-1 min-w-0">
-              <div className="flex items-center justify-between mb-0.5">
-                <div className="text-[11px] font-medium text-slate-700 truncate">{notification.type}</div>
-                <div className="text-[10px] text-slate-400 whitespace-nowrap">{notification.time}</div>
-              </div>
-              <div className="text-[11px] text-slate-500 truncate">{notification.message}</div>
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-2 mt-2">
+              <Person name="Leizl R. Mercado" role="Grade 2 Adviser" />
+              <Person name="Jeanebi C. Borres" role="Grade 1 Adviser" />
+              <Person name="Katrina A. Ocampo" role="Kinder Adviser" />
+              <Person name="Marie Sean B. Lira" role="Science/Registrar" />
             </div>
-          </button>
-        ))}
+          </div>
+
+          <div>
+            <div className="text-[11px] font-medium text-slate-500 mb-1">Non-Academic Staff</div>
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-2">
+              <Person name="Ma. Luzviminda M. Macabuhay" role="Office Manager" />
+              <Person name="Salvacion M. Macasacuit" role="Housekeeper" />
+              <Person name="Roger C. Macasacuit" role="School Driver/Maintenance" />
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div className="bg-white rounded-3xl shadow-sm p-5 flex flex-col gap-3">
+        <div>
+          <h2 className="text-base font-semibold text-slate-900">Kalinga at Pag-Ibig Foundation (PH) Board</h2>
+          <p className="text-xs text-slate-500">Board composition</p>
+        </div>
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 text-xs">
+          <Person name="John Van Dijk" role="President" />
+          <Person name="Michelle Ann Salmorin" role="Treasurer" />
+          <Person name="Ailyn C. Gardose" role="Corporate Secretary" />
+          <Person name="Hadassah A. Castro" role="Board Member" />
+          <Person name="Alberto Villamor" role="Board Member" />
+          <Person name="Max Willem Heinen" role="Board Member" />
+        </div>
+      </div>
+
+      <div className="bg-white rounded-3xl shadow-sm p-5 flex flex-col gap-3">
+        <div>
+          <h2 className="text-base font-semibold text-slate-900">Papaya Academy Inc. Board</h2>
+          <p className="text-xs text-slate-500">Board composition</p>
+        </div>
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 text-xs">
+          <Person name="Ailyn C. Gardose" role="President" />
+          <Person name="Michelle Ann Salmorin" role="Treasurer" />
+          <Person name="Hadassah A. Castro" role="Corporate Secretary" />
+          <Person name="Maria Julie Collado" role="Trustee" />
+          <Person name="Tristan Ian C. Santos" role="Trustee" />
+        </div>
+      </div>
+
+      <div className="bg-white rounded-3xl shadow-sm p-5 flex flex-col gap-3">
+        <div>
+          <h2 className="text-base font-semibold text-slate-900">Stitching Kalinga (NL) Board</h2>
+          <p className="text-xs text-slate-500">Board composition</p>
+        </div>
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-2 text-xs">
+          <Person name="Janneke Heinen" role="Chairwoman" />
+          <Person name="Arno Van Workum" role="Treasurer" />
+          <Person name="Miranda Van Loon" role="Secretary" />
+          <Person name="Peter Van Schijndel" role="General Board Member" />
+          <Person name="Heleen Scheer" role="General Board Member" />
+          <Person name="Daniel Van Scherpenzeel" role="General Board Member" />
+          <Person name="Mirjam Van Bruggen" role="General Board Member" />
+          <Person name="Alwin Tettero" role="General Board Member" />
+          <Person name="Pim Van Hattum" role="General Board Member" />
+          <Person name="Felisart Joana Loren" role="General Board Member" />
+        </div>
       </div>
     </div>
   )
@@ -2267,6 +2755,64 @@ function buildChartData(donations, year) {
     bucket.disbursements += Math.round(amount * 0.6)
   })
 
+  return base
+}
+
+const trafficDataByYear = {
+  '2025': [
+    { month: 'Jan', visitors: 5400, uniqueVisitors: 3600 },
+    { month: 'Feb', visitors: 6200, uniqueVisitors: 4200 },
+    { month: 'Mar', visitors: 5800, uniqueVisitors: 3900 },
+    { month: 'Apr', visitors: 6400, uniqueVisitors: 4300 },
+    { month: 'May', visitors: 7000, uniqueVisitors: 4700 },
+    { month: 'Jun', visitors: 6800, uniqueVisitors: 4600 },
+    { month: 'Jul', visitors: 7200, uniqueVisitors: 4900 },
+  ],
+  '2024': [
+    { month: 'Jan', visitors: 4200, uniqueVisitors: 2800 },
+    { month: 'Feb', visitors: 4600, uniqueVisitors: 3100 },
+    { month: 'Mar', visitors: 4800, uniqueVisitors: 3200 },
+    { month: 'Apr', visitors: 5000, uniqueVisitors: 3300 },
+    { month: 'May', visitors: 5200, uniqueVisitors: 3500 },
+    { month: 'Jun', visitors: 5400, uniqueVisitors: 3600 },
+    { month: 'Jul', visitors: 5600, uniqueVisitors: 3800 },
+  ],
+}
+
+function buildTrafficData(year) {
+  const data = trafficDataByYear[String(year)] || []
+  const base = MONTH_LABELS.map((label) => ({ month: label, visitors: 0, uniqueVisitors: 0 }))
+  data.forEach((entry) => {
+    const bucket = base.find((b) => b.month === entry.month)
+    if (bucket) {
+      bucket.visitors = typeof entry.visitors === 'number' ? entry.visitors : 0
+      bucket.uniqueVisitors = typeof entry.uniqueVisitors === 'number' ? entry.uniqueVisitors : 0
+    }
+  })
+  return base
+}
+
+function buildInquiriesChartData(messages, year) {
+  const base = MONTH_LABELS.map((label) => ({ month: label, inquiries: 0 }))
+  messages.forEach((m) => {
+    const date = parseDateOrNull(m.receivedAt)
+    if (!date || String(date.getFullYear()) !== String(year)) return
+    const monthLabel = MONTH_LABELS[date.getMonth()]
+    const bucket = base.find((b) => b.month === monthLabel)
+    if (bucket) bucket.inquiries += 1
+  })
+  return base
+}
+
+function buildEngagementChartData(donations, year) {
+  const base = MONTH_LABELS.map((label) => ({ month: label, engagement: 0 }))
+  donations.forEach((d) => {
+    const date = parseDateOrNull(d.date)
+    if (!date || String(date.getFullYear()) !== String(year)) return
+    const monthLabel = MONTH_LABELS[date.getMonth()]
+    const bucket = base.find((b) => b.month === monthLabel)
+    if (bucket) bucket.engagement += 1
+  })
   return base
 }
 

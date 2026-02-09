@@ -1,0 +1,19 @@
+{
+  "organizationName": "Papaya Academy, Inc.",
+  "programs": [
+    { "id": "CP-001", "name": "Scholarship Fund 2025", "targetAmount": 500000, "status": "Active" },
+    { "id": "CP-002", "name": "Medical Assistance", "targetAmount": 250000, "status": "Completed" },
+    { "id": "CP-003", "name": "School Building", "targetAmount": 1000000, "status": "Active" }
+  ],
+  "partners": [
+    { "id": "PT-001", "name": "ABC Foundation", "contact": "Juan Reyes", "type": "Cash", "status": "Active" },
+    { "id": "PT-002", "name": "XYZ Corporation", "contact": "Ana Lim", "type": "Sponsorship", "status": "Active" },
+    { "id": "PT-003", "name": "HealthCare PH", "contact": "Dr. Robles", "type": "In-kind", "status": "Inactive" }
+  ],
+  "donationTiers": [
+    { "amount": 25, "currency": "USD", "label": "Provides school supplies for one student for a month" },
+    { "amount": 50, "currency": "USD", "label": "Supports a student's meals for two weeks" },
+    { "amount": 100, "currency": "USD", "label": "Sponsors educational materials for a classroom" },
+    { "amount": 250, "currency": "USD", "label": "Funds a month of vocational training for one student" }
+  ]
+}
