@@ -32,6 +32,7 @@ import { sf10StudentsMock, sf10RecordsMock } from './content/sf10Content'
 import { alumniMock } from './content/alumniContent'
 import SF10Section, { SF10View } from './SF10Section.jsx'
 import AlumniSection from './AlumniSection.jsx'
+import { supabase } from './lib/supabase'
 
 const initialDonors = [
   { id: 'DR-001', name: 'Juan Dela Cruz', email: 'juan@example.com' },
@@ -298,7 +299,7 @@ const conversations = [
 // Sidebar structure is now rendered inline within the component with nested groups
 
 function App() {
-  const [isLoggedIn, setIsLoggedIn] = useState(false)
+  const [user, setUser] = useState(null)
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
   const [error, setError] = useState('')
@@ -308,6 +309,36 @@ function App() {
   const [selectedSf10StudentId, setSelectedSf10StudentId] = useState(null)
   const [selectedStatTab, setSelectedStatTab] = useState('donations')
   const [openGroups, setOpenGroups] = useState({ website: true, about: true, donations: true })
+  const [sidebarOpen, setSidebarOpen] = useState(false)
+
+  // Check for existing session on mount
+  useEffect(() => {
+    const checkSession = async () => {
+      try {
+        const { data: { session }, error } = await supabase.auth.getSession()
+        if (session?.user) {
+          setUser(session.user)
+          setIsLoggedIn(true)
+        }
+      } catch (err) {
+        console.error('Session check error:', err)
+      }
+    }
+
+    checkSession()
+
+    // Listen for auth changes
+    const { data: { subscription } } = supabase.auth.onAuthStateChange(
+      async (event, session) => {
+        setUser(session?.user ?? null)
+        setIsLoggedIn(!!session?.user)
+      }
+    )
+
+    return () => subscription.unsubscribe()
+  }, [])
+
+  const isLoggedIn = !!user
 
   const [donations, setDonations] = useState(initialDonations)
   const [campaigns, setCampaigns] = useState(
@@ -335,6 +366,30 @@ function App() {
   const [selectedMessageId, setSelectedMessageId] = useState(null)
   const [sf10Students, setSf10Students] = useState(sf10StudentsMock)
   const [sf10Records, setSf10Records] = useState(sf10RecordsMock)
+
+  // Load SF10 students from Supabase
+  useEffect(() => {
+    async function loadSf10Students() {
+      try {
+        const { data, error } = await supabase
+          .from('sf10_students')
+          .select('*')
+          .order('created_at', { ascending: false })
+        
+        if (error) {
+          console.error('Error loading SF10 students:', error)
+          return
+        }
+        
+        console.log('Loaded SF10 students:', data)
+        setSf10Students(data || [])
+      } catch (err) {
+        console.error('SF10 students loading error:', err)
+      }
+    }
+
+    loadSf10Students()
+  }, [])
 
   const [isSavingSettings, setIsSavingSettings] = useState(false)
 
@@ -403,7 +458,7 @@ function App() {
     }
   }, [])
 
-  const handleLogin = (event) => {
+  const handleLogin = async (event) => {
     event.preventDefault()
     setError('')
 
@@ -414,44 +469,56 @@ function App() {
 
     setIsLoading(true)
 
-    setTimeout(() => {
-      const isValid = email === 'admin@papaya.com' && password === 'admin123'
+    try {
+      const { data, error } = await supabase.auth.signInWithPassword({
+        email,
+        password,
+      })
 
-      if (isValid) {
-        setIsLoggedIn(true)
+      if (error) {
+        setError(error.message)
         setIsLoading(false)
-        try {
-          window.sessionStorage.setItem('papaya-auth', 'logged-in')
-        } catch {
-        }
-        setActivePage('dashboard')
-        setSelectedDonationId(null)
-        setSelectedCampaignId(null)
-        setSelectedDonorId(null)
-        setSelectedPartnerId(null)
-        setSelectedMessageId(null)
-      } else {
-        setError('Invalid email or password.')
-        setIsLoading(false)
+        return
       }
-    }, 800)
+
+      // Login successful
+      setUser(data.user)
+      setIsLoggedIn(true)
+      setActivePage('dashboard')
+      setSelectedDonationId(null)
+      setSelectedCampaignId(null)
+      setSelectedDonorId(null)
+      setSelectedPartnerId(null)
+      setSelectedMessageId(null)
+    } catch (err) {
+      setError('Login failed. Please try again.')
+      setIsLoading(false)
+    }
   }
 
-  const handleLogout = () => {
-    setIsLoggedIn(false)
-    setEmail('')
-    setPassword('')
-    setError('')
-    setIsLoading(false)
-    setActivePage('dashboard')
-    setSelectedDonationId(null)
-    setSelectedCampaignId(null)
-    setSelectedDonorId(null)
-    setSelectedPartnerId(null)
-    setSelectedMessageId(null)
+  const handleLogout = async () => {
     try {
-      window.sessionStorage.removeItem('papaya-auth')
-    } catch {
+      const { error } = await supabase.auth.signOut()
+      if (error) {
+        console.error('Logout error:', error)
+        return
+      }
+
+      // Logout successful
+      setUser(null)
+      setIsLoggedIn(false)
+      setEmail('')
+      setPassword('')
+      setError('')
+      setIsLoading(false)
+      setActivePage('dashboard')
+      setSelectedDonationId(null)
+      setSelectedCampaignId(null)
+      setSelectedDonorId(null)
+      setSelectedPartnerId(null)
+      setSelectedMessageId(null)
+    } catch (err) {
+      console.error('Logout failed:', err)
     }
   }
 
@@ -663,14 +730,34 @@ function App() {
 
   return (
     <div className="flex h-screen overflow-hidden bg-slate-100 text-slate-900">
-      <aside className="w-64 shrink-0 sticky top-0 h-screen overflow-hidden bg-[#1B3E2A] text-slate-100 flex flex-col py-6 px-4">
-        <div className="flex items-center gap-2 px-3 mb-8">
-          <img
-            src={papayaLogo}
-            alt="Papaya Academy, Inc. logo"
-            className="h-9 w-9 rounded-full object-cover bg-white p-[2px] shadow-[0_4px_14px_rgba(0,0,0,0.25)]"
-          />
-          <div className="text-xl font-semibold tracking-tight">Papaya Academy, Inc.</div>
+      {/* Mobile sidebar overlay */}
+      {sidebarOpen && (
+        <div 
+          className="fixed inset-0 bg-black/50 z-40 lg:hidden"
+          onClick={() => setSidebarOpen(false)}
+        />
+      )}
+      
+      <aside className={`fixed lg:static inset-y-0 left-0 z-50 w-64 shrink-0 h-screen overflow-hidden bg-[#1B3E2A] text-slate-100 flex flex-col py-6 px-4 transform transition-transform duration-300 ease-in-out ${
+        sidebarOpen ? 'translate-x-0' : '-translate-x-full lg:translate-x-0'
+      }`}>
+        <div className="flex items-center justify-between gap-2 px-3 mb-8">
+          <div className="flex items-center gap-2">
+            <img
+              src={papayaLogo}
+              alt="Papaya Academy, Inc. logo"
+              className="h-9 w-9 rounded-full object-cover bg-white p-[2px] shadow-[0_4px_14px_rgba(0,0,0,0.25)]"
+            />
+            <div className="text-xl font-semibold tracking-tight hidden sm:block">Papaya Academy, Inc.</div>
+          </div>
+          <button
+            onClick={() => setSidebarOpen(false)}
+            className="lg:hidden text-slate-100/80 hover:text-white p-1 rounded-lg hover:bg-white/10"
+          >
+            <svg className="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+            </svg>
+          </button>
         </div>
 
         <nav className="flex-1 space-y-1">
@@ -880,30 +967,46 @@ function App() {
           </button>
         </nav>
 
-        <div className="mt-6 px-3">
+        <div className="mt-6 px-3 space-y-3">
+          {user && (
+            <div className="rounded-2xl bg-white/5 px-4 py-3 text-xs text-slate-100/80">
+              <div className="font-semibold text-white mb-1">Administrator</div>
+              <p className="text-slate-100/70 truncate">{user.email}</p>
+            </div>
+          )}
           <div className="rounded-2xl bg-white/5 px-4 py-3 text-xs text-slate-100/80">
             <div className="font-semibold text-white mb-1">Papaya Academy, Inc. 2025</div>
             <p className="text-slate-100/70">
-              Track your donations, alumni, and partners in a single dashboard.
+              Admin Dashboard - Manage donations, alumni, and partners.
             </p>
           </div>
         </div>
       </aside>
 
-      <main className="flex-1 flex flex-col px-6 py-5 gap-6 overflow-y-auto min-h-0">
+      <main className="flex-1 flex flex-col px-4 sm:px-6 py-5 gap-6 overflow-y-auto min-h-0">
         <header className="flex items-center justify-between gap-4">
-          <div>
-            <h1 className="text-2xl font-semibold text-slate-900">{headerTitle}</h1>
-            <p className="text-sm text-slate-500">{headerSubtitle}</p>
+          <div className="flex items-center gap-3">
+            <button
+              onClick={() => setSidebarOpen(true)}
+              className="lg:hidden p-2 rounded-lg hover:bg-slate-100 text-slate-600"
+            >
+              <svg className="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M4 12h16M4 18h16" />
+              </svg>
+            </button>
+            <div>
+              <h1 className="text-2xl font-semibold text-slate-900">{headerTitle}</h1>
+              <p className="text-sm text-slate-500">{headerSubtitle}</p>
+            </div>
           </div>
 
-          <div className="flex items-center gap-4">
-            <div className="relative">
+          <div className="flex items-center gap-2 lg:gap-4">
+            <div className="relative hidden sm:block">
               <FiSearch className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 h-4 w-4" />
               <input
                 type="text"
                 placeholder="Search here..."
-                className="pl-9 pr-3 py-2 rounded-full bg-white border border-slate-200 text-sm w-64 focus:outline-none focus:ring-2 focus:ring-[#1B3E2A] focus:border-transparent"
+                className="pl-9 pr-3 py-2 rounded-full bg-white border border-slate-200 text-sm w-48 lg:w-64 focus:outline-none focus:ring-2 focus:ring-[#1B3E2A] focus:border-transparent"
                 value={searchQuery}
                 onChange={(event) => setSearchQuery(event.target.value)}
               />
@@ -916,7 +1019,7 @@ function App() {
               <FiBell className="h-4 w-4" />
             </button>
             <div className="h-9 w-9 rounded-full bg-gradient-to-tr from-[#1B3E2A] to-[#28573F] text-sm font-semibold text-white flex items-center justify-center">
-              D
+              {user?.email?.charAt(0).toUpperCase() || 'D'}
             </div>
           </div>
         </header>
@@ -925,7 +1028,7 @@ function App() {
           <section className="flex-1 flex flex-col gap-6 min-h-0">
             {activePage === 'dashboard' && (
               <>
-                <div className="grid grid-cols-4 gap-4">
+                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
                   <SummaryCard
                     title="Website Visitors (Monthly)"
                     value={String(
@@ -1111,7 +1214,7 @@ function App() {
                       View all
                     </button>
                   </div>
-                  <div className="grid grid-cols-4 gap-4">
+                  <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-4">
                     {partners.map((partner) => (
                       <div
                         key={partner.name}
@@ -1257,13 +1360,37 @@ function App() {
                     students={sf10Students}
                     sf10ByStudentId={sf10ByStudentId}
                     onViewSf10={handleViewSf10}
-                    onAddStudent={() => window.alert(uiText.sf10.placeholders.add)}
+                    onAddStudent={async (newStudent) => {
+                      if (newStudent) {
+                        // Add new student to the list
+                        setSf10Students(prev => [newStudent, ...prev])
+                        setSf10StudentsMock(prev => [newStudent, ...prev]) // Update mock too for consistency
+                      } else {
+                        // Refresh the entire list
+                        try {
+                          const { data, error } = await supabase
+                            .from('sf10_students')
+                            .select('*')
+                            .order('created_at', { ascending: false })
+                          
+                          if (error) {
+                            console.error('Error refreshing students:', error)
+                            return
+                          }
+                          
+                          setSf10Students(data || [])
+                          setSf10StudentsMock(data || [])
+                        } catch (err) {
+                          console.error('Refresh error:', err)
+                        }
+                      }
+                    }}
                     onEditSf10={() => window.alert(uiText.sf10.placeholders.edit)}
                     onRemoveStudent={(studentId) => {
                       const confirmed = window.confirm(uiText.sf10.placeholders.remove)
                       if (!confirmed) return
                       setSf10Students((prev) => prev.filter((s) => String(s.id) !== String(studentId)))
-                      setSf10Records((prev) => prev.filter((r) => String(r.studentId) !== String(studentId)))
+                      setSf10StudentsMock((prev) => prev.filter((s) => String(s.id) !== String(studentId)))
                     }}
                   />
                 )}

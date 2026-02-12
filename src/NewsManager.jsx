@@ -1,4 +1,19 @@
 import React, { useEffect, useState } from 'react'
+import { supabase } from './lib/supabase'
+
+// Helper function to generate slug from title
+function generateSlug(title) {
+  const baseSlug = title
+    .toLowerCase()
+    .replace(/[^a-z0-9\s-]/g, '') // Remove special characters
+    .replace(/\s+/g, '-') // Replace spaces with hyphens
+    .replace(/-+/g, '-') // Remove duplicate hyphens
+    .trim()
+  
+  // Add timestamp to ensure uniqueness
+  const timestamp = Date.now()
+  return `${baseSlug}-${timestamp}`
+}
 
 function formatNewsDate(value) {
   if (!value) return ''
@@ -19,34 +34,58 @@ function NewsManager() {
   const [title, setTitle] = useState('')
   const [content, setContent] = useState('')
   const [author, setAuthor] = useState('')
+  const [featuredImage, setFeaturedImage] = useState('')
+  const [imagePreview, setImagePreview] = useState('')
+  const [isUploading, setIsUploading] = useState(false)
   const [isLoading, setIsLoading] = useState(false)
   const [error, setError] = useState('')
 
   useEffect(() => {
     let cancelled = false
 
-    async function load() {
+    async function loadNews() {
       try {
-        const api = window.newsAPI
-        if (!api || typeof api.getAll !== 'function') {
-          setItems([])
+        const { data, error } = await supabase
+          .from('news_articles')
+          .select('*')
+          .order('created_at', { ascending: false })
+        
+        if (error) {
+          console.error('Error loading news:', error)
+          if (!cancelled) {
+            setItems([])
+          }
           return
         }
-        const result = await api.getAll()
+        
         if (!cancelled) {
-          setItems(Array.isArray(result) ? result : [])
+          setItems(data || [])
         }
-      } catch {
+      } catch (err) {
+        console.error('News loading error:', err)
         if (!cancelled) {
           setItems([])
         }
       }
     }
 
-    load()
+    loadNews()
+
+    // Set up real-time subscription
+    const subscription = supabase
+      .channel('news_changes')
+      .on('postgres_changes', 
+        { event: '*', schema: 'public', table: 'news_articles' },
+        (payload) => {
+          console.log('News change:', payload)
+          loadNews() // Refresh news list
+        }
+      )
+      .subscribe()
 
     return () => {
       cancelled = true
+      subscription.unsubscribe()
     }
   }, [])
 
@@ -55,6 +94,8 @@ function NewsManager() {
     setTitle('')
     setContent('')
     setAuthor('')
+    setFeaturedImage('')
+    setImagePreview('')
     setError('')
   }
 
@@ -65,11 +106,72 @@ function NewsManager() {
     setTitle(item.title || '')
     setContent(item.content || '')
     setAuthor(item.author || '')
+    setFeaturedImage(item.featured_image || '')
+    setImagePreview(item.featured_image || '')
     setError('')
   }
 
   const handleAddMode = () => {
     resetForm()
+  }
+
+  // ============== IMAGE UPLOAD FUNCTION ==============
+  const handleImageUpload = async (e) => {
+    try {
+      const file = e.target.files[0]
+      if (!file) return
+
+      // Check file size (max 5MB)
+      if (file.size > 5 * 1024 * 1024) {
+        setError('Image size should be less than 5MB')
+        return
+      }
+
+      // Check file type
+      const validTypes = ['image/jpeg', 'image/jpg', 'image/png', 'image/gif', 'image/webp']
+      if (!validTypes.includes(file.type)) {
+        setError('Please select a JPG, PNG, GIF, or WebP image file')
+        return
+      }
+
+      setIsUploading(true)
+      setError('')
+
+      // Create a unique file name
+      const fileExt = file.name.split('.').pop()
+      const fileName = `${Date.now()}-${Math.random().toString(36).substring(2)}.${fileExt}`
+      const filePath = `news-images/${fileName}`
+
+      // Upload to Supabase Storage
+      const { data: uploadData, error: uploadError } = await supabase.storage
+        .from('news-images') // Make sure this bucket exists in Supabase Storage
+        .upload(filePath, file)
+
+      if (uploadError) {
+        console.error('Upload error:', uploadError)
+        setError(`Failed to upload image: ${uploadError.message}`)
+        return
+      }
+
+      // Get public URL
+      const { data: { publicUrl } } = supabase.storage
+        .from('news-images')
+        .getPublicUrl(filePath)
+
+      setFeaturedImage(publicUrl)
+      setImagePreview(publicUrl)
+
+    } catch (err) {
+      console.error('Image upload error:', err)
+      setError('Failed to upload image')
+    } finally {
+      setIsUploading(false)
+    }
+  }
+
+  const removeImage = () => {
+    setFeaturedImage('')
+    setImagePreview('')
   }
 
   const handleSaveNew = async () => {
@@ -86,30 +188,36 @@ function NewsManager() {
     setError('')
 
     try {
-      const api = window.newsAPI
-      if (!api || typeof api.add !== 'function') {
-        const now = new Date().toISOString()
-        const fallbackItem = {
-          id: `NEWS-${Date.now()}`,
+      const slug = generateSlug(trimmedTitle)
+      const { data, error } = await supabase
+        .from('news_articles')
+        .insert({
           title: trimmedTitle,
+          slug: slug,
           content: trimmedContent,
           author: trimmedAuthor,
-          date: now,
-        }
-        setItems((prev) => [...prev, fallbackItem])
-        setSelectedId(fallbackItem.id)
+          featured_image: featuredImage || null,
+          status: 'Published',
+          published_at: new Date().toISOString(),
+        })
+        .select()
+        .single()
+
+      if (error) {
+        console.error('Error creating news:', error)
+        setError('Failed to save news. Please try again.')
         return
       }
 
-      const created = await api.add({
-        title: trimmedTitle,
-        content: trimmedContent,
-        author: trimmedAuthor,
-      })
-
-      setItems((prev) => [...prev, created])
-      setSelectedId(created && created.id ? created.id : null)
-    } catch {
+      setItems((prev) => [data, ...prev])
+      setSelectedId(data.id)
+      setTitle(data.title)
+      setContent(data.content)
+      setAuthor(data.author)
+      setFeaturedImage(data.featured_image || '')
+      setImagePreview(data.featured_image || '')
+    } catch (err) {
+      console.error('News creation error:', err)
       setError('Failed to save news. Please try again.')
     } finally {
       setIsLoading(false)
@@ -132,43 +240,35 @@ function NewsManager() {
     setError('')
 
     try {
-      const api = window.newsAPI
-      if (!api || typeof api.update !== 'function') {
-        setItems((prev) =>
-          prev.map((entry) =>
-            String(entry.id) === String(selectedId)
-              ? {
-                  ...entry,
-                  title: trimmedTitle,
-                  content: trimmedContent,
-                  author: trimmedAuthor,
-                }
-              : entry,
-          ),
-        )
+      const slug = generateSlug(trimmedTitle)
+      const { data, error } = await supabase
+        .from('news_articles')
+        .update({
+          title: trimmedTitle,
+          slug: slug,
+          content: trimmedContent,
+          author: trimmedAuthor,
+          featured_image: featuredImage || null,
+          updated_at: new Date().toISOString(),
+        })
+        .eq('id', selectedId)
+        .select()
+        .single()
+
+      if (error) {
+        console.error('Error updating news:', error)
+        setError('Failed to update news. Please try again.')
         return
       }
 
-      const updated = await api.update({
-        id: selectedId,
-        title: trimmedTitle,
-        content: trimmedContent,
-        author: trimmedAuthor,
-      })
-
       setItems((prev) =>
         prev.map((entry) =>
-          String(entry.id) === String(selectedId)
-            ? updated || {
-                ...entry,
-                title: trimmedTitle,
-                content: trimmedContent,
-                author: trimmedAuthor,
-              }
-            : entry,
+          entry.id === selectedId ? data : entry,
         ),
       )
-    } catch {
+      setImagePreview(featuredImage || '')
+    } catch (err) {
+      console.error('News update error:', err)
       setError('Failed to update news. Please try again.')
     } finally {
       setIsLoading(false)
@@ -185,17 +285,21 @@ function NewsManager() {
     setError('')
 
     try {
-      const api = window.newsAPI
-      if (!api || typeof api.remove !== 'function') {
-        setItems((prev) => prev.filter((entry) => String(entry.id) !== String(selectedId)))
-        resetForm()
+      const { error } = await supabase
+        .from('news_articles')
+        .delete()
+        .eq('id', selectedId)
+
+      if (error) {
+        console.error('Error deleting news:', error)
+        setError('Failed to delete news. Please try again.')
         return
       }
 
-      await api.remove(selectedId)
-      setItems((prev) => prev.filter((entry) => String(entry.id) !== String(selectedId)))
+      setItems((prev) => prev.filter((entry) => entry.id !== selectedId))
       resetForm()
-    } catch {
+    } catch (err) {
+      console.error('News deletion error:', err)
       setError('Failed to delete news. Please try again.')
     } finally {
       setIsLoading(false)
@@ -205,15 +309,15 @@ function NewsManager() {
   const sortedItems = items
     .slice()
     .sort((a, b) => {
-      const aTime = a && a.date ? Date.parse(a.date) : 0
-      const bTime = b && b.date ? Date.parse(b.date) : 0
+      const aTime = a && (a.created_at || a.published_at) ? new Date(a.created_at || a.published_at).getTime() : 0
+      const bTime = b && (b.created_at || b.published_at) ? new Date(b.created_at || b.published_at).getTime() : 0
       return bTime - aTime
     })
 
   const isNewMode = !selectedId
-  const isSaveDisabled = !title.trim() || !content.trim() || isLoading
-  const isUpdateDisabled = isNewMode || !title.trim() || !content.trim() || isLoading
-  const isDeleteDisabled = isNewMode || isLoading
+  const isSaveDisabled = !title.trim() || !content.trim() || isLoading || isUploading
+  const isUpdateDisabled = isNewMode || !title.trim() || !content.trim() || isLoading || isUploading
+  const isDeleteDisabled = isNewMode || isLoading || isUploading
 
   return (
     <div className="bg-white rounded-3xl shadow-sm p-5 flex flex-row gap-5 flex-1 overflow-hidden">
@@ -238,29 +342,44 @@ function NewsManager() {
                 key={item.id}
                 type="button"
                 onClick={() => handleSelectItem(item.id)}
-                className={`w-full flex flex-col items-start text-left rounded-2xl px-3 py-2 mb-1 text-xs transition border
+                className={`w-full flex items-start text-left rounded-2xl px-3 py-2 mb-1 text-xs transition border
                   ${
                     isActive
                       ? 'bg-white border-[#1B3E2A]/40 shadow-sm text-slate-900'
                       : 'bg-white/60 border-transparent hover:bg-white hover:border-slate-200 text-slate-700'
                   }`}
               >
-                <div className="flex items-center justify-between w-full mb-0.5">
-                  <div className="font-semibold truncate mr-2">{item.title || '(Untitled)'}</div>
-                  <div className="text-[10px] text-slate-400 whitespace-nowrap ml-2">
-                    {formatNewsDate(item.date)}
+                {item.featured_image && (
+                  <div className="flex-shrink-0 mr-3">
+                    <img 
+                      src={item.featured_image} 
+                      alt={item.title || 'News image'}
+                      className="w-16 h-16 rounded-xl object-cover border border-slate-200"
+                      onError={(e) => {
+                        e.target.style.display = 'none'
+                        e.target.parentElement.style.display = 'none'
+                      }}
+                    />
                   </div>
+                )}
+                <div className="flex-1 min-w-0">
+                  <div className="flex items-center justify-between w-full mb-0.5">
+                    <div className="font-semibold truncate mr-2">{item.title || '(Untitled)'}</div>
+                    <div className="text-[10px] text-slate-400 whitespace-nowrap ml-2">
+                      {formatNewsDate(item.created_at || item.published_at)}
+                    </div>
+                  </div>
+                  {item.author && (
+                    <div className="text-[11px] text-slate-500 mb-0.5">By {item.author}</div>
+                  )}
+                  {item.content && (
+                    <div className="text-[11px] text-slate-500 line-clamp-2">
+                      {String(item.content).length > 140
+                        ? `${String(item.content).slice(0, 140)}...`
+                        : String(item.content)}
+                    </div>
+                  )}
                 </div>
-                {item.author && (
-                  <div className="text-[11px] text-slate-500 mb-0.5">By {item.author}</div>
-                )}
-                {item.content && (
-                  <div className="text-[11px] text-slate-500 line-clamp-2">
-                    {String(item.content).length > 140
-                      ? `${String(item.content).slice(0, 140)}...`
-                      : String(item.content)}
-                  </div>
-                )}
               </button>
             )
           })}
@@ -274,6 +393,81 @@ function NewsManager() {
         </div>
 
         <div className="space-y-3">
+          {/* Image Upload Section */}
+          <div>
+            <label className="block text-xs font-medium text-slate-700 mb-2">Featured Image</label>
+            <div className="flex items-start gap-3">
+              <div className="flex-shrink-0">
+                {imagePreview ? (
+                  <div className="relative">
+                    <img 
+                      src={imagePreview} 
+                      alt="Preview" 
+                      className="w-20 h-20 rounded-xl object-cover border border-slate-200"
+                    />
+                    <button
+                      type="button"
+                      onClick={removeImage}
+                      className="absolute -top-2 -right-2 bg-rose-500 text-white rounded-full w-5 h-5 flex items-center justify-center hover:bg-rose-600 text-xs"
+                      title="Remove image"
+                    >
+                      ×
+                    </button>
+                  </div>
+                ) : (
+                  <div className="w-20 h-20 rounded-xl border-2 border-dashed border-slate-300 bg-slate-50 flex items-center justify-center">
+                    <svg className="w-6 h-6 text-slate-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
+                    </svg>
+                  </div>
+                )}
+              </div>
+              <div className="flex-1">
+                <div className="relative">
+                  <input
+                    type="file"
+                    id="news-image-upload"
+                    accept="image/jpeg,image/jpg,image/png,image/gif,image/webp"
+                    onChange={handleImageUpload}
+                    className="absolute inset-0 w-full h-full opacity-0 cursor-pointer z-10"
+                    disabled={isUploading}
+                  />
+                  <label 
+                    htmlFor="news-image-upload" 
+                    className={`block rounded-xl border border-slate-200 px-3 py-2 text-xs cursor-pointer hover:bg-slate-50 ${isUploading ? 'opacity-60 cursor-not-allowed' : ''}`}
+                  >
+                    <div className="flex items-center gap-2">
+                      {isUploading ? (
+                        <>
+                          <svg className="animate-spin h-3 w-3 text-slate-400" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                            <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                            <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                          </svg>
+                          <span>Uploading...</span>
+                        </>
+                      ) : (
+                        <>
+                          <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12" />
+                          </svg>
+                          <span>{imagePreview ? 'Change image' : 'Upload image'}</span>
+                        </>
+                      )}
+                    </div>
+                    <div className="text-[10px] text-slate-500 mt-1">
+                      JPG, PNG, GIF, WebP (max 5MB)
+                    </div>
+                  </label>
+                </div>
+                {imagePreview && (
+                  <div className="text-[10px] text-emerald-600 mt-2">
+                    ✓ Image uploaded successfully
+                  </div>
+                )}
+              </div>
+            </div>
+          </div>
+
           <div>
             <label className="block text-xs font-medium text-slate-700 mb-1" htmlFor="news-title">
               Title
@@ -326,7 +520,7 @@ function NewsManager() {
           <button
             type="button"
             onClick={handleAddMode}
-            disabled={isLoading}
+            disabled={isLoading || isUploading}
             className="rounded-2xl border border-slate-200 px-3 py-1.5 text-xs font-medium text-slate-700 hover:bg-slate-50 disabled:opacity-60 disabled:cursor-not-allowed"
           >
             Add
@@ -358,7 +552,7 @@ function NewsManager() {
           <button
             type="button"
             onClick={resetForm}
-            disabled={isLoading}
+            disabled={isLoading || isUploading}
             className="rounded-2xl border border-slate-200 px-3 py-1.5 text-xs font-medium text-slate-600 hover:bg-slate-50 disabled:opacity-60 disabled:cursor-not-allowed"
           >
             Clear
