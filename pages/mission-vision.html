@@ -1,0 +1,103 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Mission, Vision & Values</title>
+    <link rel="stylesheet" href="../css/mission-vision.css" />
+  </head>
+  <body>
+    <div class="page">
+      <header class="page-header">
+        <div>
+          <h1 class="page-title">Mission, Vision & Values</h1>
+          <p class="page-subtitle">Manage the content shown on the Papaya Academy site.</p>
+        </div>
+        <button id="addNewBtn" class="btn btn-primary" type="button">Add New</button>
+      </header>
+
+      <main class="layout" aria-live="polite">
+        <section class="panel" aria-labelledby="missionHeading">
+          <div class="panel-header">
+            <h2 id="missionHeading" class="panel-title">Mission</h2>
+          </div>
+          <div id="missionList" class="card-stack"></div>
+          <div id="missionEmpty" class="empty-state" hidden>
+            No Mission content yet. Click <strong>Add New</strong> to create one.
+          </div>
+        </section>
+
+        <section class="panel-grid">
+          <section class="panel" aria-labelledby="visionHeading">
+            <div class="panel-header">
+              <h2 id="visionHeading" class="panel-title">Vision</h2>
+            </div>
+            <div id="visionList" class="card-stack"></div>
+            <div id="visionEmpty" class="empty-state" hidden>
+              No Vision content yet.
+            </div>
+          </section>
+
+          <section class="panel" aria-labelledby="valuesHeading">
+            <div class="panel-header">
+              <h2 id="valuesHeading" class="panel-title">Values</h2>
+            </div>
+            <div id="valuesList" class="card-stack"></div>
+            <div id="valuesEmpty" class="empty-state" hidden>
+              No Values content yet.
+            </div>
+          </section>
+        </section>
+      </main>
+    </div>
+
+    <!-- Modal -->
+    <div id="modalOverlay" class="modal-overlay" role="dialog" aria-modal="true" aria-hidden="true" hidden>
+      <div class="modal" role="document">
+        <div class="modal-header">
+          <div>
+            <div id="modalKicker" class="modal-kicker">Content</div>
+            <h3 id="modalTitle" class="modal-title">Add New</h3>
+          </div>
+          <button id="modalCloseBtn" class="icon-btn" type="button" aria-label="Close dialog">×</button>
+        </div>
+
+        <form id="contentForm" class="modal-body">
+          <input id="contentId" type="hidden" />
+
+          <label class="field">
+            <span class="label">Type</span>
+            <select id="contentType" class="control" required>
+              <option value="Mission">Mission</option>
+              <option value="Vision">Vision</option>
+              <option value="Values">Values</option>
+            </select>
+          </label>
+
+          <label class="field">
+            <span class="label">Title (optional)</span>
+            <input id="contentTitle" class="control" type="text" placeholder="e.g. Our Mission" />
+          </label>
+
+          <label class="field">
+            <span class="label">Content</span>
+            <textarea
+              id="contentBody"
+              class="control"
+              rows="7"
+              placeholder="Write the content here..."
+              required
+            ></textarea>
+          </label>
+
+          <div class="modal-footer">
+            <button id="cancelBtn" class="btn btn-ghost" type="button">Cancel</button>
+            <button id="saveBtn" class="btn btn-primary" type="submit">Save</button>
+          </div>
+        </form>
+      </div>
+    </div>
+
+    <script src="../js/mission-vision.js"></script>
+  </body>
+</html>

@@ -12,15 +12,16 @@
     "lint": "echo \"No linter configured\""
   },
   "dependencies": {
+    "exceljs": "^4.4.0",
     "react": "^18.2.0",
     "react-dom": "^18.2.0",
-    "recharts": "^2.7.2",
-    "react-icons": "^4.12.0"
+    "react-icons": "^4.12.0",
+    "recharts": "^2.7.2"
   },
   "devDependencies": {
-    "@vitejs/plugin-react-swc": "^3.0.0",
     "@types/react": "^18.2.0",
     "@types/react-dom": "^18.2.0",
+    "@vitejs/plugin-react-swc": "^3.0.0",
     "autoprefixer": "^10.4.16",
     "concurrently": "^8.2.0",
     "electron": "^28.2.0",

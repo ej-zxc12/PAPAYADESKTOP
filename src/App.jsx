@@ -18,9 +18,11 @@ import {
   FiSettings,
   FiLogOut,
   FiBell,
-  FiSearch,
   FiFileText,
   FiImage,
+  FiPlus,
+  FiEdit2,
+  FiTrash2,
   FiChevronDown,
   FiChevronRight,
 } from 'react-icons/fi'
@@ -307,7 +309,34 @@ function App() {
   const [activePage, setActivePage] = useState('dashboard')
   const [selectedSf10StudentId, setSelectedSf10StudentId] = useState(null)
   const [selectedStatTab, setSelectedStatTab] = useState('donations')
-  const [openGroups, setOpenGroups] = useState({ website: true, about: true, donations: true })
+
+  // Sidebar dropdown state.
+  // Important UX: keep all groups collapsed by default, and only toggle on the parent group button click.
+  const [openGroups, setOpenGroups] = useState({ website: false, about: false, donations: false })
+
+  // Sidebar toggle helpers (kept near state to keep behavior predictable).
+  const toggleWebsiteGroup = () => {
+    setOpenGroups((p) => {
+      const nextWebsite = !p.website
+      return {
+        ...p,
+        website: nextWebsite,
+        // Nested group should not remain open when the parent collapses.
+        about: nextWebsite ? p.about : false,
+      }
+    })
+  }
+
+  const toggleAboutGroup = () => {
+    setOpenGroups((p) => {
+      if (!p.website) return p
+      return { ...p, about: !p.about }
+    })
+  }
+
+  const toggleDonationsGroup = () => {
+    setOpenGroups((p) => ({ ...p, donations: !p.donations }))
+  }
 
   const [donations, setDonations] = useState(initialDonations)
   const [campaigns, setCampaigns] = useState(
@@ -338,7 +367,6 @@ function App() {
 
   const [isSavingSettings, setIsSavingSettings] = useState(false)
 
-  const [searchQuery, setSearchQuery] = useState('')
 
   useEffect(() => {
     try {
@@ -598,6 +626,22 @@ function App() {
     setActivePage('orgchart')
   }
 
+  const [isNotificationsOpen, setIsNotificationsOpen] = useState(false)
+  const closeNotifications = () => setIsNotificationsOpen(false)
+
+  useEffect(() => {
+    if (!isNotificationsOpen) return
+
+    const handleKeyDown = (event) => {
+      if (event.key === 'Escape') closeNotifications()
+    }
+
+    document.addEventListener('keydown', handleKeyDown)
+    return () => {
+      document.removeEventListener('keydown', handleKeyDown)
+    }
+  }, [isNotificationsOpen])
+
   if (!isLoggedIn) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-slate-100 text-slate-900">
@@ -663,6 +707,7 @@ function App() {
 
   return (
     <div className="flex h-screen overflow-hidden bg-slate-100 text-slate-900">
+      {/* Sidebar is fixed to 100vh (Tailwind h-screen) and uses a scrollable nav region to keep lower items reachable. */}
       <aside className="w-64 shrink-0 sticky top-0 h-screen overflow-hidden bg-[#1B3E2A] text-slate-100 flex flex-col py-6 px-4">
         <div className="flex items-center gap-2 px-3 mb-8">
           <img
@@ -673,7 +718,8 @@ function App() {
           <div className="text-xl font-semibold tracking-tight">Papaya Academy, Inc.</div>
         </div>
 
-        <nav className="flex-1 space-y-1">
+        {/* Scroll container: flex child must have min-h-0 for overflow-y to work reliably in Electron/Chromium. */}
+        <nav className="sidebar-scroll flex-1 min-h-0 overflow-y-auto space-y-1 pr-1">
           <button
             className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium transition ${
               activePage === 'dashboard' ? 'bg-white/10 text-white shadow-sm' : 'text-slate-100/80 hover:bg-white/5 hover:text-white'
@@ -687,7 +733,7 @@ function App() {
           <div>
             <button
               className="w-full flex items-center justify-between gap-3 px-3 py-2.5 rounded-xl text-sm font-medium text-slate-100/80 hover:bg-white/5 hover:text-white"
-              onClick={() => setOpenGroups((p) => ({ ...p, website: !p.website }))}
+              onClick={toggleWebsiteGroup}
             >
               <div className="flex items-center gap-3">
                 <FiFileText className="h-4 w-4 shrink-0" />
@@ -710,7 +756,7 @@ function App() {
                 <div>
                   <button
                     className="w-full flex items-center justify-between gap-3 pl-6 pr-3 py-2.5 rounded-xl text-sm font-medium text-slate-100/80 hover:bg-white/5 hover:text-white"
-                    onClick={() => setOpenGroups((p) => ({ ...p, about: !p.about }))}
+                    onClick={toggleAboutGroup}
                   >
                     <div className="flex items-center gap-3 pl-4">
                       <FiUsers className="h-4 w-4 shrink-0" />
@@ -776,7 +822,7 @@ function App() {
           <div>
             <button
               className="w-full flex items-center justify-between gap-3 px-3 py-2.5 rounded-xl text-sm font-medium text-slate-100/80 hover:bg-white/5 hover:text-white"
-              onClick={() => setOpenGroups((p) => ({ ...p, donations: !p.donations }))}
+              onClick={toggleDonationsGroup}
             >
               <div className="flex items-center gap-3">
                 <FiGift className="h-4 w-4 shrink-0" />
@@ -898,28 +944,100 @@ function App() {
           </div>
 
           <div className="flex items-center gap-4">
-            <div className="relative">
-              <FiSearch className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 h-4 w-4" />
-              <input
-                type="text"
-                placeholder="Search here..."
-                className="pl-9 pr-3 py-2 rounded-full bg-white border border-slate-200 text-sm w-64 focus:outline-none focus:ring-2 focus:ring-[#1B3E2A] focus:border-transparent"
-                value={searchQuery}
-                onChange={(event) => setSearchQuery(event.target.value)}
-              />
-            </div>
             <button
               className="relative h-9 w-9 rounded-full bg-white border border-slate-200 flex items-center justify-center text-slate-500 hover:bg-slate-50"
-              title={`Organizational chart`}
-              onClick={handleOrgChartButtonClick}
+              title="Notifications"
+              onClick={() => setIsNotificationsOpen(true)}
+              type="button"
             >
               <FiBell className="h-4 w-4" />
+              {messages.some((m) => !m.read) && (
+                <span className="absolute -top-1 -right-1 h-4 min-w-[16px] px-1 rounded-full bg-rose-500 text-white text-[10px] font-semibold flex items-center justify-center">
+                  {messages.filter((m) => !m.read).length}
+                </span>
+              )}
             </button>
             <div className="h-9 w-9 rounded-full bg-gradient-to-tr from-[#1B3E2A] to-[#28573F] text-sm font-semibold text-white flex items-center justify-center">
               D
             </div>
           </div>
         </header>
+
+        <div
+          className={`fixed inset-0 z-[60] ${isNotificationsOpen ? 'pointer-events-auto' : 'pointer-events-none'}`}
+          aria-hidden={!isNotificationsOpen}
+        >
+          <div
+            className={`absolute inset-0 bg-slate-900/40 transition-opacity duration-200 ${
+              isNotificationsOpen ? 'opacity-100' : 'opacity-0'
+            }`}
+            onClick={closeNotifications}
+          />
+
+          <aside
+            className={`absolute right-0 top-0 h-full w-[420px] max-w-[92vw] bg-white shadow-[0_30px_90px_rgba(15,23,42,0.35)] transition-transform duration-200 ease-out flex flex-col ${
+              isNotificationsOpen ? 'translate-x-0' : 'translate-x-full'
+            }`}
+            role="dialog"
+            aria-modal="true"
+            aria-label="Notifications panel"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="px-5 py-4 border-b border-slate-200 flex items-start justify-between gap-4">
+              <div>
+                <div className="text-base font-semibold text-slate-900">Notifications</div>
+                <div className="text-xs text-slate-500">{messages.filter((m) => !m.read).length} unread</div>
+              </div>
+              <button
+                type="button"
+                className="h-9 w-9 rounded-full border border-slate-200 text-slate-500 hover:bg-slate-50"
+                onClick={closeNotifications}
+                aria-label="Close notifications"
+                title="Close"
+              >
+                ×
+              </button>
+            </div>
+
+            <div className="flex-1 overflow-y-auto">
+              {messages.length === 0 && (
+                <div className="px-5 py-10 text-center text-sm text-slate-500">No notifications yet.</div>
+              )}
+
+              <div className="divide-y divide-slate-100">
+                {messages.map((m) => (
+                  <button
+                    key={m.id}
+                    type="button"
+                    className="w-full text-left px-5 py-4 hover:bg-slate-50 transition flex items-start gap-3"
+                    onClick={() => {
+                      setMessages((prev) => prev.map((msg) => (String(msg.id) === String(m.id) ? { ...msg, read: true } : msg)))
+                    }}
+                  >
+                    <div className="pt-1">
+                      <div className={`h-2.5 w-2.5 rounded-full ${m.read ? 'bg-slate-200' : 'bg-emerald-500'}`} />
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <div className="text-sm font-semibold text-slate-900 truncate">{m.name || 'Inquiry'}</div>
+                      <div className="text-xs text-slate-500 mt-0.5">{m.message || m.subject || 'New message received.'}</div>
+                      {m.time && <div className="text-[11px] text-slate-400 mt-1">{m.time}</div>}
+                    </div>
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            <div className="px-5 py-4 border-t border-slate-200 bg-white">
+              <button
+                type="button"
+                className="w-full rounded-2xl border border-slate-200 px-4 py-2.5 text-sm font-medium text-slate-700 hover:bg-slate-50"
+                onClick={() => setMessages((prev) => prev.map((m) => ({ ...m, read: true })))}
+              >
+                Mark all as read
+              </button>
+            </div>
+          </aside>
+        </div>
 
         <div className="flex-1 flex gap-6 min-h-0">
           <section className="flex-1 flex flex-col gap-6 min-h-0">
@@ -1107,25 +1225,38 @@ function App() {
                 <div className="bg-white rounded-3xl shadow-sm p-5">
                   <div className="flex items-center justify-between mb-4">
                     <h2 className="text-base font-semibold text-slate-900">Top Partners & Sponsors</h2>
-                    <button className="text-xs text-[#1B3E2A] font-medium hover:text-[#163021]">
-                      View all
-                    </button>
                   </div>
-                  <div className="grid grid-cols-4 gap-4">
-                    {partners.map((partner) => (
-                      <div
-                        key={partner.name}
-                        className="rounded-2xl border border-slate-100 px-4 py-3 bg-slate-50/60 hover:bg-slate-50 transition"
-                      >
-                        <div className="h-8 w-8 rounded-xl bg-white shadow flex items-center justify-center text-[10px] font-semibold text-slate-700 mb-2">
-                          {partner.name[0]}
-                        </div>
-                        <div className="text-sm font-semibold text-slate-900 truncate">
-                          {partner.name}
-                        </div>
-                        <div className="text-xs text-slate-500 truncate">{partner.type || partner.label}</div>
-                      </div>
-                    ))}
+                  <div className="rounded-2xl border border-slate-200 overflow-hidden">
+                    <div className="overflow-x-auto">
+                      <table className="min-w-full text-sm">
+                        <thead>
+                          <tr className="bg-white text-left text-slate-500 border-b border-slate-200">
+                            <th className="py-3 px-4 font-medium whitespace-nowrap">Organization</th>
+                            <th className="py-3 px-4 font-medium whitespace-nowrap">Contribution Type</th>
+                            <th className="py-3 px-4 font-medium whitespace-nowrap">Status</th>
+                          </tr>
+                        </thead>
+                        <tbody className="divide-y divide-slate-100">
+                          {partners.slice(0, 6).map((partner) => (
+                            <tr key={partner.id || partner.name} className="bg-white">
+                              <td className="py-3 px-4 whitespace-nowrap text-slate-900">{partner.name}</td>
+                              <td className="py-3 px-4 whitespace-nowrap text-slate-700">{partner.type || partner.label}</td>
+                              <td className="py-3 px-4 whitespace-nowrap">
+                                <span
+                                  className={`inline-flex items-center rounded-full px-2 py-0.5 text-xs font-medium ${
+                                    partner.status === 'Active'
+                                      ? 'bg-[#1B3E2A]/10 text-[#1B3E2A]'
+                                      : 'bg-slate-100 text-slate-500'
+                                  }`}
+                                >
+                                  {partner.status || 'Active'}
+                                </span>
+                              </td>
+                            </tr>
+                          ))}
+                        </tbody>
+                      </table>
+                    </div>
                   </div>
                 </div>
               </>
@@ -1136,7 +1267,6 @@ function App() {
                 donations={donations}
                 selectedDonationId={selectedDonationId}
                 onSelectDonation={handleSelectDonation}
-                searchQuery={searchQuery}
                 baseCurrency={settings.currency}
               />
             )}
@@ -1209,7 +1339,6 @@ function App() {
                 donors={donorsWithStats}
                 selectedDonorId={selectedDonorId}
                 onSelectDonor={handleSelectDonor}
-                searchQuery={searchQuery}
               />
             )}
             {(activePage === 'reports' || activePage === 'donations_reports') && (
@@ -1279,7 +1408,7 @@ function App() {
             {activePage === 'alumni' && <AlumniSection alumni={alumniMock} />}
             {activePage === 'website_home' && <WebsiteHomeSection />}
             {activePage === 'website_about_story' && <StaticContentSection title="Our Story" />}
-            {activePage === 'website_about_mission' && <StaticContentSection title="Mission & Vision" />}
+            {activePage === 'website_about_mission' && <MissionVisionValuesSection />}
             {activePage === 'media' && <MediaLibrarySection />}
             {activePage === 'settings' && (
               <SettingsSection
@@ -1394,6 +1523,249 @@ function StaticContentSection({ title }) {
   )
 }
 
+function MissionVisionValuesSection() {
+  // Local mock data (frontend-only).
+  const [items, setItems] = useState([
+    {
+      id: 'mvv-1',
+      type: 'Mission',
+      title: 'Our Mission',
+      content: 'To provide quality learning experiences that nurture character, competence, and compassion in every learner.',
+    },
+    {
+      id: 'mvv-2',
+      type: 'Vision',
+      title: 'Our Vision',
+      content: 'A future-ready community of learners empowered to lead with integrity and serve with love.',
+    },
+    {
+      id: 'mvv-3',
+      type: 'Values',
+      title: 'Our Values',
+      content: 'Faith\nExcellence\nRespect\nService\nInnovation',
+    },
+  ])
+
+  const [modal, setModal] = useState(null)
+  const [formType, setFormType] = useState('Mission')
+  const [formTitle, setFormTitle] = useState('')
+  const [formContent, setFormContent] = useState('')
+
+  const buildId = () => `${Date.now()}-${Math.random().toString(16).slice(2)}`
+
+  const openAdd = () => {
+    setModal({ mode: 'add', id: null })
+    setFormType('Mission')
+    setFormTitle('')
+    setFormContent('')
+  }
+
+  const openEdit = (item) => {
+    setModal({ mode: 'edit', id: item.id })
+    setFormType(item.type)
+    setFormTitle(item.title || '')
+    setFormContent(item.content || '')
+  }
+
+  const handleRemove = (item) => {
+    const label = item.title ? item.title : `${item.type} Content`
+    const ok = window.confirm(`Remove "${label}"? This cannot be undone.`)
+    if (!ok) return
+    setItems((prev) => prev.filter((e) => e.id !== item.id))
+  }
+
+  const handleSave = () => {
+    const nextType = String(formType || '').trim()
+    const nextTitle = String(formTitle || '').trim()
+    const nextContent = String(formContent || '').trim()
+
+    if (!nextType) {
+      window.alert('Please select a Type.')
+      return
+    }
+
+    if (!nextContent) {
+      window.alert('Please enter Content.')
+      return
+    }
+
+    if (modal?.mode === 'add') {
+      const newItem = { id: buildId(), type: nextType, title: nextTitle, content: nextContent }
+      setItems((prev) => [newItem, ...prev])
+      setModal(null)
+      return
+    }
+
+    if (modal?.mode === 'edit') {
+      setItems((prev) =>
+        prev.map((e) => (e.id === modal.id ? { ...e, type: nextType, title: nextTitle, content: nextContent } : e)),
+      )
+      setModal(null)
+    }
+  }
+
+  const missionItems = items.filter((e) => e.type === 'Mission')
+  const visionItems = items.filter((e) => e.type === 'Vision')
+  const valuesItems = items.filter((e) => e.type === 'Values')
+
+  const ContentCard = ({ item }) => (
+    <div className="rounded-3xl border border-slate-200 bg-white p-5 shadow-sm hover:shadow-md transition-shadow">
+      <div className="flex items-start justify-between gap-4">
+        <div className="min-w-0">
+          <div className="flex items-center gap-2">
+            <h3 className="text-sm font-semibold text-slate-900 truncate">
+              {item.title ? item.title : `${item.type} Content`}
+            </h3>
+            <span className="inline-flex items-center rounded-full px-2 py-0.5 text-[11px] font-medium bg-slate-100 text-slate-600">
+              {item.type}
+            </span>
+          </div>
+        </div>
+        <div className="flex items-center gap-2 shrink-0">
+          <button
+            type="button"
+            className="inline-flex items-center gap-2 rounded-md border border-slate-200 bg-white px-3 py-2 text-xs font-semibold text-slate-700 hover:bg-slate-50"
+            onClick={() => openEdit(item)}
+          >
+            <FiEdit2 className="h-4 w-4" />
+            Edit
+          </button>
+          <button
+            type="button"
+            className="inline-flex items-center gap-2 rounded-md border border-rose-200 bg-rose-50 px-3 py-2 text-xs font-semibold text-rose-700 hover:bg-rose-100"
+            onClick={() => handleRemove(item)}
+          >
+            <FiTrash2 className="h-4 w-4" />
+            Remove
+          </button>
+        </div>
+      </div>
+      <div className="mt-3 whitespace-pre-wrap text-xs text-slate-600 leading-relaxed">{item.content}</div>
+    </div>
+  )
+
+  const CardStack = ({ list, emptyLabel }) => (
+    <div className="flex flex-col gap-4">
+      {list.length === 0 ? (
+        <div className="rounded-3xl border border-dashed border-slate-200 bg-slate-50 px-4 py-6 text-xs text-slate-500">
+          {emptyLabel}
+        </div>
+      ) : (
+        list.map((item) => <ContentCard key={item.id} item={item} />)
+      )}
+    </div>
+  )
+
+  return (
+    <div className="bg-white rounded-3xl shadow-sm p-5 flex flex-col gap-4 flex-1">
+      <div className="flex items-start justify-between gap-3">
+        <div>
+          <h2 className="text-base font-semibold text-slate-900">Mission, Vision & Values</h2>
+          <p className="text-xs text-slate-500">Manage the About Us content shown on the website</p>
+        </div>
+        <button
+          type="button"
+          className="inline-flex items-center gap-2 rounded-md bg-[#1B3E2A] px-3 py-2 text-xs font-semibold text-white hover:bg-[#163021]"
+          onClick={openAdd}
+        >
+          <FiPlus className="h-4 w-4" />
+          Add New
+        </button>
+      </div>
+
+      <div className="flex flex-col gap-6">
+        <div>
+          <div className="text-sm font-semibold text-slate-900 mb-3">Mission</div>
+          <CardStack list={missionItems} emptyLabel="No Mission content yet." />
+        </div>
+
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+          <div>
+            <div className="text-sm font-semibold text-slate-900 mb-3">Vision</div>
+            <CardStack list={visionItems} emptyLabel="No Vision content yet." />
+          </div>
+          <div>
+            <div className="text-sm font-semibold text-slate-900 mb-3">Values</div>
+            <CardStack list={valuesItems} emptyLabel="No Values content yet." />
+          </div>
+        </div>
+      </div>
+
+      {modal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/40 px-4" onClick={() => setModal(null)}>
+          <div className="bg-white rounded-3xl shadow-sm p-5 w-full max-w-lg" onClick={(e) => e.stopPropagation()}>
+            <div className="flex items-center justify-between mb-3">
+              <div>
+                <div className="text-[11px] font-medium text-slate-500">
+                  {modal.mode === 'add' ? 'Add content' : 'Edit content'}
+                </div>
+                <div className="text-sm font-semibold text-slate-900">Mission / Vision / Values</div>
+              </div>
+              <button
+                type="button"
+                className="text-[11px] font-medium text-slate-500 hover:text-slate-700"
+                onClick={() => setModal(null)}
+              >
+                Close
+              </button>
+            </div>
+
+            <div className="space-y-3 text-xs">
+              <div>
+                <div className="text-[11px] text-slate-500 mb-1">Type</div>
+                <select
+                  value={formType}
+                  onChange={(e) => setFormType(e.target.value)}
+                  className="w-full rounded-2xl border border-slate-200 px-3 py-2 text-xs focus:outline-none focus:ring-2 focus:ring-[#1B3E2A] focus:border-transparent"
+                >
+                  <option value="Mission">Mission</option>
+                  <option value="Vision">Vision</option>
+                  <option value="Values">Values</option>
+                </select>
+              </div>
+              <div>
+                <div className="text-[11px] text-slate-500 mb-1">Title (optional)</div>
+                <input
+                  type="text"
+                  value={formTitle}
+                  onChange={(e) => setFormTitle(e.target.value)}
+                  className="w-full rounded-2xl border border-slate-200 px-3 py-2 text-xs focus:outline-none focus:ring-2 focus:ring-[#1B3E2A] focus:border-transparent"
+                />
+              </div>
+              <div>
+                <div className="text-[11px] text-slate-500 mb-1">Content</div>
+                <textarea
+                  value={formContent}
+                  onChange={(e) => setFormContent(e.target.value)}
+                  rows={8}
+                  className="w-full rounded-2xl border border-slate-200 px-3 py-2 text-xs focus:outline-none focus:ring-2 focus:ring-[#1B3E2A] focus:border-transparent"
+                />
+              </div>
+            </div>
+
+            <div className="flex items-center justify-end gap-2 mt-5">
+              <button
+                type="button"
+                className="rounded-2xl border border-slate-200 px-4 py-2 text-xs font-medium text-slate-700 hover:bg-slate-50"
+                onClick={() => setModal(null)}
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                className="rounded-2xl bg-[#1B3E2A] px-4 py-2 text-xs font-semibold text-white hover:bg-[#163021]"
+                onClick={handleSave}
+              >
+                Save
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+    </div>
+  )
+}
+
 function MediaLibrarySection() {
   return (
     <div className="bg-white rounded-3xl shadow-sm p-5 flex flex-col gap-4 flex-1 text-xs">
@@ -1452,18 +1824,11 @@ function ProfileRow({ icon: Icon, label, highlight = false, onClick }) {
   )
 }
 
-function DonationsSection({ donations, selectedDonationId, onSelectDonation, searchQuery, baseCurrency }) {
+function DonationsSection({ donations, selectedDonationId, onSelectDonation, baseCurrency }) {
   const [statusFilter, setStatusFilter] = useState('All')
   const [methodFilter, setMethodFilter] = useState('All')
 
-  const normalizedSearch = searchQuery.trim().toLowerCase()
-
   const filteredDonations = donations
-    .filter((donation) => {
-      if (!normalizedSearch) return true
-      const haystack = `${donation.id} ${donation.donorName || ''} ${donation.campaignName || ''}`.toLowerCase()
-      return haystack.includes(normalizedSearch)
-    })
     .filter((donation) => (statusFilter === 'All' ? true : donation.status === statusFilter))
     .filter((donation) => (methodFilter === 'All' ? true : donation.method === methodFilter))
     .slice()
@@ -1513,24 +1878,25 @@ function DonationsSection({ donations, selectedDonationId, onSelectDonation, sea
         </div>
       </div>
 
-      <div className="overflow-x-auto -mx-2">
-        <table className="min-w-full text-xs text-left text-slate-600">
-          <thead className="text-[11px] uppercase text-slate-400">
-            <tr>
-              <th className="px-2 py-2 font-medium">Donation ID</th>
-              <th className="px-2 py-2 font-medium">Donor Name</th>
-              <th className="px-2 py-2 font-medium">Program</th>
-              <th className="px-2 py-2 font-medium">Amount</th>
-              <th className="px-2 py-2 font-medium">Payment Method</th>
-              <th className="px-2 py-2 font-medium">Status</th>
-              <th className="px-2 py-2 font-medium">Date</th>
-              <th className="px-2 py-2 font-medium text-right">Action</th>
-            </tr>
-          </thead>
-          <tbody className="align-middle">
+      <div className="rounded-2xl border border-slate-200 overflow-hidden">
+        <div className="overflow-x-auto">
+          <table className="min-w-full text-sm">
+            <thead>
+              <tr className="bg-white text-left text-slate-500 border-b border-slate-200">
+                <th className="py-3 px-4 font-medium whitespace-nowrap">Donation ID</th>
+                <th className="py-3 px-4 font-medium whitespace-nowrap">Donor Name</th>
+                <th className="py-3 px-4 font-medium whitespace-nowrap">Program</th>
+                <th className="py-3 px-4 font-medium whitespace-nowrap">Amount</th>
+                <th className="py-3 px-4 font-medium whitespace-nowrap">Payment Method</th>
+                <th className="py-3 px-4 font-medium whitespace-nowrap">Status</th>
+                <th className="py-3 px-4 font-medium whitespace-nowrap">Date</th>
+                <th className="py-3 px-4 font-medium whitespace-nowrap text-right">Action</th>
+              </tr>
+            </thead>
+            <tbody className="divide-y divide-slate-100">
             {filteredDonations.length === 0 && (
-              <tr className="border-t border-slate-100">
-                <td colSpan={8} className="px-2 py-4 text-center text-slate-400 text-xs">
+              <tr>
+                <td colSpan={8} className="py-10 px-4 text-center text-slate-500">
                   No donations found.
                 </td>
               </tr>
@@ -1538,20 +1904,18 @@ function DonationsSection({ donations, selectedDonationId, onSelectDonation, sea
             {filteredDonations.map((donation) => (
               <tr
                 key={donation.id}
-                className={`border-t border-slate-100 ${
-                  selectedDonationId === donation.id ? 'bg-slate-50' : ''
-                }`}
+                className={selectedDonationId === donation.id ? 'bg-slate-50' : 'bg-white'}
               >
-                <td className="px-2 py-2 whitespace-nowrap text-slate-500">{donation.id}</td>
-                <td className="px-2 py-2 whitespace-nowrap text-slate-700">{donation.donorName}</td>
-                <td className="px-2 py-2 whitespace-nowrap">{donation.campaignName}</td>
-                <td className="px-2 py-2 whitespace-nowrap font-medium text-slate-800">
+                <td className="py-3 px-4 whitespace-nowrap text-slate-600">{donation.id}</td>
+                <td className="py-3 px-4 whitespace-nowrap text-slate-900">{donation.donorName}</td>
+                <td className="py-3 px-4 whitespace-nowrap text-slate-700">{donation.campaignName}</td>
+                <td className="py-3 px-4 whitespace-nowrap font-medium text-slate-900">
                   {formatCurrency(donation.amount, donation.currency || baseCurrency || 'PHP')}
                 </td>
-                <td className="px-2 py-2 whitespace-nowrap">{donation.method}</td>
-                <td className="px-2 py-2 whitespace-nowrap">
+                <td className="py-3 px-4 whitespace-nowrap text-slate-700">{donation.method}</td>
+                <td className="py-3 px-4 whitespace-nowrap">
                   <span
-                    className={`inline-flex items-center rounded-full px-2 py-0.5 text-[11px] font-medium ${
+                    className={`inline-flex items-center rounded-full px-2 py-0.5 text-xs font-medium ${
                       donation.status === 'Completed'
                         ? 'bg-[#1B3E2A]/10 text-[#1B3E2A]'
                         : donation.status === 'Pending'
@@ -1562,10 +1926,10 @@ function DonationsSection({ donations, selectedDonationId, onSelectDonation, sea
                     {donation.status}
                   </span>
                 </td>
-                <td className="px-2 py-2 whitespace-nowrap text-slate-500">{donation.date}</td>
-                <td className="px-2 py-2 whitespace-nowrap text-right">
+                <td className="py-3 px-4 whitespace-nowrap text-slate-600">{donation.date}</td>
+                <td className="py-3 px-4 whitespace-nowrap text-right">
                   <button
-                    className="text-[11px] font-medium text-[#1B3E2A] hover:text-[#163021]"
+                    className="rounded-md bg-emerald-500 px-3 py-1.5 text-xs font-semibold text-white hover:bg-emerald-600"
                     onClick={() => onSelectDonation(donation.id)}
                   >
                     View Details
@@ -1573,8 +1937,9 @@ function DonationsSection({ donations, selectedDonationId, onSelectDonation, sea
                 </td>
               </tr>
             ))}
-          </tbody>
-        </table>
+            </tbody>
+          </table>
+        </div>
       </div>
 
       {selectedDonation && (
@@ -1670,44 +2035,43 @@ function CampaignsSection({ campaigns, selectedCampaignId, onSelectCampaign, onE
         </div>
       </div>
 
-      <div className="overflow-x-auto -mx-2">
-        <table className="min-w-full text-xs text-left text-slate-600">
-          <thead className="text-[11px] uppercase text-slate-400">
-            <tr>
-              <th className="px-2 py-2 font-medium">Program</th>
-              <th className="px-2 py-2 font-medium">Target Amount</th>
-              <th className="px-2 py-2 font-medium">Total Collected</th>
-              <th className="px-2 py-2 font-medium">Progress</th>
-              <th className="px-2 py-2 font-medium">Status</th>
-              <th className="px-2 py-2 font-medium text-right">Actions</th>
-            </tr>
-          </thead>
-          <tbody className="align-middle">
+      <div className="rounded-2xl border border-slate-200 overflow-hidden">
+        <div className="overflow-x-auto">
+          <table className="min-w-full text-sm">
+            <thead>
+              <tr className="bg-white text-left text-slate-500 border-b border-slate-200">
+                <th className="py-3 px-4 font-medium whitespace-nowrap">Program</th>
+                <th className="py-3 px-4 font-medium whitespace-nowrap">Target Amount</th>
+                <th className="py-3 px-4 font-medium whitespace-nowrap">Total Collected</th>
+                <th className="py-3 px-4 font-medium whitespace-nowrap">Progress</th>
+                <th className="py-3 px-4 font-medium whitespace-nowrap">Status</th>
+                <th className="py-3 px-4 font-medium whitespace-nowrap text-right">Actions</th>
+              </tr>
+            </thead>
+            <tbody className="divide-y divide-slate-100">
             {campaigns.map((campaign) => (
               <tr
                 key={campaign.id}
-                className={`border-t border-slate-100 ${
-                  selectedCampaignId === campaign.id ? 'bg-slate-50' : ''
-                }`}
+                className={selectedCampaignId === campaign.id ? 'bg-slate-50' : 'bg-white'}
               >
                 <td
-                  className="px-2 py-2 whitespace-nowrap text-slate-700 cursor-pointer"
+                  className="py-3 px-4 whitespace-nowrap text-slate-900 cursor-pointer"
                   onClick={() => onSelectCampaign(campaign.id)}
                 >
                   {campaign.name}
                 </td>
-                <td className="px-2 py-2 whitespace-nowrap">
+                <td className="py-3 px-4 whitespace-nowrap text-slate-700">
                   {formatCurrency(campaign.targetAmount)}
                 </td>
-                <td className="px-2 py-2 whitespace-nowrap font-medium text-slate-800">
+                <td className="py-3 px-4 whitespace-nowrap font-medium text-slate-900">
                   {formatCurrency(campaign.collected)}
                 </td>
-                <td className="px-2 py-2 whitespace-nowrap text-slate-600">
+                <td className="py-3 px-4 whitespace-nowrap text-slate-700">
                   {campaign.progressPercent}% funded
                 </td>
-                <td className="px-2 py-2 whitespace-nowrap">
+                <td className="py-3 px-4 whitespace-nowrap">
                   <span
-                    className={`inline-flex items-center rounded-full px-2 py-0.5 text-[11px] font-medium ${
+                    className={`inline-flex items-center rounded-full px-2 py-0.5 text-xs font-medium ${
                       campaign.status === 'Active'
                         ? 'bg-[#1B3E2A]/10 text-[#1B3E2A]'
                         : campaign.status === 'Completed'
@@ -1718,9 +2082,9 @@ function CampaignsSection({ campaigns, selectedCampaignId, onSelectCampaign, onE
                     {campaign.status}
                   </span>
                 </td>
-                <td className="px-2 py-2 whitespace-nowrap text-right space-x-2">
+                <td className="py-3 px-4 whitespace-nowrap text-right">
                   <button
-                    className="text-[11px] font-medium text-slate-500 hover:text-slate-700"
+                    className="rounded-md bg-emerald-500 px-3 py-1.5 text-xs font-semibold text-white hover:bg-emerald-600 mr-2"
                     onClick={() => {
                       setEditingCampaign(campaign)
                       setEditingTarget(String(campaign.targetAmount || 0))
@@ -1729,7 +2093,7 @@ function CampaignsSection({ campaigns, selectedCampaignId, onSelectCampaign, onE
                     Edit
                   </button>
                   <button
-                    className="text-[11px] font-medium text-rose-500 hover:text-rose-600"
+                    className="rounded-md bg-rose-500 px-3 py-1.5 text-xs font-semibold text-white hover:bg-rose-600"
                     onClick={() => onArchiveCampaign(campaign.id)}
                   >
                     Archive
@@ -1737,8 +2101,9 @@ function CampaignsSection({ campaigns, selectedCampaignId, onSelectCampaign, onE
                 </td>
               </tr>
             ))}
-          </tbody>
-        </table>
+            </tbody>
+          </table>
+        </div>
       </div>
 
       {selectedCampaign && (
@@ -1880,14 +2245,10 @@ function CampaignsSection({ campaigns, selectedCampaignId, onSelectCampaign, onE
   )
 }
 
-function DonorsSection({ donors, selectedDonorId, onSelectDonor, searchQuery }) {
-  const normalizedSearch = searchQuery.trim().toLowerCase()
-
+function DonorsSection({ donors, selectedDonorId, onSelectDonor }) {
   const filteredDonors = donors
     .filter((donor) => {
-      if (!normalizedSearch) return true
-      const haystack = `${donor.name} ${donor.email}`.toLowerCase()
-      return haystack.includes(normalizedSearch)
+      return Boolean(donor)
     })
     .slice()
     .sort((a, b) => b.total - a.total)
@@ -1903,21 +2264,22 @@ function DonorsSection({ donors, selectedDonorId, onSelectDonor, searchQuery }) 
         </div>
       </div>
 
-      <div className="overflow-x-auto -mx-2">
-        <table className="min-w-full text-xs text-left text-slate-600">
-          <thead className="text-[11px] uppercase text-slate-400">
-            <tr>
-              <th className="px-2 py-2 font-medium">Donor</th>
-              <th className="px-2 py-2 font-medium">Email</th>
-              <th className="px-2 py-2 font-medium">Total Donations</th>
-              <th className="px-2 py-2 font-medium">Last Donation</th>
-              <th className="px-2 py-2 font-medium text-right">Action</th>
-            </tr>
-          </thead>
-          <tbody className="align-middle">
+      <div className="rounded-2xl border border-slate-200 overflow-hidden">
+        <div className="overflow-x-auto">
+          <table className="min-w-full text-sm">
+            <thead>
+              <tr className="bg-white text-left text-slate-500 border-b border-slate-200">
+                <th className="py-3 px-4 font-medium whitespace-nowrap">Donor</th>
+                <th className="py-3 px-4 font-medium whitespace-nowrap">Email</th>
+                <th className="py-3 px-4 font-medium whitespace-nowrap">Total Donations</th>
+                <th className="py-3 px-4 font-medium whitespace-nowrap">Last Donation</th>
+                <th className="py-3 px-4 font-medium whitespace-nowrap text-right">Action</th>
+              </tr>
+            </thead>
+            <tbody className="divide-y divide-slate-100">
             {filteredDonors.length === 0 && (
-              <tr className="border-t border-slate-100">
-                <td colSpan={5} className="px-2 py-4 text-center text-slate-400 text-xs">
+              <tr>
+                <td colSpan={5} className="py-10 px-4 text-center text-slate-500">
                   No donors found.
                 </td>
               </tr>
@@ -1925,17 +2287,17 @@ function DonorsSection({ donors, selectedDonorId, onSelectDonor, searchQuery }) 
             {filteredDonors.map((donor) => (
               <tr
                 key={donor.id}
-                className={`border-t border-slate-100 ${selectedDonorId === donor.id ? 'bg-slate-50' : ''}`}
+                className={selectedDonorId === donor.id ? 'bg-slate-50' : 'bg-white'}
               >
-                <td className="px-2 py-2 whitespace-nowrap text-slate-700">{donor.name}</td>
-                <td className="px-2 py-2 whitespace-nowrap text-slate-500">{donor.email}</td>
-                <td className="px-1 py-1 whitespace-nowrap font-medium text-slate-800">
+                <td className="py-3 px-4 whitespace-nowrap text-slate-900">{donor.name}</td>
+                <td className="py-3 px-4 whitespace-nowrap text-slate-700">{donor.email}</td>
+                <td className="py-3 px-4 whitespace-nowrap font-medium text-slate-900">
                   {formatCurrency(donor.total, donor.currency || 'PHP')}
                 </td>
-                <td className="px-2 py-2 whitespace-nowrap text-slate-500">{donor.lastDonation}</td>
-                <td className="px-2 py-2 whitespace-nowrap text-right">
+                <td className="py-3 px-4 whitespace-nowrap text-slate-600">{donor.lastDonation}</td>
+                <td className="py-3 px-4 whitespace-nowrap text-right">
                   <button
-                    className="text-[11px] font-medium text-[#1B3E2A] hover:text-[#163021]"
+                    className="rounded-md bg-emerald-500 px-3 py-1.5 text-xs font-semibold text-white hover:bg-emerald-600"
                     onClick={() => onSelectDonor(donor.id)}
                   >
                     View history
@@ -1943,8 +2305,9 @@ function DonorsSection({ donors, selectedDonorId, onSelectDonor, searchQuery }) 
                 </td>
               </tr>
             ))}
-          </tbody>
-        </table>
+            </tbody>
+          </table>
+        </div>
       </div>
 
       {selectedDonor && (
@@ -2249,21 +2612,22 @@ function ContactsSection({ messages, selectedMessageId, onSelectMessage, onToggl
         </div>
       </div>
 
-      <div className="overflow-x-auto -mx-2 mb-2">
-        <table className="min-w-full text-xs text-left text-slate-600">
-          <thead className="text-[11px] uppercase text-slate-400">
-            <tr>
-              <th className="px-2 py-2 font-medium">From</th>
-              <th className="px-2 py-2 font-medium">Subject</th>
-              <th className="px-2 py-2 font-medium">Received</th>
-              <th className="px-2 py-2 font-medium">Status</th>
-              <th className="px-2 py-2 font-medium text-right">Action</th>
-            </tr>
-          </thead>
-          <tbody className="align-middle">
+      <div className="rounded-2xl border border-slate-200 overflow-hidden mb-2">
+        <div className="overflow-x-auto">
+          <table className="min-w-full text-sm">
+            <thead>
+              <tr className="bg-white text-left text-slate-500 border-b border-slate-200">
+                <th className="py-3 px-4 font-medium whitespace-nowrap">From</th>
+                <th className="py-3 px-4 font-medium whitespace-nowrap">Subject</th>
+                <th className="py-3 px-4 font-medium whitespace-nowrap">Received</th>
+                <th className="py-3 px-4 font-medium whitespace-nowrap">Status</th>
+                <th className="py-3 px-4 font-medium whitespace-nowrap text-right">Action</th>
+              </tr>
+            </thead>
+            <tbody className="divide-y divide-slate-100">
             {sortedMessages.length === 0 && (
-              <tr className="border-t border-slate-100">
-                <td colSpan={5} className="px-2 py-4 text-center text-slate-400 text-xs">
+              <tr>
+                <td colSpan={5} className="py-10 px-4 text-center text-slate-500">
                   No messages available.
                 </td>
               </tr>
@@ -2283,18 +2647,16 @@ function ContactsSection({ messages, selectedMessageId, onSelectMessage, onToggl
               return (
                 <tr
                   key={message.id}
-                  className={`border-t border-slate-100 ${
-                    selectedMessageId === message.id ? 'bg-slate-50' : ''
-                  }`}
+                  className={selectedMessageId === message.id ? 'bg-slate-50' : 'bg-white'}
                 >
-                  <td className="px-2 py-2 whitespace-nowrap text-slate-700">{message.fromName}</td>
-                  <td className="px-2 py-2 whitespace-nowrap text-slate-600 truncate max-w-[220px]">
+                  <td className="py-3 px-4 whitespace-nowrap text-slate-900">{message.fromName}</td>
+                  <td className="py-3 px-4 whitespace-nowrap text-slate-700 truncate max-w-[260px]">
                     {message.subject}
                   </td>
-                  <td className="px-2 py-2 whitespace-nowrap text-slate-500">{formatted}</td>
-                  <td className="px-2 py-2 whitespace-nowrap">
+                  <td className="py-3 px-4 whitespace-nowrap text-slate-600">{formatted}</td>
+                  <td className="py-3 px-4 whitespace-nowrap">
                     <span
-                      className={`inline-flex items-center rounded-full px-2 py-0.5 text-[11px] font-medium ${
+                      className={`inline-flex items-center rounded-full px-2 py-0.5 text-xs font-medium ${
                         message.read
                           ? 'bg-slate-100 text-slate-500'
                           : 'bg-[#1B3E2A]/10 text-[#1B3E2A]'
@@ -2303,15 +2665,15 @@ function ContactsSection({ messages, selectedMessageId, onSelectMessage, onToggl
                       {message.read ? 'Read' : 'Unread'}
                     </span>
                   </td>
-                  <td className="px-2 py-2 whitespace-nowrap text-right space-x-2">
+                  <td className="py-3 px-4 whitespace-nowrap text-right">
                     <button
-                      className="text-[11px] font-medium text-[#1B3E2A] hover:text-[#163021]"
+                      className="rounded-md bg-emerald-500 px-3 py-1.5 text-xs font-semibold text-white hover:bg-emerald-600 mr-2"
                       onClick={() => onSelectMessage(message.id)}
                     >
                       Open
                     </button>
                     <button
-                      className="text-[11px] font-medium text-slate-500 hover:text-slate-700"
+                      className="rounded-md bg-slate-900 px-3 py-1.5 text-xs font-semibold text-white hover:bg-slate-800"
                       onClick={() => onToggleMessageRead(message.id)}
                     >
                       {message.read ? 'Mark unread' : 'Mark read'}
@@ -2320,8 +2682,9 @@ function ContactsSection({ messages, selectedMessageId, onSelectMessage, onToggl
                 </tr>
               )
             })}
-          </tbody>
-        </table>
+            </tbody>
+          </table>
+        </div>
       </div>
 
       {selectedMessage && (
@@ -2367,7 +2730,7 @@ function PartnersSection({ partners, selectedPartnerId, onSelectPartner, onAddPa
             List
           </button>
           <button
-            className="text-[11px] font-medium text-[#1B3E2A] hover:text-[#163021]"
+            className="rounded-md bg-emerald-500 px-3 py-1.5 text-xs font-semibold text-white hover:bg-emerald-600"
             onClick={onAddPartner}
           >
             Add partner
@@ -2375,20 +2738,21 @@ function PartnersSection({ partners, selectedPartnerId, onSelectPartner, onAddPa
         </div>
       </div>
 
-      <div className="overflow-x-auto -mx-2">
-        <table className="min-w-full text-xs text-left text-slate-600">
-          <thead className="text-[11px] uppercase text-slate-400">
-            <tr>
-              <th className="px-2 py-2 font-medium">Organization</th>
-              <th className="px-2 py-2 font-medium">Contact Person</th>
-              <th className="px-2 py-2 font-medium">Contribution Type</th>
-              <th className="px-2 py-2 font-medium">Status</th>
-            </tr>
-          </thead>
-          <tbody className="align-middle">
+      <div className="rounded-2xl border border-slate-200 overflow-hidden">
+        <div className="overflow-x-auto">
+          <table className="min-w-full text-sm">
+            <thead>
+              <tr className="bg-white text-left text-slate-500 border-b border-slate-200">
+                <th className="py-3 px-4 font-medium whitespace-nowrap">Organization</th>
+                <th className="py-3 px-4 font-medium whitespace-nowrap">Contact Person</th>
+                <th className="py-3 px-4 font-medium whitespace-nowrap">Contribution Type</th>
+                <th className="py-3 px-4 font-medium whitespace-nowrap">Status</th>
+              </tr>
+            </thead>
+            <tbody className="divide-y divide-slate-100">
             {partners.length === 0 && (
-              <tr className="border-t border-slate-100">
-                <td colSpan={4} className="px-2 py-4 text-center text-slate-400 text-xs">
+              <tr>
+                <td colSpan={4} className="py-10 px-4 text-center text-slate-500">
                   No partners added yet.
                 </td>
               </tr>
@@ -2396,17 +2760,15 @@ function PartnersSection({ partners, selectedPartnerId, onSelectPartner, onAddPa
             {partners.map((partner) => (
               <tr
                 key={partner.id}
-                className={`border-t border-slate-100 ${
-                  selectedPartnerId === partner.id ? 'bg-slate-50' : ''
-                }`}
+                className={selectedPartnerId === partner.id ? 'bg-slate-50 cursor-pointer' : 'bg-white cursor-pointer'}
                 onClick={() => onSelectPartner(partner.id)}
               >
-                <td className="px-2 py-2 whitespace-nowrap text-slate-700">{partner.name}</td>
-                <td className="px-2 py-2 whitespace-nowrap text-slate-500">{partner.contact}</td>
-                <td className="px-2 py-2 whitespace-nowrap text-slate-600">{partner.type}</td>
-                <td className="px-2 py-2 whitespace-nowrap">
+                <td className="py-3 px-4 whitespace-nowrap text-slate-900">{partner.name}</td>
+                <td className="py-3 px-4 whitespace-nowrap text-slate-700">{partner.contact}</td>
+                <td className="py-3 px-4 whitespace-nowrap text-slate-700">{partner.type}</td>
+                <td className="py-3 px-4 whitespace-nowrap">
                   <span
-                    className={`inline-flex items-center rounded-full px-2 py-0.5 text-[11px] font-medium ${
+                    className={`inline-flex items-center rounded-full px-2 py-0.5 text-xs font-medium ${
                       partner.status === 'Active'
                         ? 'bg-[#1B3E2A]/10 text-[#1B3E2A]'
                         : 'bg-slate-100 text-slate-500'
@@ -2417,8 +2779,9 @@ function PartnersSection({ partners, selectedPartnerId, onSelectPartner, onAddPa
                 </td>
               </tr>
             ))}
-          </tbody>
-        </table>
+            </tbody>
+          </table>
+        </div>
       </div>
 
       {selectedPartner && (
@@ -2532,10 +2895,202 @@ function OrgChartSection({ orgChart }) {
 }
 
 function OrgChartHtmlSection() {
-  const Person = ({ name, role }) => (
-    <div className="rounded-xl border border-slate-200 bg-white px-3 py-2">
-      <div className="text-sm font-semibold text-slate-900">{name}</div>
-      {role ? <div className="text-[11px] text-slate-500">{role}</div> : null}
+  // Local, frontend-only org data. This makes Add/Edit/Remove possible without a backend.
+  const initialSchoolPrincipal = [{ id: 'school-principal-1', name: 'Sheryl Ann B. Queliza', role: 'School Principal' }]
+  const initialGradeAdvisers = [
+    { id: 'adviser-1', name: 'Geenie G. Ramos', role: 'Grade 6 Adviser' },
+    { id: 'adviser-2', name: 'Daina Marie R. Lumbao', role: 'Grade 5 Adviser' },
+    { id: 'adviser-3', name: 'Erwin Q. Molabola', role: 'Grade 4 Adviser' },
+    { id: 'adviser-4', name: 'Marvin Christopher Agabin', role: 'Grade 3 Adviser' },
+    { id: 'adviser-5', name: 'Leizl R. Mercado', role: 'Grade 2 Adviser' },
+    { id: 'adviser-6', name: 'Jeanebi C. Borres', role: 'Grade 1 Adviser' },
+    { id: 'adviser-7', name: 'Katrina A. Ocampo', role: 'Kinder Adviser' },
+    { id: 'adviser-8', name: 'Marie Sean B. Lira', role: 'Science/Registrar' },
+  ]
+
+  const initialNonAcademicStaff = [
+    { id: 'nonacad-1', name: 'Ma. Luzviminda M. Macabuhay', role: 'Office Manager' },
+    { id: 'nonacad-2', name: 'Salvacion M. Macasacuit', role: 'Housekeeper' },
+    { id: 'nonacad-3', name: 'Roger C. Macasacuit', role: 'School Driver/Maintenance' },
+  ]
+
+  const initialBoardPh = [
+    { id: 'ph-1', name: 'John Van Dijk', role: 'President' },
+    { id: 'ph-2', name: 'Michelle Ann Salmorin', role: 'Treasurer' },
+    { id: 'ph-3', name: 'Ailyn J. Gardose', role: 'Corporate Secretary' },
+    { id: 'ph-4', name: 'Hadassah A. Castro', role: 'Board Member' },
+    { id: 'ph-5', name: 'Alberto Villamor', role: 'Board Member' },
+    { id: 'ph-6', name: 'Max Willem Heinen', role: 'Board Member' },
+  ]
+
+  const initialBoardPapaya = [
+    { id: 'pap-1', name: 'Ailyn J. Gardose', role: 'President' },
+    { id: 'pap-2', name: 'Michelle Ann Salmorin', role: 'Treasurer' },
+    { id: 'pap-3', name: 'Hadassah A. Castro', role: 'Corporate Secretary' },
+    { id: 'pap-4', name: 'Maria Julie Collado', role: 'Trustee' },
+    { id: 'pap-5', name: 'Tristan Ian C. Santos', role: 'Trustee' },
+  ]
+
+  const initialBoardNl = [
+    { id: 'nl-1', name: 'Janneke Heinen', role: 'Chairwoman' },
+    { id: 'nl-2', name: 'Arno Van Workum', role: 'Treasurer' },
+    { id: 'nl-3', name: 'Miranda Van Loon', role: 'Secretary' },
+    { id: 'nl-4', name: 'Peter Van Schijndel', role: 'General Board Member' },
+    { id: 'nl-5', name: 'Heleen Scheer', role: 'General Board Member' },
+    { id: 'nl-6', name: 'Daniel Van Scherpenzeel', role: 'General Board Member' },
+    { id: 'nl-7', name: 'Mirjam Van Bruggen', role: 'General Board Member' },
+    { id: 'nl-8', name: 'Alwin Tettero', role: 'General Board Member' },
+    { id: 'nl-9', name: 'Pim Van Hattum', role: 'General Board Member' },
+    { id: 'nl-10', name: 'Congratulations Joana Loren', role: 'General Board Member' },
+  ]
+
+  const [schoolPrincipal, setSchoolPrincipal] = useState(initialSchoolPrincipal)
+  const [gradeAdvisers, setGradeAdvisers] = useState(initialGradeAdvisers)
+  const [nonAcademicStaff, setNonAcademicStaff] = useState(initialNonAcademicStaff)
+  const [boardPh, setBoardPh] = useState(initialBoardPh)
+  const [boardPapaya, setBoardPapaya] = useState(initialBoardPapaya)
+  const [boardNl, setBoardNl] = useState(initialBoardNl)
+
+  const [staffModal, setStaffModal] = useState(null)
+  const [staffModalTargetSectionKey, setStaffModalTargetSectionKey] = useState('')
+  const [staffModalName, setStaffModalName] = useState('')
+  const [staffModalRole, setStaffModalRole] = useState('')
+
+  const buildId = () => `${Date.now()}-${Math.random().toString(16).slice(2)}`
+
+  const sectionMap = {
+    schoolPrincipal: { label: 'School Organization', get: () => schoolPrincipal, set: setSchoolPrincipal },
+    gradeAdvisers: { label: 'Grade Advisers', get: () => gradeAdvisers, set: setGradeAdvisers },
+    nonAcademicStaff: { label: 'Non-Academic Staff', get: () => nonAcademicStaff, set: setNonAcademicStaff },
+    boardPh: { label: 'Kalinga at Pag-Ibig Foundation (PH) Board', get: () => boardPh, set: setBoardPh },
+    boardPapaya: { label: 'Papaya Academy Inc. Board', get: () => boardPapaya, set: setBoardPapaya },
+    boardNl: { label: 'Stitching Kalinga (NL) Board', get: () => boardNl, set: setBoardNl },
+  }
+
+  const openAddModal = (sectionKey) => {
+    setStaffModal({ mode: 'add', sectionKey: sectionKey ?? null, staffId: null })
+    setStaffModalTargetSectionKey(sectionKey ? '' : 'gradeAdvisers')
+    setStaffModalName('')
+    setStaffModalRole('')
+  }
+
+  const openEditModal = (sectionKey, staff) => {
+    setStaffModal({ mode: 'edit', sectionKey, staffId: staff.id })
+    setStaffModalName(staff.name || '')
+    setStaffModalRole(staff.role || '')
+  }
+
+  const handleRemove = (sectionKey, staffId) => {
+    const section = sectionMap[sectionKey]
+    if (!section) return
+    section.set(section.get().filter((entry) => entry.id !== staffId))
+  }
+
+  const handleSaveModal = () => {
+    if (!staffModal) return
+
+    const resolvedSectionKey = staffModal.sectionKey || staffModalTargetSectionKey
+    if (!resolvedSectionKey) {
+      window.alert('Please select a section.')
+      return
+    }
+
+    const section = sectionMap[resolvedSectionKey]
+    if (!section) return
+
+    const trimmedName = String(staffModalName || '').trim()
+    const trimmedRole = String(staffModalRole || '').trim()
+
+    if (!trimmedName || !trimmedRole) {
+      window.alert('Please enter both Name and Role.')
+      return
+    }
+
+    if (staffModal.mode === 'add') {
+      section.set([{ id: buildId(), name: trimmedName, role: trimmedRole }, ...section.get()])
+    } else {
+      section.set(
+        section.get().map((entry) =>
+          entry.id === staffModal.staffId ? { ...entry, name: trimmedName, role: trimmedRole } : entry,
+        ),
+      )
+    }
+
+    setStaffModal(null)
+  }
+
+  const Avatar = ({ label = '?', size = 'md' }) => {
+    const sizeClass = size === 'lg' ? 'h-24 w-24 text-2xl' : size === 'sm' ? 'h-14 w-14 text-sm' : 'h-[72px] w-[72px] text-lg'
+
+    return (
+      <div
+        className={`rounded-full bg-white ring-2 ring-[#1B3E2A]/70 shadow-sm flex items-center justify-center ${sizeClass}`}
+      >
+        <div className="h-[calc(100%-10px)] w-[calc(100%-10px)] rounded-full bg-slate-100 text-slate-700 font-semibold flex items-center justify-center">
+          {String(label || '?').slice(0, 1).toUpperCase()}
+        </div>
+      </div>
+    )
+  }
+
+  const StaffCard = ({ sectionKey, staff, avatarSize = 'md' }) => (
+    <div className="group flex flex-col items-center">
+      <div className="mb-3">
+        <Avatar label={staff.name} size={avatarSize} />
+      </div>
+
+      <div className="w-full rounded-2xl border border-slate-200 bg-white shadow-sm hover:shadow-md transition-shadow">
+        <div className="px-4 pb-4 pt-4 flex flex-col items-center text-center gap-3">
+          <div className="w-full">
+            <div className="text-sm font-semibold text-slate-900 leading-snug">{staff.name}</div>
+            <div className="text-[11px] text-slate-500 mt-0.5">{staff.role}</div>
+          </div>
+
+          <div className="w-full flex items-center justify-center gap-2 opacity-100 sm:opacity-0 sm:group-hover:opacity-100 transition-opacity">
+            <button
+              type="button"
+              className="inline-flex items-center gap-1.5 rounded-md border border-slate-200 bg-white px-2.5 py-1 text-[11px] font-semibold text-slate-700 hover:bg-slate-50"
+              onClick={() => openEditModal(sectionKey, staff)}
+              title="Edit staff"
+            >
+              <FiEdit2 className="h-3.5 w-3.5" />
+              Edit
+            </button>
+            <button
+              type="button"
+              className="inline-flex items-center gap-1.5 rounded-md border border-rose-200 bg-rose-50 px-2.5 py-1 text-[11px] font-semibold text-rose-700 hover:bg-rose-100"
+              onClick={() => handleRemove(sectionKey, staff.id)}
+              title="Remove staff"
+            >
+              <FiTrash2 className="h-3.5 w-3.5" />
+              Remove
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+  )
+
+  const SectionShell = ({ title, subtitle, sectionKey, columnsClass = 'grid-cols-1 sm:grid-cols-2 lg:grid-cols-4', children }) => (
+    <div className="bg-white rounded-3xl shadow-sm p-5 flex flex-col gap-4">
+      <div className="flex items-start justify-between gap-3">
+        <div>
+          <h2 className="text-base font-semibold text-slate-900">{title}</h2>
+          {subtitle ? <p className="text-xs text-slate-500">{subtitle}</p> : null}
+        </div>
+        {sectionKey ? (
+          <button
+            type="button"
+            className="inline-flex items-center gap-2 rounded-md bg-[#1B3E2A] px-3 py-2 text-xs font-semibold text-white hover:bg-[#163021]"
+            onClick={() => openAddModal(sectionKey)}
+          >
+            <FiPlus className="h-4 w-4" />
+            Add
+          </button>
+        ) : null}
+      </div>
+
+      <div className={`grid ${columnsClass} gap-6`}>{children}</div>
     </div>
   )
 
@@ -2547,85 +3102,156 @@ function OrgChartHtmlSection() {
             <h2 className="text-base font-semibold text-slate-900">Papaya Academy — School Organization</h2>
             <p className="text-xs text-slate-500">HTML layout based on the provided image</p>
           </div>
+          <button
+            type="button"
+            className="inline-flex items-center gap-2 rounded-md bg-[#1B3E2A] px-3 py-2 text-xs font-semibold text-white hover:bg-[#163021]"
+            onClick={() => openAddModal(null)}
+          >
+            <FiPlus className="h-4 w-4" />
+            Add
+          </button>
         </div>
 
-        <div className="space-y-4 text-xs">
-          <Person name="Sheryl Ann B. Queliza" role="School Principal" />
-
-          <div>
-            <div className="text-[11px] font-medium text-slate-500 mb-1">Teaching Staff</div>
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-2">
-              <Person name="Geenie G. Ramos" role="Grade 6 Adviser" />
-              <Person name="Daina Marie R. Lumbao" role="Grade 5 Adviser" />
-              <Person name="Erwin Q. Molabola" role="Grade 4 Adviser" />
-              <Person name="Marvin Christopher Agabin" role="Grade 3 Adviser" />
-            </div>
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-2 mt-2">
-              <Person name="Leizl R. Mercado" role="Grade 2 Adviser" />
-              <Person name="Jeanebi C. Borres" role="Grade 1 Adviser" />
-              <Person name="Katrina A. Ocampo" role="Kinder Adviser" />
-              <Person name="Marie Sean B. Lira" role="Science/Registrar" />
-            </div>
-          </div>
-
-          <div>
-            <div className="text-[11px] font-medium text-slate-500 mb-1">Non-Academic Staff</div>
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-2">
-              <Person name="Ma. Luzviminda M. Macabuhay" role="Office Manager" />
-              <Person name="Salvacion M. Macasacuit" role="Housekeeper" />
-              <Person name="Roger C. Macasacuit" role="School Driver/Maintenance" />
-            </div>
+        <div className="flex justify-center">
+          <div className="w-full max-w-sm">
+            {schoolPrincipal.map((staff) => (
+              <StaffCard key={staff.id} sectionKey="schoolPrincipal" staff={staff} avatarSize="lg" />
+            ))}
           </div>
         </div>
-      </div>
 
-      <div className="bg-white rounded-3xl shadow-sm p-5 flex flex-col gap-3">
-        <div>
-          <h2 className="text-base font-semibold text-slate-900">Kalinga at Pag-Ibig Foundation (PH) Board</h2>
-          <p className="text-xs text-slate-500">Board composition</p>
+        <div className="pt-1">
+          <div className="text-sm font-semibold text-[#1B3E2A] text-center">Grade Advisers</div>
         </div>
-        <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 text-xs">
-          <Person name="John Van Dijk" role="President" />
-          <Person name="Michelle Ann Salmorin" role="Treasurer" />
-          <Person name="Ailyn C. Gardose" role="Corporate Secretary" />
-          <Person name="Hadassah A. Castro" role="Board Member" />
-          <Person name="Alberto Villamor" role="Board Member" />
-          <Person name="Max Willem Heinen" role="Board Member" />
-        </div>
-      </div>
 
-      <div className="bg-white rounded-3xl shadow-sm p-5 flex flex-col gap-3">
-        <div>
-          <h2 className="text-base font-semibold text-slate-900">Papaya Academy Inc. Board</h2>
-          <p className="text-xs text-slate-500">Board composition</p>
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
+          {gradeAdvisers.map((staff) => (
+            <StaffCard key={staff.id} sectionKey="gradeAdvisers" staff={staff} />
+          ))}
         </div>
-        <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 text-xs">
-          <Person name="Ailyn C. Gardose" role="President" />
-          <Person name="Michelle Ann Salmorin" role="Treasurer" />
-          <Person name="Hadassah A. Castro" role="Corporate Secretary" />
-          <Person name="Maria Julie Collado" role="Trustee" />
-          <Person name="Tristan Ian C. Santos" role="Trustee" />
+
+        <div className="pt-2">
+          <div className="text-sm font-semibold text-[#1B3E2A] text-center mb-4">Non-Academic Staff</div>
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
+            {nonAcademicStaff.map((staff) => (
+              <StaffCard key={staff.id} sectionKey="nonAcademicStaff" staff={staff} />
+            ))}
+          </div>
         </div>
       </div>
 
-      <div className="bg-white rounded-3xl shadow-sm p-5 flex flex-col gap-3">
-        <div>
-          <h2 className="text-base font-semibold text-slate-900">Stitching Kalinga (NL) Board</h2>
-          <p className="text-xs text-slate-500">Board composition</p>
+      <SectionShell
+        title="Kalinga at Pag-Ibig Foundation (PH) Board"
+        subtitle="Board composition"
+        sectionKey="boardPh"
+        columnsClass="grid-cols-1 sm:grid-cols-2 lg:grid-cols-3"
+      >
+        {boardPh.map((staff) => (
+          <StaffCard key={staff.id} sectionKey="boardPh" staff={staff} avatarSize="sm" />
+        ))}
+      </SectionShell>
+
+      <SectionShell
+        title="Papaya Academy Inc. Board"
+        subtitle="Board composition"
+        sectionKey="boardPapaya"
+        columnsClass="grid-cols-1 sm:grid-cols-2 lg:grid-cols-3"
+      >
+        {boardPapaya.map((staff) => (
+          <StaffCard key={staff.id} sectionKey="boardPapaya" staff={staff} avatarSize="sm" />
+        ))}
+      </SectionShell>
+
+      <SectionShell
+        title="Stitching Kalinga (NL) Board"
+        subtitle="Board composition"
+        sectionKey="boardNl"
+        columnsClass="grid-cols-1 sm:grid-cols-2 lg:grid-cols-3"
+      >
+        {boardNl.map((staff) => (
+          <StaffCard key={staff.id} sectionKey="boardNl" staff={staff} avatarSize="sm" />
+        ))}
+      </SectionShell>
+
+      {staffModal && (
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/40 px-4"
+          onClick={() => setStaffModal(null)}
+        >
+          <div
+            className="bg-white rounded-3xl shadow-sm p-5 w-full max-w-md"
+            onClick={(event) => event.stopPropagation()}
+          >
+            <div className="flex items-center justify-between mb-3">
+              <div>
+                <div className="text-[11px] font-medium text-slate-500">
+                  {staffModal.mode === 'add' ? 'Add staff member' : 'Edit staff member'}
+                </div>
+                <div className="text-sm font-semibold text-slate-900">{sectionMap[staffModal.sectionKey]?.label || ''}</div>
+              </div>
+              <button
+                type="button"
+                className="text-[11px] font-medium text-slate-500 hover:text-slate-700"
+                onClick={() => setStaffModal(null)}
+              >
+                Close
+              </button>
+            </div>
+
+            <div className="space-y-3 text-xs">
+              {staffModal.mode === 'add' && !staffModal.sectionKey ? (
+                <div>
+                  <div className="text-[11px] text-slate-500 mb-1">Section</div>
+                  <select
+                    value={staffModalTargetSectionKey}
+                    onChange={(event) => setStaffModalTargetSectionKey(event.target.value)}
+                    className="w-full rounded-2xl border border-slate-200 px-3 py-2 text-xs focus:outline-none focus:ring-2 focus:ring-[#1B3E2A] focus:border-transparent"
+                  >
+                    <option value="gradeAdvisers">Grade Advisers</option>
+                    <option value="nonAcademicStaff">Non-Academic Staff</option>
+                    <option value="schoolPrincipal">School Principal</option>
+                  </select>
+                </div>
+              ) : null}
+              <div>
+                <div className="text-[11px] text-slate-500 mb-1">Name</div>
+                <input
+                  type="text"
+                  value={staffModalName}
+                  onChange={(event) => setStaffModalName(event.target.value)}
+                  className="w-full rounded-2xl border border-slate-200 px-3 py-2 text-xs focus:outline-none focus:ring-2 focus:ring-[#1B3E2A] focus:border-transparent"
+                />
+              </div>
+              <div>
+                <div className="text-[11px] text-slate-500 mb-1">Role</div>
+                <input
+                  type="text"
+                  value={staffModalRole}
+                  onChange={(event) => setStaffModalRole(event.target.value)}
+                  className="w-full rounded-2xl border border-slate-200 px-3 py-2 text-xs focus:outline-none focus:ring-2 focus:ring-[#1B3E2A] focus:border-transparent"
+                />
+              </div>
+            </div>
+
+            <div className="flex items-center justify-end gap-2 mt-5">
+              <button
+                type="button"
+                className="rounded-2xl border border-slate-200 px-4 py-2 text-xs font-medium text-slate-700 hover:bg-slate-50"
+                onClick={() => setStaffModal(null)}
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                className="rounded-2xl bg-[#1B3E2A] px-4 py-2 text-xs font-semibold text-white hover:bg-[#163021]"
+                onClick={handleSaveModal}
+              >
+                Save
+              </button>
+            </div>
+          </div>
         </div>
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-2 text-xs">
-          <Person name="Janneke Heinen" role="Chairwoman" />
-          <Person name="Arno Van Workum" role="Treasurer" />
-          <Person name="Miranda Van Loon" role="Secretary" />
-          <Person name="Peter Van Schijndel" role="General Board Member" />
-          <Person name="Heleen Scheer" role="General Board Member" />
-          <Person name="Daniel Van Scherpenzeel" role="General Board Member" />
-          <Person name="Mirjam Van Bruggen" role="General Board Member" />
-          <Person name="Alwin Tettero" role="General Board Member" />
-          <Person name="Pim Van Hattum" role="General Board Member" />
-          <Person name="Felisart Joana Loren" role="General Board Member" />
-        </div>
-      </div>
+      )}
     </div>
   )
 }
