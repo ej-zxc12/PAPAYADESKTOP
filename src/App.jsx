@@ -26,14 +26,14 @@ import {
   FiChevronDown,
   FiChevronRight,
 } from 'react-icons/fi'
-import papayaLogo from './assets/logo.jpg'
-import siteContent from './siteContent.json'
-import NewsManager from './NewsManager.jsx'
-import { uiText } from './content/uiText'
-import { sf10StudentsMock, sf10RecordsMock } from './content/sf10Content'
-import { alumniMock } from './content/alumniContent'
-import SF10Section, { SF10View } from './SF10Section.jsx'
-import AlumniSection from './AlumniSection.jsx'
+import papayaLogo from './shared/assets/logo.jpg'
+import siteContent from './core/config/siteContent.json'
+import NewsManager from './features/news/pages/NewsManager.jsx'
+import { uiText } from './core/constants/uiText'
+import { sf10StudentsMock, sf10RecordsMock } from './features/sf10/models/sf10Content'
+import { alumniMock } from './features/alumni/models/alumniContent'
+import SF10Section, { SF10View } from './features/sf10/pages/SF10Section.jsx'
+import AlumniSection from './features/alumni/pages/AlumniSection.jsx'
 
 const initialDonors = [
   { id: 'DR-001', name: 'Juan Dela Cruz', email: 'juan@example.com' },
