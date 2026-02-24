@@ -1,4 +1,5 @@
 import React, { useEffect, useState } from 'react'
+import { newsService } from '../../../core/services/newsService'
 
 function formatNewsDate(value) {
   if (!value) return ''
@@ -19,6 +20,9 @@ function NewsManager() {
   const [title, setTitle] = useState('')
   const [content, setContent] = useState('')
   const [author, setAuthor] = useState('')
+  const [imageFile, setImageFile] = useState(null)
+  const [imagePreviewUrl, setImagePreviewUrl] = useState('')
+  const [selectedImagePath, setSelectedImagePath] = useState('')
   const [isLoading, setIsLoading] = useState(false)
   const [error, setError] = useState('')
 
@@ -27,12 +31,7 @@ function NewsManager() {
 
     async function load() {
       try {
-        const api = window.newsAPI
-        if (!api || typeof api.getAll !== 'function') {
-          setItems([])
-          return
-        }
-        const result = await api.getAll()
+        const result = await newsService.getAll()
         if (!cancelled) {
           setItems(Array.isArray(result) ? result : [])
         }
@@ -55,6 +54,9 @@ function NewsManager() {
     setTitle('')
     setContent('')
     setAuthor('')
+    setImageFile(null)
+    setImagePreviewUrl('')
+    setSelectedImagePath('')
     setError('')
   }
 
@@ -65,6 +67,9 @@ function NewsManager() {
     setTitle(item.title || '')
     setContent(item.content || '')
     setAuthor(item.author || '')
+    setSelectedImagePath(item.imagePath || '')
+    setImageFile(null)
+    setImagePreviewUrl(item.imageUrl || '')
     setError('')
   }
 
@@ -86,29 +91,18 @@ function NewsManager() {
     setError('')
 
     try {
-      const api = window.newsAPI
-      if (!api || typeof api.add !== 'function') {
-        const now = new Date().toISOString()
-        const fallbackItem = {
-          id: `NEWS-${Date.now()}`,
-          title: trimmedTitle,
-          content: trimmedContent,
-          author: trimmedAuthor,
-          date: now,
-        }
-        setItems((prev) => [...prev, fallbackItem])
-        setSelectedId(fallbackItem.id)
-        return
-      }
-
-      const created = await api.add({
+      const created = await newsService.add({
         title: trimmedTitle,
         content: trimmedContent,
         author: trimmedAuthor,
+        imageFile,
       })
 
       setItems((prev) => [...prev, created])
       setSelectedId(created && created.id ? created.id : null)
+      setImageFile(null)
+      setImagePreviewUrl(created?.imageUrl || '')
+      setSelectedImagePath(created?.imagePath || '')
     } catch {
       setError('Failed to save news. Please try again.')
     } finally {
@@ -132,35 +126,21 @@ function NewsManager() {
     setError('')
 
     try {
-      const api = window.newsAPI
-      if (!api || typeof api.update !== 'function') {
-        setItems((prev) =>
-          prev.map((entry) =>
-            String(entry.id) === String(selectedId)
-              ? {
-                  ...entry,
-                  title: trimmedTitle,
-                  content: trimmedContent,
-                  author: trimmedAuthor,
-                }
-              : entry,
-          ),
-        )
-        return
-      }
-
-      const updated = await api.update({
+      const updated = await newsService.update({
         id: selectedId,
         title: trimmedTitle,
         content: trimmedContent,
         author: trimmedAuthor,
+        imageFile,
+        previousImagePath: selectedImagePath,
       })
 
       setItems((prev) =>
         prev.map((entry) =>
           String(entry.id) === String(selectedId)
-            ? updated || {
+            ? {
                 ...entry,
+                ...(updated || {}),
                 title: trimmedTitle,
                 content: trimmedContent,
                 author: trimmedAuthor,
@@ -168,6 +148,14 @@ function NewsManager() {
             : entry,
         ),
       )
+
+      if (updated?.imageUrl) {
+        setImagePreviewUrl(updated.imageUrl)
+      }
+      if (updated?.imagePath) {
+        setSelectedImagePath(updated.imagePath)
+      }
+      setImageFile(null)
     } catch {
       setError('Failed to update news. Please try again.')
     } finally {
@@ -185,20 +173,24 @@ function NewsManager() {
     setError('')
 
     try {
-      const api = window.newsAPI
-      if (!api || typeof api.remove !== 'function') {
-        setItems((prev) => prev.filter((entry) => String(entry.id) !== String(selectedId)))
-        resetForm()
-        return
-      }
-
-      await api.remove(selectedId)
+      await newsService.remove(selectedId, selectedImagePath)
       setItems((prev) => prev.filter((entry) => String(entry.id) !== String(selectedId)))
       resetForm()
     } catch {
       setError('Failed to delete news. Please try again.')
     } finally {
       setIsLoading(false)
+    }
+  }
+
+  const handleImageChange = (event) => {
+    const file = event.target.files && event.target.files[0]
+    setImageFile(file || null)
+    if (file) {
+      const url = URL.createObjectURL(file)
+      setImagePreviewUrl(url)
+    } else {
+      setImagePreviewUrl(selectedImagePath ? imagePreviewUrl : '')
     }
   }
 
@@ -216,7 +208,7 @@ function NewsManager() {
   const isDeleteDisabled = isNewMode || isLoading
 
   return (
-    <div className="bg-white rounded-3xl shadow-sm p-5 flex flex-row gap-5 flex-1 overflow-hidden">
+    <div className="bg-white rounded-3xl shadow-sm p-5 flex flex-row gap-5 flex-1 overflow-hidden min-h-0">
       <div className="w-1/2 flex flex-col gap-3 overflow-hidden">
         <div className="flex items-center justify-between">
           <div>
@@ -267,7 +259,7 @@ function NewsManager() {
         </div>
       </div>
 
-      <div className="w-1/2 flex flex-col gap-3">
+      <div className="w-1/2 flex flex-col gap-3 overflow-y-auto min-h-0 pr-1">
         <div>
           <h2 className="text-base font-semibold text-slate-900">Add / Edit News</h2>
           <p className="text-xs text-slate-500">Fill out the form and use the buttons below to manage posts</p>
@@ -313,6 +305,29 @@ function NewsManager() {
               className="w-full min-h-[160px] rounded-2xl border border-slate-200 px-3 py-2 text-sm resize-y focus:outline-none focus:ring-2 focus:ring-[#1B3E2A] focus:border-transparent"
               placeholder="Write the full news content here"
             />
+          </div>
+
+          <div>
+            <label className="block text-xs font-medium text-slate-700 mb-1" htmlFor="news-image">
+              Image
+            </label>
+            <input
+              id="news-image"
+              type="file"
+              accept="image/*"
+              onChange={handleImageChange}
+              className="w-full rounded-2xl border border-slate-200 px-3 py-2 text-sm bg-white focus:outline-none focus:ring-2 focus:ring-[#1B3E2A] focus:border-transparent"
+              disabled={isLoading}
+            />
+            {imagePreviewUrl && (
+              <div className="mt-2 rounded-2xl border border-slate-200 bg-slate-50/60 p-2">
+                <img
+                  src={imagePreviewUrl}
+                  alt="News preview"
+                  className="w-full max-h-48 object-contain rounded-xl bg-white"
+                />
+              </div>
+            )}
           </div>
         </div>
 

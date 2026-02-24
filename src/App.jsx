@@ -34,6 +34,11 @@ import { sf10StudentsMock, sf10RecordsMock } from './features/sf10/models/sf10Co
 import { alumniMock } from './features/alumni/models/alumniContent'
 import SF10Section, { SF10View } from './features/sf10/pages/SF10Section.jsx'
 import AlumniSection from './features/alumni/pages/AlumniSection.jsx'
+import { onAuthStateChanged, signInWithEmailAndPassword, signOut as firebaseSignOut } from 'firebase/auth'
+import { getFirebaseAuth } from './core/services/firebase'
+import { deleteObject, getDownloadURL, ref as storageRef, uploadBytes } from 'firebase/storage'
+import { getFirebaseStorage } from './core/services/firebase'
+import { orgChartService } from './core/services/orgChartService'
 
 const initialDonors = [
   { id: 'DR-001', name: 'Juan Dela Cruz', email: 'juan@example.com' },
@@ -379,6 +384,47 @@ function App() {
     }
   }, [])
 
+  useEffect(() => {
+    let unsubscribe
+    try {
+      const auth = getFirebaseAuth()
+      unsubscribe = onAuthStateChanged(auth, async (user) => {
+        if (!user) {
+          setIsLoggedIn(false)
+          setError('')
+          return
+        }
+
+        try {
+          const tokenResult = await user.getIdTokenResult()
+          const isAdmin = Boolean(tokenResult?.claims?.admin)
+          if (!isAdmin) {
+            await firebaseSignOut(auth)
+            setIsLoggedIn(false)
+            setError('This desktop app is for admin accounts only.')
+            return
+          }
+
+          setIsLoggedIn(true)
+          setError('')
+        } catch (e) {
+          try {
+            await firebaseSignOut(auth)
+          } catch {
+          }
+          setIsLoggedIn(false)
+          setError(e?.message || 'Unable to verify admin access.')
+        }
+      })
+    } catch (e) {
+      setError(e?.message || 'Firebase is not configured.')
+    }
+
+    return () => {
+      if (typeof unsubscribe === 'function') unsubscribe()
+    }
+  }, [])
+
   // Optional: fetch site content from remote URL if provided (keeps desktop in sync with website)
   useEffect(() => {
     const url = import.meta?.env?.VITE_SITE_CONTENT_URL
@@ -431,7 +477,7 @@ function App() {
     }
   }, [])
 
-  const handleLogin = (event) => {
+  const handleLogin = async (event) => {
     event.preventDefault()
     setError('')
 
@@ -441,45 +487,40 @@ function App() {
     }
 
     setIsLoading(true)
-
-    setTimeout(() => {
-      const isValid = email === 'admin@papaya.com' && password === 'admin123'
-
-      if (isValid) {
-        setIsLoggedIn(true)
-        setIsLoading(false)
-        try {
-          window.sessionStorage.setItem('papaya-auth', 'logged-in')
-        } catch {
-        }
-        setActivePage('dashboard')
-        setSelectedDonationId(null)
-        setSelectedCampaignId(null)
-        setSelectedDonorId(null)
-        setSelectedPartnerId(null)
-        setSelectedMessageId(null)
-      } else {
-        setError('Invalid email or password.')
-        setIsLoading(false)
-      }
-    }, 800)
+    try {
+      const auth = getFirebaseAuth()
+      await signInWithEmailAndPassword(auth, email, password)
+      setActivePage('dashboard')
+      setSelectedDonationId(null)
+      setSelectedCampaignId(null)
+      setSelectedDonorId(null)
+      setSelectedPartnerId(null)
+      setSelectedMessageId(null)
+    } catch (e) {
+      setError(e?.message || 'Login failed.')
+    } finally {
+      setIsLoading(false)
+    }
   }
 
-  const handleLogout = () => {
-    setIsLoggedIn(false)
-    setEmail('')
-    setPassword('')
+  const handleLogout = async () => {
     setError('')
-    setIsLoading(false)
-    setActivePage('dashboard')
-    setSelectedDonationId(null)
-    setSelectedCampaignId(null)
-    setSelectedDonorId(null)
-    setSelectedPartnerId(null)
-    setSelectedMessageId(null)
+    setIsLoading(true)
     try {
-      window.sessionStorage.removeItem('papaya-auth')
-    } catch {
+      const auth = getFirebaseAuth()
+      await firebaseSignOut(auth)
+      setEmail('')
+      setPassword('')
+      setActivePage('dashboard')
+      setSelectedDonationId(null)
+      setSelectedCampaignId(null)
+      setSelectedDonorId(null)
+      setSelectedPartnerId(null)
+      setSelectedMessageId(null)
+    } catch (e) {
+      setError(e?.message || 'Logout failed.')
+    } finally {
+      setIsLoading(false)
     }
   }
 
@@ -1710,7 +1751,7 @@ function MissionVisionValuesSection() {
               </button>
             </div>
 
-            <div className="space-y-3 text-xs">
+            <div className="space-y-3 text-xs max-h-[70vh] overflow-y-auto pr-1">
               <div>
                 <div className="text-[11px] text-slate-500 mb-1">Type</div>
                 <select
@@ -2895,133 +2936,209 @@ function OrgChartSection({ orgChart }) {
 }
 
 function OrgChartHtmlSection() {
-  // Local, frontend-only org data. This makes Add/Edit/Remove possible without a backend.
-  const initialSchoolPrincipal = [{ id: 'school-principal-1', name: 'Sheryl Ann B. Queliza', role: 'School Principal' }]
-  const initialGradeAdvisers = [
-    { id: 'adviser-1', name: 'Geenie G. Ramos', role: 'Grade 6 Adviser' },
-    { id: 'adviser-2', name: 'Daina Marie R. Lumbao', role: 'Grade 5 Adviser' },
-    { id: 'adviser-3', name: 'Erwin Q. Molabola', role: 'Grade 4 Adviser' },
-    { id: 'adviser-4', name: 'Marvin Christopher Agabin', role: 'Grade 3 Adviser' },
-    { id: 'adviser-5', name: 'Leizl R. Mercado', role: 'Grade 2 Adviser' },
-    { id: 'adviser-6', name: 'Jeanebi C. Borres', role: 'Grade 1 Adviser' },
-    { id: 'adviser-7', name: 'Katrina A. Ocampo', role: 'Kinder Adviser' },
-    { id: 'adviser-8', name: 'Marie Sean B. Lira', role: 'Science/Registrar' },
-  ]
+  const [metaTitle, setMetaTitle] = useState('')
+  const [metaDescription, setMetaDescription] = useState('')
+  const [members, setMembers] = useState([])
+  const [isLoading, setIsLoading] = useState(true)
+  const [error, setError] = useState('')
 
-  const initialNonAcademicStaff = [
-    { id: 'nonacad-1', name: 'Ma. Luzviminda M. Macabuhay', role: 'Office Manager' },
-    { id: 'nonacad-2', name: 'Salvacion M. Macasacuit', role: 'Housekeeper' },
-    { id: 'nonacad-3', name: 'Roger C. Macasacuit', role: 'School Driver/Maintenance' },
-  ]
+  const [memberModal, setMemberModal] = useState(null)
+  const [formName, setFormName] = useState('')
+  const [formPosition, setFormPosition] = useState('')
+  const [formDepartment, setFormDepartment] = useState('')
+  const [formReportsTo, setFormReportsTo] = useState('')
+  const [formOrder, setFormOrder] = useState('')
+  const [formImageFile, setFormImageFile] = useState(null)
+  const [formImagePreviewUrl, setFormImagePreviewUrl] = useState('')
+  const [formPreviousImagePath, setFormPreviousImagePath] = useState('')
+  const [isSaving, setIsSaving] = useState(false)
 
-  const initialBoardPh = [
-    { id: 'ph-1', name: 'John Van Dijk', role: 'President' },
-    { id: 'ph-2', name: 'Michelle Ann Salmorin', role: 'Treasurer' },
-    { id: 'ph-3', name: 'Ailyn J. Gardose', role: 'Corporate Secretary' },
-    { id: 'ph-4', name: 'Hadassah A. Castro', role: 'Board Member' },
-    { id: 'ph-5', name: 'Alberto Villamor', role: 'Board Member' },
-    { id: 'ph-6', name: 'Max Willem Heinen', role: 'Board Member' },
-  ]
-
-  const initialBoardPapaya = [
-    { id: 'pap-1', name: 'Ailyn J. Gardose', role: 'President' },
-    { id: 'pap-2', name: 'Michelle Ann Salmorin', role: 'Treasurer' },
-    { id: 'pap-3', name: 'Hadassah A. Castro', role: 'Corporate Secretary' },
-    { id: 'pap-4', name: 'Maria Julie Collado', role: 'Trustee' },
-    { id: 'pap-5', name: 'Tristan Ian C. Santos', role: 'Trustee' },
-  ]
-
-  const initialBoardNl = [
-    { id: 'nl-1', name: 'Janneke Heinen', role: 'Chairwoman' },
-    { id: 'nl-2', name: 'Arno Van Workum', role: 'Treasurer' },
-    { id: 'nl-3', name: 'Miranda Van Loon', role: 'Secretary' },
-    { id: 'nl-4', name: 'Peter Van Schijndel', role: 'General Board Member' },
-    { id: 'nl-5', name: 'Heleen Scheer', role: 'General Board Member' },
-    { id: 'nl-6', name: 'Daniel Van Scherpenzeel', role: 'General Board Member' },
-    { id: 'nl-7', name: 'Mirjam Van Bruggen', role: 'General Board Member' },
-    { id: 'nl-8', name: 'Alwin Tettero', role: 'General Board Member' },
-    { id: 'nl-9', name: 'Pim Van Hattum', role: 'General Board Member' },
-    { id: 'nl-10', name: 'Congratulations Joana Loren', role: 'General Board Member' },
-  ]
-
-  const [schoolPrincipal, setSchoolPrincipal] = useState(initialSchoolPrincipal)
-  const [gradeAdvisers, setGradeAdvisers] = useState(initialGradeAdvisers)
-  const [nonAcademicStaff, setNonAcademicStaff] = useState(initialNonAcademicStaff)
-  const [boardPh, setBoardPh] = useState(initialBoardPh)
-  const [boardPapaya, setBoardPapaya] = useState(initialBoardPapaya)
-  const [boardNl, setBoardNl] = useState(initialBoardNl)
-
-  const [staffModal, setStaffModal] = useState(null)
-  const [staffModalTargetSectionKey, setStaffModalTargetSectionKey] = useState('')
-  const [staffModalName, setStaffModalName] = useState('')
-  const [staffModalRole, setStaffModalRole] = useState('')
-
-  const buildId = () => `${Date.now()}-${Math.random().toString(16).slice(2)}`
-
-  const sectionMap = {
-    schoolPrincipal: { label: 'School Organization', get: () => schoolPrincipal, set: setSchoolPrincipal },
-    gradeAdvisers: { label: 'Grade Advisers', get: () => gradeAdvisers, set: setGradeAdvisers },
-    nonAcademicStaff: { label: 'Non-Academic Staff', get: () => nonAcademicStaff, set: setNonAcademicStaff },
-    boardPh: { label: 'Kalinga at Pag-Ibig Foundation (PH) Board', get: () => boardPh, set: setBoardPh },
-    boardPapaya: { label: 'Papaya Academy Inc. Board', get: () => boardPapaya, set: setBoardPapaya },
-    boardNl: { label: 'Stitching Kalinga (NL) Board', get: () => boardNl, set: setBoardNl },
+  const DEPARTMENTS = {
+    schoolOrg: 'School Organization',
+    gradeAdvisers: 'Grade Advisers',
+    nonAcademic: 'Non-Academic Staff',
+    boardPh: 'Kalinga at Pag-Ibig Foundation (PH) Board',
+    boardPapaya: 'Papaya Academy Inc. Board',
+    boardNl: 'Stitching Kalinga (NL) Board',
   }
 
-  const openAddModal = (sectionKey) => {
-    setStaffModal({ mode: 'add', sectionKey: sectionKey ?? null, staffId: null })
-    setStaffModalTargetSectionKey(sectionKey ? '' : 'gradeAdvisers')
-    setStaffModalName('')
-    setStaffModalRole('')
+  const parseGradeFromPosition = (text) => {
+    const match = String(text || '').match(/Grade\s+(\d+)/i)
+    const grade = match ? Number(match[1]) : NaN
+    if (!Number.isFinite(grade)) return null
+    if (grade < 1 || grade > 6) return null
+    return grade
   }
 
-  const openEditModal = (sectionKey, staff) => {
-    setStaffModal({ mode: 'edit', sectionKey, staffId: staff.id })
-    setStaffModalName(staff.name || '')
-    setStaffModalRole(staff.role || '')
+  const refresh = async () => {
+    setIsLoading(true)
+    setError('')
+
+    try {
+      const [loadedMeta, loadedMembers] = await Promise.all([
+        orgChartService.getMeta(),
+        orgChartService.getMembers(),
+      ])
+      setMetaTitle(loadedMeta?.title || '')
+      setMetaDescription(loadedMeta?.description || '')
+      setMembers(Array.isArray(loadedMembers) ? loadedMembers : [])
+    } catch (e) {
+      setError(e?.message || 'Unable to load organizational chart.')
+      setMembers([])
+    } finally {
+      setIsLoading(false)
+    }
   }
 
-  const handleRemove = (sectionKey, staffId) => {
-    const section = sectionMap[sectionKey]
-    if (!section) return
-    section.set(section.get().filter((entry) => entry.id !== staffId))
+  useEffect(() => {
+    let cancelled = false
+    ;(async () => {
+      try {
+        await refresh()
+      } finally {
+        if (!cancelled) {
+        }
+      }
+    })()
+    return () => {
+      cancelled = true
+    }
+  }, [])
+
+  const openAddModal = () => {
+    setMemberModal({ mode: 'add', id: null })
+    setFormName('')
+    setFormPosition('')
+    setFormDepartment(DEPARTMENTS.gradeAdvisers)
+    setFormReportsTo('')
+    setFormOrder('')
+    setFormImageFile(null)
+    setFormImagePreviewUrl('')
+    setFormPreviousImagePath('')
+    setIsSaving(false)
   }
 
-  const handleSaveModal = () => {
-    if (!staffModal) return
+  const openEditModal = (member) => {
+    setMemberModal({ mode: 'edit', id: member.id })
+    setFormName(member.name || '')
+    setFormPosition(member.position || '')
+    setFormDepartment(member.department || DEPARTMENTS.gradeAdvisers)
+    setFormReportsTo(member.reportsTo || '')
+    setFormOrder(member.order === 0 || member.order ? String(member.order) : '')
+    setFormImageFile(null)
+    setFormImagePreviewUrl(member.imageUrl || '')
+    setFormPreviousImagePath(member.imagePath || '')
+    setIsSaving(false)
+  }
 
-    const resolvedSectionKey = staffModal.sectionKey || staffModalTargetSectionKey
-    if (!resolvedSectionKey) {
-      window.alert('Please select a section.')
+  const handleImageChange = (event) => {
+    const file = event.target.files && event.target.files[0]
+    setFormImageFile(file || null)
+    if (file) {
+      const url = URL.createObjectURL(file)
+      setFormImagePreviewUrl(url)
+    }
+  }
+
+  const uploadMemberImage = async ({ memberId, file }) => {
+    const storage = getFirebaseStorage()
+    const safeName = String(file?.name || 'image').replace(/[^a-zA-Z0-9._-]/g, '_')
+    const path = `orgchartMembers/${String(memberId)}/${Date.now()}-${safeName}`
+    const objectRef = storageRef(storage, path)
+    await uploadBytes(objectRef, file)
+    const url = await getDownloadURL(objectRef)
+    return { url, path }
+  }
+
+  const handleSave = async () => {
+    if (!memberModal || isSaving) return
+
+    const trimmedName = String(formName || '').trim()
+    const trimmedPosition = String(formPosition || '').trim()
+    if (!trimmedName || !trimmedPosition) {
+      window.alert('Please enter both Name and Position.')
       return
     }
 
-    const section = sectionMap[resolvedSectionKey]
-    if (!section) return
+    const orderNumber = Number(formOrder)
+    const order = Number.isFinite(orderNumber) ? orderNumber : Date.now()
 
-    const trimmedName = String(staffModalName || '').trim()
-    const trimmedRole = String(staffModalRole || '').trim()
+    setIsSaving(true)
+    try {
+      let memberId = memberModal.id
+      let currentImageUrl = memberModal.mode === 'edit' ? formImagePreviewUrl : ''
+      let currentImagePath = memberModal.mode === 'edit' ? formPreviousImagePath : ''
 
-    if (!trimmedName || !trimmedRole) {
-      window.alert('Please enter both Name and Role.')
+      if (memberModal.mode === 'add') {
+        const created = await orgChartService.addMember({
+          name: trimmedName,
+          position: trimmedPosition,
+          department: String(formDepartment || '').trim(),
+          reportsTo: String(formReportsTo || '').trim(),
+          order,
+        })
+        memberId = created.id
+      }
+
+      if (formImageFile) {
+        const uploaded = await uploadMemberImage({ memberId, file: formImageFile })
+        currentImageUrl = uploaded.url
+        currentImagePath = uploaded.path
+
+        if (formPreviousImagePath) {
+          try {
+            const storage = getFirebaseStorage()
+            await deleteObject(storageRef(storage, formPreviousImagePath))
+          } catch {
+          }
+        }
+      }
+
+      await orgChartService.updateMember({
+        id: memberId,
+        name: trimmedName,
+        position: trimmedPosition,
+        department: String(formDepartment || '').trim(),
+        reportsTo: String(formReportsTo || '').trim(),
+        order,
+        imageUrl: currentImageUrl || '',
+        imagePath: currentImagePath || '',
+      })
+
+      setMemberModal(null)
+      await refresh()
+    } catch (e) {
+      window.alert(e?.message || 'Unable to save member.')
+    } finally {
+      setIsSaving(false)
+    }
+  }
+
+  const handleRemove = async (member) => {
+    if (!member?.id) return
+    const confirmed = window.confirm('Remove this member?')
+    if (!confirmed) return
+
+    try {
+      await orgChartService.removeMember(member.id)
+    } catch (e) {
+      window.alert(e?.message || 'Unable to remove member.')
       return
     }
 
-    if (staffModal.mode === 'add') {
-      section.set([{ id: buildId(), name: trimmedName, role: trimmedRole }, ...section.get()])
-    } else {
-      section.set(
-        section.get().map((entry) =>
-          entry.id === staffModal.staffId ? { ...entry, name: trimmedName, role: trimmedRole } : entry,
-        ),
-      )
+    if (member.imagePath) {
+      try {
+        const storage = getFirebaseStorage()
+        await deleteObject(storageRef(storage, member.imagePath))
+      } catch {
+      }
     }
 
-    setStaffModal(null)
+    await refresh()
   }
 
   const Avatar = ({ label = '?', size = 'md' }) => {
     const sizeClass = size === 'lg' ? 'h-24 w-24 text-2xl' : size === 'sm' ? 'h-14 w-14 text-sm' : 'h-[72px] w-[72px] text-lg'
-
     return (
       <div
         className={`rounded-full bg-white ring-2 ring-[#1B3E2A]/70 shadow-sm flex items-center justify-center ${sizeClass}`}
@@ -3033,24 +3150,38 @@ function OrgChartHtmlSection() {
     )
   }
 
-  const StaffCard = ({ sectionKey, staff, avatarSize = 'md' }) => (
+  const StaffCard = ({ member, avatarSize = 'md' }) => (
     <div className="group flex flex-col items-center">
       <div className="mb-3">
-        <Avatar label={staff.name} size={avatarSize} />
+        {member.imageUrl ? (
+          <img
+            src={member.imageUrl}
+            alt={member.name}
+            className={`rounded-full object-cover bg-white ring-2 ring-[#1B3E2A]/70 shadow-sm ${
+              avatarSize === 'lg'
+                ? 'h-24 w-24'
+                : avatarSize === 'sm'
+                ? 'h-14 w-14'
+                : 'h-[72px] w-[72px]'
+            }`}
+          />
+        ) : (
+          <Avatar label={member.name} size={avatarSize} />
+        )}
       </div>
 
       <div className="w-full rounded-2xl border border-slate-200 bg-white shadow-sm hover:shadow-md transition-shadow">
         <div className="px-4 pb-4 pt-4 flex flex-col items-center text-center gap-3">
           <div className="w-full">
-            <div className="text-sm font-semibold text-slate-900 leading-snug">{staff.name}</div>
-            <div className="text-[11px] text-slate-500 mt-0.5">{staff.role}</div>
+            <div className="text-sm font-semibold text-slate-900 leading-snug">{member.name}</div>
+            <div className="text-[11px] text-slate-500 mt-0.5">{member.position}</div>
           </div>
 
           <div className="w-full flex items-center justify-center gap-2 opacity-100 sm:opacity-0 sm:group-hover:opacity-100 transition-opacity">
             <button
               type="button"
               className="inline-flex items-center gap-1.5 rounded-md border border-slate-200 bg-white px-2.5 py-1 text-[11px] font-semibold text-slate-700 hover:bg-slate-50"
-              onClick={() => openEditModal(sectionKey, staff)}
+              onClick={() => openEditModal(member)}
               title="Edit staff"
             >
               <FiEdit2 className="h-3.5 w-3.5" />
@@ -3059,7 +3190,7 @@ function OrgChartHtmlSection() {
             <button
               type="button"
               className="inline-flex items-center gap-1.5 rounded-md border border-rose-200 bg-rose-50 px-2.5 py-1 text-[11px] font-semibold text-rose-700 hover:bg-rose-100"
-              onClick={() => handleRemove(sectionKey, staff.id)}
+              onClick={() => handleRemove(member)}
               title="Remove staff"
             >
               <FiTrash2 className="h-3.5 w-3.5" />
@@ -3071,112 +3202,152 @@ function OrgChartHtmlSection() {
     </div>
   )
 
-  const SectionShell = ({ title, subtitle, sectionKey, columnsClass = 'grid-cols-1 sm:grid-cols-2 lg:grid-cols-4', children }) => (
+  const SectionShell = ({ title, subtitle, columnsClass = 'grid-cols-1 sm:grid-cols-2 lg:grid-cols-4', children }) => (
     <div className="bg-white rounded-3xl shadow-sm p-5 flex flex-col gap-4">
       <div className="flex items-start justify-between gap-3">
         <div>
           <h2 className="text-base font-semibold text-slate-900">{title}</h2>
           {subtitle ? <p className="text-xs text-slate-500">{subtitle}</p> : null}
         </div>
-        {sectionKey ? (
-          <button
-            type="button"
-            className="inline-flex items-center gap-2 rounded-md bg-[#1B3E2A] px-3 py-2 text-xs font-semibold text-white hover:bg-[#163021]"
-            onClick={() => openAddModal(sectionKey)}
-          >
-            <FiPlus className="h-4 w-4" />
-            Add
-          </button>
-        ) : null}
+        <button
+          type="button"
+          className="inline-flex items-center gap-2 rounded-md bg-[#1B3E2A] px-3 py-2 text-xs font-semibold text-white hover:bg-[#163021]"
+          onClick={openAddModal}
+        >
+          <FiPlus className="h-4 w-4" />
+          Add
+        </button>
       </div>
 
       <div className={`grid ${columnsClass} gap-6`}>{children}</div>
     </div>
   )
 
+  const byDept = (dept) => members.filter((m) => String(m.department || '') === String(dept || ''))
+  const schoolOrg = byDept(DEPARTMENTS.schoolOrg)
+  const gradeAdvisers = byDept(DEPARTMENTS.gradeAdvisers)
+  const nonAcademic = byDept(DEPARTMENTS.nonAcademic)
+  const boardPh = byDept(DEPARTMENTS.boardPh)
+  const boardPapaya = byDept(DEPARTMENTS.boardPapaya)
+  const boardNl = byDept(DEPARTMENTS.boardNl)
+
+  const schoolPrincipal = schoolOrg.filter((m) => String(m.position || '').toLowerCase().includes('principal'))
+  const otherSchoolOrg = schoolOrg.filter((m) => !String(m.position || '').toLowerCase().includes('principal'))
+
   return (
-    <div className="flex flex-col gap-5">
-      <div className="bg-white rounded-3xl shadow-sm p-5 flex flex-col gap-4">
-        <div className="flex items-center justify-between">
-          <div>
-            <h2 className="text-base font-semibold text-slate-900">Papaya Academy — School Organization</h2>
-            <p className="text-xs text-slate-500">HTML layout based on the provided image</p>
-          </div>
-          <button
-            type="button"
-            className="inline-flex items-center gap-2 rounded-md bg-[#1B3E2A] px-3 py-2 text-xs font-semibold text-white hover:bg-[#163021]"
-            onClick={() => openAddModal(null)}
-          >
-            <FiPlus className="h-4 w-4" />
-            Add
-          </button>
+    <div className="flex flex-col gap-5 flex-1">
+      <div className="bg-white rounded-3xl shadow-sm p-5 flex items-start justify-between gap-3">
+        <div>
+          <h2 className="text-base font-semibold text-slate-900">{metaTitle || 'Organizational Chart'}</h2>
+          <p className="text-xs text-slate-500">{metaDescription || 'Manage the org chart that the website displays'}</p>
         </div>
-
-        <div className="flex justify-center">
-          <div className="w-full max-w-sm">
-            {schoolPrincipal.map((staff) => (
-              <StaffCard key={staff.id} sectionKey="schoolPrincipal" staff={staff} avatarSize="lg" />
-            ))}
-          </div>
-        </div>
-
-        <div className="pt-1">
-          <div className="text-sm font-semibold text-[#1B3E2A] text-center">Grade Advisers</div>
-        </div>
-
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
-          {gradeAdvisers.map((staff) => (
-            <StaffCard key={staff.id} sectionKey="gradeAdvisers" staff={staff} />
-          ))}
-        </div>
-
-        <div className="pt-2">
-          <div className="text-sm font-semibold text-[#1B3E2A] text-center mb-4">Non-Academic Staff</div>
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
-            {nonAcademicStaff.map((staff) => (
-              <StaffCard key={staff.id} sectionKey="nonAcademicStaff" staff={staff} />
-            ))}
-          </div>
-        </div>
+        <button
+          type="button"
+          className="inline-flex items-center gap-2 rounded-md bg-[#1B3E2A] px-3 py-2 text-xs font-semibold text-white hover:bg-[#163021]"
+          onClick={openAddModal}
+        >
+          <FiPlus className="h-4 w-4" />
+          Add
+        </button>
       </div>
 
-      <SectionShell
-        title="Kalinga at Pag-Ibig Foundation (PH) Board"
-        subtitle="Board composition"
-        sectionKey="boardPh"
-        columnsClass="grid-cols-1 sm:grid-cols-2 lg:grid-cols-3"
-      >
-        {boardPh.map((staff) => (
-          <StaffCard key={staff.id} sectionKey="boardPh" staff={staff} avatarSize="sm" />
-        ))}
-      </SectionShell>
+      {isLoading ? <div className="text-[11px] text-slate-400">Loading…</div> : null}
+      {!isLoading && error ? <div className="text-[11px] text-rose-600">{error}</div> : null}
 
-      <SectionShell
-        title="Papaya Academy Inc. Board"
-        subtitle="Board composition"
-        sectionKey="boardPapaya"
-        columnsClass="grid-cols-1 sm:grid-cols-2 lg:grid-cols-3"
-      >
-        {boardPapaya.map((staff) => (
-          <StaffCard key={staff.id} sectionKey="boardPapaya" staff={staff} avatarSize="sm" />
-        ))}
-      </SectionShell>
+      {!isLoading && !error && members.length === 0 ? (
+        <div className="bg-white rounded-3xl shadow-sm p-5 text-[11px] text-slate-400">No org chart members yet.</div>
+      ) : null}
 
-      <SectionShell
-        title="Stitching Kalinga (NL) Board"
-        subtitle="Board composition"
-        sectionKey="boardNl"
-        columnsClass="grid-cols-1 sm:grid-cols-2 lg:grid-cols-3"
-      >
-        {boardNl.map((staff) => (
-          <StaffCard key={staff.id} sectionKey="boardNl" staff={staff} avatarSize="sm" />
-        ))}
-      </SectionShell>
+      {!isLoading && !error && members.length > 0 ? (
+        <>
+          <div className="bg-white rounded-3xl shadow-sm p-5 flex flex-col gap-4">
+            <div className="flex items-center justify-between">
+              <div>
+                <h2 className="text-base font-semibold text-slate-900">Papaya Academy — School Organization</h2>
+                <p className="text-xs text-slate-500">Org chart sections powered by Firestore</p>
+              </div>
+              <button
+                type="button"
+                className="inline-flex items-center gap-2 rounded-md bg-[#1B3E2A] px-3 py-2 text-xs font-semibold text-white hover:bg-[#163021]"
+                onClick={openAddModal}
+              >
+                <FiPlus className="h-4 w-4" />
+                Add
+              </button>
+            </div>
 
-      {staffModal && (
+            <div className="flex justify-center">
+              <div className="w-full max-w-sm">
+                {schoolPrincipal.map((m) => (
+                  <StaffCard key={m.id} member={m} avatarSize="lg" />
+                ))}
+              </div>
+            </div>
+
+            {otherSchoolOrg.length ? (
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
+                {otherSchoolOrg.map((m) => (
+                  <StaffCard key={m.id} member={m} />
+                ))}
+              </div>
+            ) : null}
+
+            <div className="pt-1">
+              <div className="text-sm font-semibold text-[#1B3E2A] text-center">Grade Advisers</div>
+            </div>
+
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
+              {gradeAdvisers.map((m) => (
+                <StaffCard key={m.id} member={m} />
+              ))}
+            </div>
+
+            <div className="pt-2">
+              <div className="text-sm font-semibold text-[#1B3E2A] text-center mb-4">Non-Academic Staff</div>
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
+                {nonAcademic.map((m) => (
+                  <StaffCard key={m.id} member={m} />
+                ))}
+              </div>
+            </div>
+          </div>
+
+          <SectionShell
+            title={DEPARTMENTS.boardPh}
+            subtitle="Board composition"
+            columnsClass="grid-cols-1 sm:grid-cols-2 lg:grid-cols-3"
+          >
+            {boardPh.map((m) => (
+              <StaffCard key={m.id} member={m} avatarSize="sm" />
+            ))}
+          </SectionShell>
+
+          <SectionShell
+            title={DEPARTMENTS.boardPapaya}
+            subtitle="Board composition"
+            columnsClass="grid-cols-1 sm:grid-cols-2 lg:grid-cols-3"
+          >
+            {boardPapaya.map((m) => (
+              <StaffCard key={m.id} member={m} avatarSize="sm" />
+            ))}
+          </SectionShell>
+
+          <SectionShell
+            title={DEPARTMENTS.boardNl}
+            subtitle="Board composition"
+            columnsClass="grid-cols-1 sm:grid-cols-2 lg:grid-cols-3"
+          >
+            {boardNl.map((m) => (
+              <StaffCard key={m.id} member={m} avatarSize="sm" />
+            ))}
+          </SectionShell>
+        </>
+      ) : null}
+
+      {memberModal && (
         <div
           className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/40 px-4"
-          onClick={() => setStaffModal(null)}
+          onClick={() => setMemberModal(null)}
         >
           <div
             className="bg-white rounded-3xl shadow-sm p-5 w-full max-w-md"
@@ -3185,51 +3356,122 @@ function OrgChartHtmlSection() {
             <div className="flex items-center justify-between mb-3">
               <div>
                 <div className="text-[11px] font-medium text-slate-500">
-                  {staffModal.mode === 'add' ? 'Add staff member' : 'Edit staff member'}
+                  {memberModal.mode === 'add' ? 'Add member' : 'Edit member'}
                 </div>
-                <div className="text-sm font-semibold text-slate-900">{sectionMap[staffModal.sectionKey]?.label || ''}</div>
+                <div className="text-sm font-semibold text-slate-900">Organizational Chart</div>
               </div>
               <button
                 type="button"
                 className="text-[11px] font-medium text-slate-500 hover:text-slate-700"
-                onClick={() => setStaffModal(null)}
+                onClick={() => setMemberModal(null)}
               >
                 Close
               </button>
             </div>
 
-            <div className="space-y-3 text-xs">
-              {staffModal.mode === 'add' && !staffModal.sectionKey ? (
+            <div className="space-y-3 text-xs max-h-[70vh] overflow-y-auto pr-1">
+              <div>
+                <div className="text-[11px] text-slate-500 mb-1">Department / Section</div>
+                <select
+                  value={formDepartment}
+                  onChange={(event) => {
+                    const nextDept = event.target.value
+                    setFormDepartment(nextDept)
+
+                    if (nextDept === DEPARTMENTS.gradeAdvisers) {
+                      const currentGrade = parseGradeFromPosition(formPosition) || 1
+                      setFormPosition(`Grade ${currentGrade} Adviser`)
+                    }
+                  }}
+                  className="w-full rounded-2xl border border-slate-200 px-3 py-2 text-xs focus:outline-none focus:ring-2 focus:ring-[#1B3E2A] focus:border-transparent"
+                >
+                  <option value={DEPARTMENTS.schoolOrg}>{DEPARTMENTS.schoolOrg}</option>
+                  <option value={DEPARTMENTS.gradeAdvisers}>{DEPARTMENTS.gradeAdvisers}</option>
+                  <option value={DEPARTMENTS.nonAcademic}>{DEPARTMENTS.nonAcademic}</option>
+                  <option value={DEPARTMENTS.boardPh}>{DEPARTMENTS.boardPh}</option>
+                  <option value={DEPARTMENTS.boardPapaya}>{DEPARTMENTS.boardPapaya}</option>
+                  <option value={DEPARTMENTS.boardNl}>{DEPARTMENTS.boardNl}</option>
+                </select>
+              </div>
+
+              {formDepartment === DEPARTMENTS.gradeAdvisers ? (
                 <div>
-                  <div className="text-[11px] text-slate-500 mb-1">Section</div>
+                  <div className="text-[11px] text-slate-500 mb-1">Grade</div>
                   <select
-                    value={staffModalTargetSectionKey}
-                    onChange={(event) => setStaffModalTargetSectionKey(event.target.value)}
+                    value={String(parseGradeFromPosition(formPosition) || 1)}
+                    onChange={(event) => {
+                      const grade = Number(event.target.value)
+                      if (!Number.isFinite(grade)) return
+                      setFormPosition(`Grade ${grade} Adviser`)
+                    }}
                     className="w-full rounded-2xl border border-slate-200 px-3 py-2 text-xs focus:outline-none focus:ring-2 focus:ring-[#1B3E2A] focus:border-transparent"
                   >
-                    <option value="gradeAdvisers">Grade Advisers</option>
-                    <option value="nonAcademicStaff">Non-Academic Staff</option>
-                    <option value="schoolPrincipal">School Principal</option>
+                    <option value="1">Grade 1 Advisers</option>
+                    <option value="2">Grade 2 Advisers</option>
+                    <option value="3">Grade 3 Advisers</option>
+                    <option value="4">Grade 4 Advisers</option>
+                    <option value="5">Grade 5 Advisers</option>
+                    <option value="6">Grade 6 Advisers</option>
                   </select>
                 </div>
               ) : null}
+
               <div>
                 <div className="text-[11px] text-slate-500 mb-1">Name</div>
                 <input
                   type="text"
-                  value={staffModalName}
-                  onChange={(event) => setStaffModalName(event.target.value)}
+                  value={formName}
+                  onChange={(event) => setFormName(event.target.value)}
                   className="w-full rounded-2xl border border-slate-200 px-3 py-2 text-xs focus:outline-none focus:ring-2 focus:ring-[#1B3E2A] focus:border-transparent"
                 />
               </div>
               <div>
-                <div className="text-[11px] text-slate-500 mb-1">Role</div>
+                <div className="text-[11px] text-slate-500 mb-1">Position</div>
                 <input
                   type="text"
-                  value={staffModalRole}
-                  onChange={(event) => setStaffModalRole(event.target.value)}
+                  value={formPosition}
+                  onChange={(event) => setFormPosition(event.target.value)}
                   className="w-full rounded-2xl border border-slate-200 px-3 py-2 text-xs focus:outline-none focus:ring-2 focus:ring-[#1B3E2A] focus:border-transparent"
                 />
+              </div>
+
+              <div>
+                <div className="text-[11px] text-slate-500 mb-1">Reports To</div>
+                <input
+                  type="text"
+                  value={formReportsTo}
+                  onChange={(event) => setFormReportsTo(event.target.value)}
+                  className="w-full rounded-2xl border border-slate-200 px-3 py-2 text-xs focus:outline-none focus:ring-2 focus:ring-[#1B3E2A] focus:border-transparent"
+                />
+              </div>
+
+              <div>
+                <div className="text-[11px] text-slate-500 mb-1">Order</div>
+                <input
+                  type="number"
+                  value={formOrder}
+                  onChange={(event) => setFormOrder(event.target.value)}
+                  className="w-full rounded-2xl border border-slate-200 px-3 py-2 text-xs focus:outline-none focus:ring-2 focus:ring-[#1B3E2A] focus:border-transparent"
+                />
+              </div>
+
+              <div>
+                <div className="text-[11px] text-slate-500 mb-1">Image</div>
+                <input
+                  type="file"
+                  accept="image/*"
+                  onChange={handleImageChange}
+                  className="w-full rounded-2xl border border-slate-200 px-3 py-2 text-xs bg-white focus:outline-none focus:ring-2 focus:ring-[#1B3E2A] focus:border-transparent"
+                />
+                {formImagePreviewUrl ? (
+                  <div className="mt-2 rounded-2xl border border-slate-200 bg-slate-50/60 p-2">
+                    <img
+                      src={formImagePreviewUrl}
+                      alt="Member preview"
+                      className="w-full max-h-56 object-contain rounded-xl bg-white"
+                    />
+                  </div>
+                ) : null}
               </div>
             </div>
 
@@ -3237,16 +3479,18 @@ function OrgChartHtmlSection() {
               <button
                 type="button"
                 className="rounded-2xl border border-slate-200 px-4 py-2 text-xs font-medium text-slate-700 hover:bg-slate-50"
-                onClick={() => setStaffModal(null)}
+                onClick={() => setMemberModal(null)}
+                disabled={isSaving}
               >
                 Cancel
               </button>
               <button
                 type="button"
                 className="rounded-2xl bg-[#1B3E2A] px-4 py-2 text-xs font-semibold text-white hover:bg-[#163021]"
-                onClick={handleSaveModal}
+                onClick={handleSave}
+                disabled={isSaving}
               >
-                Save
+                {isSaving ? 'Saving…' : 'Save'}
               </button>
             </div>
           </div>
