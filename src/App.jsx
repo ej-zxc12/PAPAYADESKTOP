@@ -15,7 +15,6 @@ import {
   FiBriefcase,
   FiUser,
   FiMail,
-  FiSettings,
   FiLogOut,
   FiBell,
   FiFileText,
@@ -317,7 +316,7 @@ function App() {
 
   // Sidebar dropdown state.
   // Important UX: keep all groups collapsed by default, and only toggle on the parent group button click.
-  const [openGroups, setOpenGroups] = useState({ website: false, about: false, donations: false })
+  const [openGroups, setOpenGroups] = useState({ website: false, about: false, programs: false, donations: false })
 
   // Sidebar toggle helpers (kept near state to keep behavior predictable).
   const toggleWebsiteGroup = () => {
@@ -341,6 +340,10 @@ function App() {
 
   const toggleDonationsGroup = () => {
     setOpenGroups((p) => ({ ...p, donations: !p.donations }))
+  }
+
+  const toggleProgramsGroup = () => {
+    setOpenGroups((p) => ({ ...p, programs: !p.programs }))
   }
 
   const [donations, setDonations] = useState(initialDonations)
@@ -369,9 +372,6 @@ function App() {
   const [selectedMessageId, setSelectedMessageId] = useState(null)
   const [sf10Students, setSf10Students] = useState(sf10StudentsMock)
   const [sf10Records, setSf10Records] = useState(sf10RecordsMock)
-
-  const [isSavingSettings, setIsSavingSettings] = useState(false)
-
 
   useEffect(() => {
     try {
@@ -577,6 +577,8 @@ function App() {
     donations: 'Online Donations',
     donations_reports: 'Donation Reports',
     campaigns: 'Programs',
+    programs_apple_scholarship: 'Programs — Apple Scholarship',
+    programs_pineapple_project: 'Programs — Pineapple Project',
     donors: 'Donors',
     reports: 'Donation Reports',
     partners: 'About Us — Partners & Sponsors',
@@ -585,8 +587,6 @@ function App() {
     orgchart: 'About Us — Organizational Chart',
     sf10: uiText.sf10.title,
     alumni: uiText.alumni.title,
-    settings: 'Settings',
-    website_home: 'Website Content — Home Page',
     website_about_story: 'About Us — Our Story',
     website_about_mission: 'About Us — Mission & Vision',
     media: 'Media Library',
@@ -597,6 +597,8 @@ function App() {
     donations: 'Manage individual donations and payments',
     donations_reports: 'View summaries and export donation reports',
     campaigns: 'Manage programs and targets',
+    programs_apple_scholarship: 'View Apple Scholarship details and updates',
+    programs_pineapple_project: 'View Pineapple Project details and updates',
     donors: 'Manage registered donors and giving history',
     reports: 'View summaries and export donation reports',
     partners: 'Manage partner organizations displayed on the website',
@@ -605,8 +607,6 @@ function App() {
     orgchart: 'Organization structure (real-time sync if configured)',
     sf10: uiText.sf10.subtitle,
     alumni: uiText.alumni.subtitle,
-    settings: 'Configure payment gateways and organization info',
-    website_home: 'Manage homepage content synced to the website',
     website_about_story: 'Edit About Us — Our Story section',
     website_about_mission: 'Edit About Us — Mission & Vision section',
     media: 'Manage images and files for the website',
@@ -784,16 +784,6 @@ function App() {
             </button>
             {openGroups.website && (
               <div className="mt-1 space-y-1">
-                <button
-                  className={`w-full flex items-center gap-3 pl-10 pr-3 py-2.5 rounded-xl text-sm font-medium transition ${
-                    activePage === 'website_home' ? 'bg-white/10 text-white shadow-sm' : 'text-slate-100/80 hover:bg-white/5 hover:text-white'
-                  }`}
-                  onClick={() => setActivePage('website_home')}
-                >
-                  <FiHome className="h-4 w-4 shrink-0" />
-                  <span className="truncate">Home Page</span>
-                </button>
-
                 <div>
                   <button
                     className="w-full flex items-center justify-between gap-3 pl-6 pr-3 py-2.5 rounded-xl text-sm font-medium text-slate-100/80 hover:bg-white/5 hover:text-white"
@@ -850,15 +840,44 @@ function App() {
             )}
           </div>
 
-          <button
-            className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium transition ${
-              activePage === 'campaigns' ? 'bg-white/10 text-white shadow-sm' : 'text-slate-100/80 hover:bg-white/5 hover:text-white'
-            }`}
-            onClick={() => setActivePage('campaigns')}
-          >
-            <FiBriefcase className="h-4 w-4 shrink-0" />
-            <span className="truncate">Programs</span>
-          </button>
+          <div>
+            <button
+              className="w-full flex items-center justify-between gap-3 px-3 py-2.5 rounded-xl text-sm font-medium text-slate-100/80 hover:bg-white/5 hover:text-white"
+              onClick={toggleProgramsGroup}
+            >
+              <div className="flex items-center gap-3">
+                <FiBriefcase className="h-4 w-4 shrink-0" />
+                <span className="truncate">Programs</span>
+              </div>
+              {openGroups.programs ? <FiChevronDown className="h-4 w-4" /> : <FiChevronRight className="h-4 w-4" />}
+            </button>
+            {openGroups.programs && (
+              <div className="mt-1 space-y-1">
+                <button
+                  className={`w-full flex items-center gap-3 pl-10 pr-3 py-2.5 rounded-xl text-sm font-medium transition ${
+                    activePage === 'programs_apple_scholarship'
+                      ? 'bg-white/10 text-white shadow-sm'
+                      : 'text-slate-100/80 hover:bg-white/5 hover:text-white'
+                  }`}
+                  onClick={() => setActivePage('programs_apple_scholarship')}
+                >
+                  <FiBriefcase className="h-4 w-4 shrink-0" />
+                  <span className="truncate">Apple Scholarship</span>
+                </button>
+                <button
+                  className={`w-full flex items-center gap-3 pl-10 pr-3 py-2.5 rounded-xl text-sm font-medium transition ${
+                    activePage === 'programs_pineapple_project'
+                      ? 'bg-white/10 text-white shadow-sm'
+                      : 'text-slate-100/80 hover:bg-white/5 hover:text-white'
+                  }`}
+                  onClick={() => setActivePage('programs_pineapple_project')}
+                >
+                  <FiBriefcase className="h-4 w-4 shrink-0" />
+                  <span className="truncate">Pineapple Project</span>
+                </button>
+              </div>
+            )}
+          </div>
 
           <div>
             <button
@@ -946,16 +965,6 @@ function App() {
           >
             <FiImage className="h-4 w-4 shrink-0" />
             <span className="truncate">Media Library</span>
-          </button>
-
-          <button
-            className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium transition ${
-              activePage === 'settings' ? 'bg-white/10 text-white shadow-sm' : 'text-slate-100/80 hover:bg-white/5 hover:text-white'
-            }`}
-            onClick={() => setActivePage('settings')}
-          >
-            <FiSettings className="h-4 w-4 shrink-0" />
-            <span className="truncate">Settings</span>
           </button>
 
           <button
@@ -1447,32 +1456,11 @@ function App() {
               </>
             )}
             {activePage === 'alumni' && <AlumniSection alumni={alumniMock} />}
-            {activePage === 'website_home' && <WebsiteHomeSection />}
             {activePage === 'website_about_story' && <StaticContentSection title="Our Story" />}
             {activePage === 'website_about_mission' && <MissionVisionValuesSection />}
             {activePage === 'media' && <MediaLibrarySection />}
-            {activePage === 'settings' && (
-              <SettingsSection
-                settings={settings}
-                isSaving={isSavingSettings}
-                onChange={(field, value) => {
-                  setSettings((prev) => ({
-                    ...prev,
-                    [field]: value,
-                  }))
-                }}
-                onSave={() => {
-                  setIsSavingSettings(true)
-                  setTimeout(() => {
-                    try {
-                      window.localStorage.setItem('papaya-settings', JSON.stringify(settings))
-                    } catch {
-                    }
-                    setIsSavingSettings(false)
-                  }, 600)
-                }}
-              />
-            )}
+            {activePage === 'programs_apple_scholarship' && <ProgramOverviewSection title="Apple Scholarship" />}
+            {activePage === 'programs_pineapple_project' && <ProgramOverviewSection title="Pineapple Project" />}
           </section>
 
           {activePage === 'dashboard' && (
@@ -1495,7 +1483,6 @@ function App() {
                       window.alert('Admin: Devon Lane (admin@papaya.com)')
                     }}
                   />
-                  <ProfileRow icon={FiSettings} label="Settings" onClick={() => setActivePage('settings')} />
                   <ProfileRow icon={FiLogOut} label="Log out" highlight onClick={confirmAndLogout} />
                 </div>
               </div>
@@ -1540,18 +1527,6 @@ function App() {
   )
 }
 
-function WebsiteHomeSection() {
-  return (
-    <div className="bg-white rounded-3xl shadow-sm p-5 flex flex-col gap-4 flex-1 text-xs">
-      <div>
-        <h2 className="text-base font-semibold text-slate-900">Home Page</h2>
-        <p className="text-xs text-slate-500">Manage homepage content synced to the website</p>
-      </div>
-      <div className="text-xs text-slate-500">This is a placeholder for homepage content management.</div>
-    </div>
-  )
-}
-
 function StaticContentSection({ title }) {
   return (
     <div className="bg-white rounded-3xl shadow-sm p-5 flex flex-col gap-4 flex-1 text-xs">
@@ -1560,6 +1535,18 @@ function StaticContentSection({ title }) {
         <p className="text-xs text-slate-500">Edit content for the About Us section</p>
       </div>
       <div className="text-xs text-slate-500">This is a placeholder for rich text editing and publishing.</div>
+    </div>
+  )
+}
+
+function ProgramOverviewSection({ title }) {
+  return (
+    <div className="bg-white rounded-3xl shadow-sm p-5 flex flex-col gap-4 flex-1 text-xs">
+      <div>
+        <h2 className="text-base font-semibold text-slate-900">{title}</h2>
+        <p className="text-xs text-slate-500">Program details and updates</p>
+      </div>
+      <div className="text-xs text-slate-500">This is a placeholder for program-specific content.</div>
     </div>
   )
 }
@@ -3496,110 +3483,6 @@ function OrgChartHtmlSection() {
           </div>
         </div>
       )}
-    </div>
-  )
-}
-
-function SettingsSection({ settings, isSaving, onChange, onSave }) {
-  return (
-    <div className="bg-white rounded-3xl shadow-sm p-5 flex flex-col gap-4 flex-1 text-xs">
-      <div className="flex items-center justify-between">
-        <div>
-          <h2 className="text-base font-semibold text-slate-900">Settings</h2>
-          <p className="text-xs text-slate-500">Organization, payments, and security configuration</p>
-        </div>
-      </div>
-
-      <div className="grid grid-cols-2 gap-4">
-        <div className="space-y-2">
-          <div className="text-[11px] font-medium text-slate-500">Organization information</div>
-          <input
-            type="text"
-            placeholder="Organization name"
-            className="w-full rounded-2xl border border-slate-200 px-3 py-1.5 text-xs focus:outline-none focus:ring-2 focus:ring-[#1B3E2A] focus:border-transparent"
-            value={settings.organizationName}
-            onChange={(event) => onChange('organizationName', event.target.value)}
-          />
-          <input
-            type="text"
-            placeholder="Address"
-            className="w-full rounded-2xl border border-slate-200 px-3 py-1.5 text-xs focus:outline-none focus:ring-2 focus:ring-[#1B3E2A] focus:border-transparent"
-            value={settings.address}
-            onChange={(event) => onChange('address', event.target.value)}
-          />
-        </div>
-
-        <div className="space-y-2">
-          <div className="text-[11px] font-medium text-slate-500">Currency & limits</div>
-          <select
-            className="w-full rounded-2xl border border-slate-200 px-3 py-1.5 text-xs focus:outline-none focus:ring-2 focus:ring-[#1B3E2A] focus:border-transparent"
-            value={settings.currency}
-            onChange={(event) => onChange('currency', event.target.value)}
-          >
-            <option value="PHP">PHP - Philippine Peso</option>
-            <option value="USD">USD - US Dollar</option>
-          </select>
-          <input
-            type="number"
-            placeholder="Maximum donation per transaction"
-            className="w-full rounded-2xl border border-slate-200 px-3 py-1.5 text-xs focus:outline-none focus:ring-2 focus:ring-[#1B3E2A] focus:border-transparent"
-            value={settings.maxDonationPerTransaction}
-            onChange={(event) => onChange('maxDonationPerTransaction', event.target.value)}
-          />
-        </div>
-      </div>
-
-      <div className="grid grid-cols-2 gap-4">
-        <div className="space-y-2">
-          <div className="text-[11px] font-medium text-slate-500">Payment gateways</div>
-          <input
-            type="text"
-            placeholder="Stripe / Xendit / PayMongo API key"
-            className="w-full rounded-2xl border border-slate-200 px-3 py-1.5 text-xs focus:outline-none focus:ring-2 focus:ring-[#1B3E2A] focus:border-transparent"
-            value={settings.gatewayApiKey}
-            onChange={(event) => onChange('gatewayApiKey', event.target.value)}
-          />
-          <input
-            type="text"
-            placeholder="Webhook URL"
-            className="w-full rounded-2xl border border-slate-200 px-3 py-1.5 text-xs focus:outline-none focus:ring-2 focus:ring-[#1B3E2A] focus:border-transparent"
-            value={settings.webhookUrl}
-            onChange={(event) => onChange('webhookUrl', event.target.value)}
-          />
-        </div>
-
-        <div className="space-y-2">
-          <div className="text-[11px] font-medium text-slate-500">Security</div>
-          <label className="flex items-center gap-2 text-[11px] text-slate-600">
-            <input
-              type="checkbox"
-              className="rounded border-slate-300"
-              checked={settings.requireTwoFactor}
-              onChange={(event) => onChange('requireTwoFactor', event.target.checked)}
-            />
-            Require two-factor authentication for admins
-          </label>
-          <label className="flex items-center gap-2 text-[11px] text-slate-600">
-            <input
-              type="checkbox"
-              className="rounded border-slate-300"
-              checked={settings.notifyOnFailedLogin}
-              onChange={(event) => onChange('notifyOnFailedLogin', event.target.checked)}
-            />
-            Notify on failed login attempts
-          </label>
-        </div>
-      </div>
-
-      <div className="flex items-center justify-end mt-1">
-        <button
-          className="rounded-2xl bg-[#1B3E2A] px-4 py-1.5 text-xs font-medium text-white hover:bg-[#163021] disabled:opacity-60 disabled:cursor-not-allowed"
-          onClick={onSave}
-          disabled={isSaving}
-        >
-          {isSaving ? 'Saving…' : 'Save settings'}
-        </button>
-      </div>
     </div>
   )
 }

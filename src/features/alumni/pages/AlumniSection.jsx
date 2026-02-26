@@ -73,57 +73,45 @@ export default function AlumniSection({ alumni }) {
   }
 
   const AlumniCard = ({ alumniItem }) => (
-    <div className="group flex flex-col items-center">
-      <div className="mb-3">
-        {alumniItem.imageUrl ? (
-          <img
-            src={alumniItem.imageUrl}
-            alt={alumniItem.name}
-            className="h-[72px] w-[72px] rounded-full object-cover bg-white ring-2 ring-[#1B3E2A]/70 shadow-sm"
-          />
-        ) : (
-          <Avatar label={alumniItem.name} />
-        )}
-      </div>
+    <div className="group w-full rounded-3xl border border-slate-200 bg-white shadow-sm transition hover:shadow-md hover:-translate-y-0.5">
+      <div className="p-5 flex flex-col items-center text-center gap-3">
+        <div>
+          {alumniItem.imageUrl ? (
+            <img
+              src={alumniItem.imageUrl}
+              alt={alumniItem.name}
+              className="h-20 w-20 rounded-full object-cover bg-white ring-2 ring-[#1B3E2A]/70 shadow-sm"
+            />
+          ) : (
+            <Avatar label={alumniItem.name} size="md" />
+          )}
+        </div>
 
-      <div className="w-full rounded-2xl border border-slate-200 bg-white shadow-sm hover:shadow-md transition-shadow">
-        <div className="px-4 pb-4 pt-4 flex flex-col items-center text-center gap-3">
-          <div className="w-full">
-            <div className="text-sm font-semibold text-slate-900 leading-snug">{alumniItem.name}</div>
-            <div className="text-[11px] text-slate-500 mt-0.5">Batch {alumniItem.batchYear}</div>
-            {alumniItem.programOrGrade ? (
-              <div className="text-[11px] text-slate-500 mt-0.5">{alumniItem.programOrGrade}</div>
-            ) : null}
-            {alumniItem.id ? (
-              <div className="mt-1 inline-flex items-center rounded-full bg-slate-100 px-2 py-0.5 text-[10px] font-semibold text-slate-700">
-                {alumniItem.id}
-              </div>
-            ) : null}
-          </div>
+        <div className="w-full">
+          <div className="text-sm font-semibold text-slate-900 leading-snug">{alumniItem.name}</div>
+          <div className="text-[11px] text-slate-500 mt-1">Batch {alumniItem.batchYear}</div>
+          {alumniItem.programOrGrade ? (
+            <div className="text-[11px] text-slate-500 mt-0.5">{alumniItem.programOrGrade}</div>
+          ) : null}
+          {alumniItem.id ? (
+            <div className="mt-2 inline-flex items-center rounded-full bg-slate-100 px-2.5 py-1 text-[10px] font-semibold text-slate-700">
+              {alumniItem.id}
+            </div>
+          ) : null}
+        </div>
 
-          <div className="w-full flex items-center justify-center gap-2 opacity-100 sm:opacity-0 sm:group-hover:opacity-100 transition-opacity">
-            <button
-              type="button"
-              className="inline-flex items-center gap-1.5 rounded-md border border-rose-200 bg-rose-50 px-2.5 py-1 text-[11px] font-semibold text-rose-700 hover:bg-rose-100 disabled:opacity-60"
-              onClick={() => handleDelete(alumniItem)}
-              disabled={deletingDocId === String(alumniItem._docId)}
-              title="Delete alumni"
-            >
-              {deletingDocId === String(alumniItem._docId) ? 'Deleting…' : 'Delete'}
-            </button>
-          </div>
+        <div className="w-full flex items-center justify-center gap-2 opacity-100 sm:opacity-0 sm:group-hover:opacity-100 transition-opacity">
+          <button
+            type="button"
+            className="inline-flex items-center gap-1.5 rounded-xl border border-rose-200 bg-rose-50 px-3 py-1.5 text-[11px] font-semibold text-rose-700 hover:bg-rose-100 disabled:opacity-60"
+            onClick={() => handleDelete(alumniItem)}
+            disabled={deletingDocId === String(alumniItem._docId)}
+            title="Delete alumni"
+          >
+            {deletingDocId === String(alumniItem._docId) ? 'Deleting…' : 'Delete'}
+          </button>
         </div>
       </div>
-    </div>
-  )
-
-  const SectionShell = ({ title, subtitle, columnsClass = 'grid-cols-1 sm:grid-cols-2 lg:grid-cols-4', children }) => (
-    <div className="bg-white rounded-3xl shadow-sm p-5 flex flex-col gap-4">
-      <div>
-        <h2 className="text-base font-semibold text-slate-900">{title}</h2>
-        {subtitle ? <p className="text-xs text-slate-500">{subtitle}</p> : null}
-      </div>
-      <div className={`grid ${columnsClass} gap-6`}>{children}</div>
     </div>
   )
 
@@ -247,20 +235,20 @@ export default function AlumniSection({ alumni }) {
         </button>
       </div>
 
-      <div className="flex items-center gap-3 flex-wrap">
+      <div className="flex flex-col sm:flex-row sm:items-center gap-3">
         <input
           type="text"
           value={query}
           onChange={(e) => setQuery(e.target.value)}
           placeholder={uiText.alumni.searchPlaceholder}
-          className="flex-1 min-w-[240px] rounded-2xl border border-slate-200 px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-[#1B3E2A] focus:border-transparent"
+          className="w-full sm:flex-1 rounded-2xl border border-slate-200 px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-[#1B3E2A] focus:border-transparent"
         />
-        <div className="flex items-center gap-2">
-          <label className="text-sm text-slate-600">{uiText.alumni.filterYearLabel}</label>
+        <div className="w-full sm:w-auto sm:ml-auto flex items-center gap-2 justify-between sm:justify-end">
+          <label className="text-xs font-medium text-slate-600">{uiText.alumni.filterYearLabel}</label>
           <select
             value={year}
             onChange={(e) => setYear(e.target.value)}
-            className="rounded-2xl border border-slate-200 bg-white px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#1B3E2A]"
+            className="w-[160px] rounded-2xl border border-slate-200 bg-white px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#1B3E2A]"
           >
             <option value="">{uiText.alumni.allYears}</option>
             {years.map((y) => (
@@ -281,17 +269,19 @@ export default function AlumniSection({ alumni }) {
           {uiText.alumni.noResults}
         </div>
       ) : (
-        <div className="flex flex-col gap-5">
+        <div className="flex flex-col gap-6">
           {groupedByYear.map((group) => (
-            <SectionShell
-              key={group.year}
-              title={`Batch ${group.year}`}
-              subtitle={year ? `Filtered to ${group.year}` : 'Alumni list'}
-            >
-              {group.items.map((a) => (
-                <AlumniCard key={a._docId || a.id} alumniItem={a} />
-              ))}
-            </SectionShell>
+            <div key={group.year} className="flex flex-col gap-3">
+              <div className="flex items-end justify-between gap-3">
+                <h3 className="text-sm font-semibold text-slate-900">Batch {group.year}</h3>
+                <div className="text-[11px] text-slate-400">{group.items.length} alumni</div>
+              </div>
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-5">
+                {group.items.map((a) => (
+                  <AlumniCard key={a._docId || a.id} alumniItem={a} />
+                ))}
+              </div>
+            </div>
           ))}
         </div>
       )}

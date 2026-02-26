@@ -14,17 +14,40 @@ function formatNewsDate(value) {
   })
 }
 
+function generateSlug(title) {
+  return title
+    .toLowerCase()
+    .replace(/[^a-z0-9\s-]/g, '') // Remove special characters except spaces and hyphens
+    .replace(/\s+/g, '-') // Replace spaces with hyphens
+    .replace(/-+/g, '-') // Replace multiple hyphens with single hyphen
+    .replace(/^-|-$/g, '') // Remove leading/trailing hyphens
+    .trim()
+}
+
 function NewsManager() {
   const [items, setItems] = useState([])
   const [selectedId, setSelectedId] = useState(null)
   const [title, setTitle] = useState('')
   const [content, setContent] = useState('')
   const [author, setAuthor] = useState('')
+  const [category, setCategory] = useState('Featured')
+  const [article, setArticle] = useState('')
+  const [slug, setSlug] = useState('')
   const [imageFile, setImageFile] = useState(null)
   const [imagePreviewUrl, setImagePreviewUrl] = useState('')
   const [selectedImagePath, setSelectedImagePath] = useState('')
   const [isLoading, setIsLoading] = useState(false)
   const [error, setError] = useState('')
+
+  // Auto-generate slug from title
+  useEffect(() => {
+    if (selectedId) {
+      // Don't auto-generate slug when editing existing item
+      return
+    }
+    const generatedSlug = generateSlug(title)
+    setSlug(generatedSlug)
+  }, [title, selectedId])
 
   useEffect(() => {
     let cancelled = false
@@ -54,6 +77,9 @@ function NewsManager() {
     setTitle('')
     setContent('')
     setAuthor('')
+    setCategory('Featured')
+    setArticle('')
+    setSlug('')
     setImageFile(null)
     setImagePreviewUrl('')
     setSelectedImagePath('')
@@ -67,6 +93,9 @@ function NewsManager() {
     setTitle(item.title || '')
     setContent(item.content || '')
     setAuthor(item.author || '')
+    setCategory(item.category || 'Featured')
+    setArticle(item.article || '')
+    setSlug(item.slug || '')
     setSelectedImagePath(item.imagePath || '')
     setImageFile(null)
     setImagePreviewUrl(item.imageUrl || '')
@@ -81,6 +110,9 @@ function NewsManager() {
     const trimmedTitle = title.trim()
     const trimmedContent = content.trim()
     const trimmedAuthor = author.trim()
+    const trimmedCategory = String(category || '').trim() || 'Featured'
+    const trimmedArticle = article.trim()
+    const trimmedSlug = slug.trim()
 
     if (!trimmedTitle || !trimmedContent) {
       setError('Title and content are required.')
@@ -95,6 +127,9 @@ function NewsManager() {
         title: trimmedTitle,
         content: trimmedContent,
         author: trimmedAuthor,
+        category: trimmedCategory,
+        article: trimmedArticle,
+        slug: trimmedSlug,
         imageFile,
       })
 
@@ -116,6 +151,9 @@ function NewsManager() {
     const trimmedTitle = title.trim()
     const trimmedContent = content.trim()
     const trimmedAuthor = author.trim()
+    const trimmedCategory = String(category || '').trim() || 'Featured'
+    const trimmedArticle = article.trim()
+    const trimmedSlug = slug.trim()
 
     if (!trimmedTitle || !trimmedContent) {
       setError('Title and content are required.')
@@ -131,6 +169,9 @@ function NewsManager() {
         title: trimmedTitle,
         content: trimmedContent,
         author: trimmedAuthor,
+        category: trimmedCategory,
+        article: trimmedArticle,
+        slug: trimmedSlug,
         imageFile,
         previousImagePath: selectedImagePath,
       })
@@ -144,6 +185,7 @@ function NewsManager() {
                 title: trimmedTitle,
                 content: trimmedContent,
                 author: trimmedAuthor,
+                category: trimmedCategory,
               }
             : entry,
         ),
@@ -281,6 +323,24 @@ function NewsManager() {
           </div>
 
           <div>
+            <label className="block text-xs font-medium text-slate-700 mb-1" htmlFor="news-slug">
+              Slug (URL identifier)
+            </label>
+            <input
+              id="news-slug"
+              type="text"
+              value={slug}
+              onChange={(event) => setSlug(event.target.value)}
+              className="w-full rounded-2xl border border-slate-200 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#1B3E2A] focus:border-transparent"
+              placeholder="e.g., my-news-article (auto-generated from title)"
+              disabled={!selectedId} // Allow editing only when editing existing item
+            />
+            {!selectedId && (
+              <p className="text-xs text-slate-500 mt-1">Slug auto-generated from title. You can edit it when updating an existing article.</p>
+            )}
+          </div>
+
+          <div>
             <label className="block text-xs font-medium text-slate-700 mb-1" htmlFor="news-author">
               Author
             </label>
@@ -305,6 +365,37 @@ function NewsManager() {
               className="w-full min-h-[160px] rounded-2xl border border-slate-200 px-3 py-2 text-sm resize-y focus:outline-none focus:ring-2 focus:ring-[#1B3E2A] focus:border-transparent"
               placeholder="Write the full news content here"
             />
+          </div>
+
+          <div>
+            <label className="block text-xs font-medium text-slate-700 mb-1" htmlFor="news-article">
+              Article
+            </label>
+            <textarea
+              id="news-article"
+              value={article}
+              onChange={(event) => setArticle(event.target.value)}
+              className="w-full min-h-[200px] rounded-2xl border border-slate-200 px-3 py-2 text-sm resize-y focus:outline-none focus:ring-2 focus:ring-[#1B3E2A] focus:border-transparent"
+              placeholder="Write the full article content here (for website 'Read more' page)"
+            />
+          </div>
+
+          <div>
+            <label className="block text-xs font-medium text-slate-700 mb-1" htmlFor="news-category">
+              Category
+            </label>
+            <select
+              id="news-category"
+              value={category}
+              onChange={(event) => setCategory(event.target.value)}
+              className="w-full rounded-2xl border border-slate-200 px-3 py-2 text-sm bg-white focus:outline-none focus:ring-2 focus:ring-[#1B3E2A] focus:border-transparent"
+              disabled={isLoading}
+            >
+              <option value="Featured">Featured</option>
+              <option value="Cultural">Cultural</option>
+              <option value="Academic">Academic</option>
+              <option value="Sports">Sports</option>
+            </select>
           </div>
 
           <div>

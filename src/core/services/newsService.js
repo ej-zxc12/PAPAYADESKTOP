@@ -8,11 +8,13 @@ import {
   query,
   serverTimestamp,
   updateDoc,
+  where,
 } from 'firebase/firestore'
 import { deleteObject, getDownloadURL, ref as storageRef, uploadBytes } from 'firebase/storage'
 import { getFirebaseDb, getFirebaseStorage } from './firebase'
 
 const COLLECTION = 'news'
+const ARTICLES_COLLECTION = 'news_articles'
 
 function normalizeNewsItem(id, data) {
   const raw = data || {}
@@ -27,6 +29,9 @@ function normalizeNewsItem(id, data) {
     title: raw.title || '',
     content: raw.content || '',
     author: raw.author || '',
+    category: raw.category || 'Featured',
+    article: raw.article || '',
+    slug: raw.slug || '',
     date: dateValue || '',
     imageUrl: raw.imageUrl || '',
     imagePath: raw.imagePath || '',
@@ -51,12 +56,15 @@ export const newsService = {
     return snap.docs.map((d) => normalizeNewsItem(d.id, d.data()))
   },
 
-  async add({ title, content, author, imageFile }) {
+  async add({ title, content, author, category, article, slug, imageFile }) {
     const db = getFirebaseDb()
     const payload = {
       title,
       content,
       author: author || '',
+      category: category || 'Featured',
+      article: article || '',
+      slug: slug || '',
       date: new Date().toISOString(),
       imageUrl: '',
       imagePath: '',
@@ -79,13 +87,16 @@ export const newsService = {
     return normalizeNewsItem(ref.id, payload)
   },
 
-  async update({ id, title, content, author, imageFile, previousImagePath }) {
+  async update({ id, title, content, author, category, article, slug, imageFile, previousImagePath }) {
     const db = getFirebaseDb()
     const ref = doc(db, COLLECTION, String(id))
     const payload = {
       title,
       content,
       author: author || '',
+      category: category || 'Featured',
+      article: article || '',
+      slug: slug || '',
       updatedAt: serverTimestamp(),
     }
 
@@ -111,6 +122,9 @@ export const newsService = {
       title,
       content,
       author: author || '',
+      category: category || 'Featured',
+      article: article || '',
+      slug: slug || '',
       ...(uploaded ? { imageUrl: uploaded.url, imagePath: uploaded.path } : {}),
     }
   },
@@ -128,4 +142,30 @@ export const newsService = {
       }
     }
   },
+}
+
+export async function getNewsArticleBySlug(slug) {
+  try {
+    console.log('Fetching article by slug:', slug)
+    const db = getFirebaseDb()
+    const newsRef = collection(db, COLLECTION)
+    const q = query(newsRef, where('slug', '==', slug))
+    const querySnapshot = await getDocs(q)
+
+    if (querySnapshot.empty) {
+      console.log('Article not found')
+      return null
+    }
+
+    const doc = querySnapshot.docs[0]
+    const data = doc.data()
+
+    return {
+      id: doc.id,
+      ...data,
+    }
+  } catch (error) {
+    console.error('Error fetching news article:', error)
+    throw new Error(`Firebase fetch error: ${error}`)
+  }
 }
