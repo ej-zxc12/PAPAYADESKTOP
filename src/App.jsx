@@ -622,12 +622,8 @@ function App() {
     orgchart: 'About Us — Organizational Chart',
     sf10: uiText.sf10.title,
     alumni: uiText.alumni.title,
-<<<<<<< Updated upstream
-=======
     calendar: 'Calendar',
-    settings: 'Settings',
     website_home: 'Website Content — Home Page',
->>>>>>> Stashed changes
     website_about_story: 'About Us — Our Story',
     website_about_mission: 'About Us — Mission & Vision',
     media: 'Media Library',
@@ -648,12 +644,8 @@ function App() {
     orgchart: 'Organization structure (real-time sync if configured)',
     sf10: uiText.sf10.subtitle,
     alumni: uiText.alumni.subtitle,
-<<<<<<< Updated upstream
-=======
     calendar: 'Create events using quick-add and auto-post when due',
-    settings: 'Configure payment gateways and organization info',
     website_home: 'Manage homepage content synced to the website',
->>>>>>> Stashed changes
     website_about_story: 'Edit About Us — Our Story section',
     website_about_mission: 'Edit About Us — Mission & Vision section',
     media: 'Manage images and files for the website',
@@ -1514,11 +1506,7 @@ function App() {
               </>
             )}
             {activePage === 'alumni' && <AlumniSection alumni={alumniMock} />}
-<<<<<<< Updated upstream
-=======
             {activePage === 'calendar' && <CalendarSection />}
-            {activePage === 'website_home' && <WebsiteHomeSection />}
->>>>>>> Stashed changes
             {activePage === 'website_about_story' && <StaticContentSection title="Our Story" />}
             {activePage === 'website_about_mission' && <MissionVisionValuesSection />}
             {activePage === 'media' && <MediaLibrarySection />}
