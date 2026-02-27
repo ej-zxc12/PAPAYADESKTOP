@@ -10,24 +10,26 @@ import {
 } from 'recharts'
 import {
   FiHome,
-  FiUsers,
+  FiImage,
+  FiCalendar,
+  FiEdit2,
   FiGift,
   FiBriefcase,
   FiUser,
+  FiUsers,
   FiMail,
   FiLogOut,
   FiBell,
   FiFileText,
-  FiImage,
   FiPlus,
-  FiEdit2,
   FiTrash2,
   FiChevronDown,
   FiChevronRight,
 } from 'react-icons/fi'
-import papayaLogo from './shared/assets/logo.jpg'
+import papayaLogo from './shared/assets/logo.jpg?url'
 import siteContent from './core/config/siteContent.json'
 import NewsManager from './features/news/pages/NewsManager.jsx'
+import CalendarSection from './features/calendar/pages/CalendarSection.jsx'
 import { uiText } from './core/constants/uiText'
 import { sf10StudentsMock, sf10RecordsMock } from './features/sf10/models/sf10Content'
 import { alumniMock } from './features/alumni/models/alumniContent'
@@ -38,6 +40,39 @@ import { getFirebaseAuth } from './core/services/firebase'
 import { deleteObject, getDownloadURL, ref as storageRef, uploadBytes } from 'firebase/storage'
 import { getFirebaseStorage } from './core/services/firebase'
 import { orgChartService } from './core/services/orgChartService'
+
+class ErrorBoundary extends React.Component {
+  constructor(props) {
+    super(props)
+    this.state = { error: null }
+  }
+
+  static getDerivedStateFromError(error) {
+    return { error }
+  }
+
+  componentDidCatch(error) {
+    try {
+      console.error(error)
+    } catch {
+    }
+  }
+
+  render() {
+    if (this.state.error) {
+      return (
+        <div className="min-h-screen flex items-center justify-center bg-slate-100 text-slate-900 p-6">
+          <div className="w-full max-w-2xl bg-white rounded-3xl shadow-xl p-6 space-y-3">
+            <div className="text-lg font-semibold">Something crashed after login</div>
+            <div className="text-sm text-slate-700">Copy this error and send it here:</div>
+            <pre className="text-xs bg-slate-50 border border-slate-200 rounded-2xl p-3 overflow-auto max-h-[50vh]">{String(this.state.error?.stack || this.state.error?.message || this.state.error)}</pre>
+          </div>
+        </div>
+      )
+    }
+    return this.props.children
+  }
+}
 
 const initialDonors = [
   { id: 'DR-001', name: 'Juan Dela Cruz', email: 'juan@example.com' },
@@ -587,6 +622,12 @@ function App() {
     orgchart: 'About Us — Organizational Chart',
     sf10: uiText.sf10.title,
     alumni: uiText.alumni.title,
+<<<<<<< Updated upstream
+=======
+    calendar: 'Calendar',
+    settings: 'Settings',
+    website_home: 'Website Content — Home Page',
+>>>>>>> Stashed changes
     website_about_story: 'About Us — Our Story',
     website_about_mission: 'About Us — Mission & Vision',
     media: 'Media Library',
@@ -607,6 +648,12 @@ function App() {
     orgchart: 'Organization structure (real-time sync if configured)',
     sf10: uiText.sf10.subtitle,
     alumni: uiText.alumni.subtitle,
+<<<<<<< Updated upstream
+=======
+    calendar: 'Create events using quick-add and auto-post when due',
+    settings: 'Configure payment gateways and organization info',
+    website_home: 'Manage homepage content synced to the website',
+>>>>>>> Stashed changes
     website_about_story: 'Edit About Us — Our Story section',
     website_about_mission: 'Edit About Us — Mission & Vision section',
     media: 'Manage images and files for the website',
@@ -747,9 +794,10 @@ function App() {
   }
 
   return (
-    <div className="flex h-screen overflow-hidden bg-slate-100 text-slate-900">
-      {/* Sidebar is fixed to 100vh (Tailwind h-screen) and uses a scrollable nav region to keep lower items reachable. */}
-      <aside className="w-64 shrink-0 sticky top-0 h-screen overflow-hidden bg-[#1B3E2A] text-slate-100 flex flex-col py-6 px-4">
+    <ErrorBoundary>
+      <div className="flex h-screen overflow-hidden bg-slate-100 text-slate-900">
+        {/* Sidebar is fixed to 100vh (Tailwind h-screen) and uses a scrollable nav region to keep lower items reachable. */}
+        <aside className="w-64 shrink-0 sticky top-0 h-screen overflow-hidden bg-[#1B3E2A] text-slate-100 flex flex-col py-6 px-4">
         <div className="flex items-center gap-2 px-3 mb-8">
           <img
             src={papayaLogo}
@@ -945,6 +993,16 @@ function App() {
           >
             <FiUsers className="h-4 w-4 shrink-0" />
             <span className="truncate">{uiText.nav.alumni}</span>
+          </button>
+
+          <button
+            className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium transition ${
+              activePage === 'calendar' ? 'bg-white/10 text-white shadow-sm' : 'text-slate-100/80 hover:bg-white/5 hover:text-white'
+            }`}
+            onClick={() => setActivePage('calendar')}
+          >
+            <FiCalendar className="h-4 w-4 shrink-0" />
+            <span className="truncate">Calendar</span>
           </button>
 
           <button
@@ -1456,6 +1514,11 @@ function App() {
               </>
             )}
             {activePage === 'alumni' && <AlumniSection alumni={alumniMock} />}
+<<<<<<< Updated upstream
+=======
+            {activePage === 'calendar' && <CalendarSection />}
+            {activePage === 'website_home' && <WebsiteHomeSection />}
+>>>>>>> Stashed changes
             {activePage === 'website_about_story' && <StaticContentSection title="Our Story" />}
             {activePage === 'website_about_mission' && <MissionVisionValuesSection />}
             {activePage === 'media' && <MediaLibrarySection />}
@@ -1523,7 +1586,8 @@ function App() {
           )}
         </div>
       </main>
-    </div>
+      </div>
+    </ErrorBoundary>
   )
 }
 
