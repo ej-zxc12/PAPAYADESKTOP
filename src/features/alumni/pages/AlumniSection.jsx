@@ -21,6 +21,29 @@ export default function AlumniSection({ alumni }) {
   const [deleteError, setDeleteError] = useState('')
   const [deletingDocId, setDeletingDocId] = useState('')
 
+  // Add custom styles for proper grid layout
+  useEffect(() => {
+    const style = document.createElement('style')
+    style.textContent = `
+      .alumni-container {
+        display: grid;
+        grid-template-columns: repeat(auto-fill, minmax(250px, 250px));
+        gap: 20px;
+        width: 100%;
+        overflow-x: hidden;
+      }
+      .alumni-container > div {
+        width: 250px !important;
+        height: 280px !important;
+        flex-shrink: 0;
+      }
+    `
+    document.head.appendChild(style)
+    return () => {
+      document.head.removeChild(style)
+    }
+  }, [])
+
   useEffect(() => {
     let cancelled = false
 
@@ -73,8 +96,8 @@ export default function AlumniSection({ alumni }) {
   }
 
   const AlumniCard = ({ alumniItem }) => (
-    <div className="group w-full rounded-3xl border border-slate-200 bg-white shadow-sm transition hover:shadow-md hover:-translate-y-0.5">
-      <div className="p-5 flex flex-col items-center text-center gap-3">
+    <div className="group w-[250px] h-[280px] rounded-3xl border border-slate-200 bg-white shadow-sm transition hover:shadow-md hover:-translate-y-0.5 flex flex-col">
+      <div className="p-5 flex flex-col items-center text-center gap-3 flex-1">
         <div>
           {alumniItem.imageUrl ? (
             <img
@@ -87,14 +110,14 @@ export default function AlumniSection({ alumni }) {
           )}
         </div>
 
-        <div className="w-full">
+        <div className="w-full flex-1 flex flex-col">
           <div className="text-sm font-semibold text-slate-900 leading-snug">{alumniItem.name}</div>
           <div className="text-[11px] text-slate-500 mt-1">Batch {alumniItem.batchYear}</div>
           {alumniItem.programOrGrade ? (
             <div className="text-[11px] text-slate-500 mt-0.5">{alumniItem.programOrGrade}</div>
           ) : null}
           {alumniItem.id ? (
-            <div className="mt-2 inline-flex items-center rounded-full bg-slate-100 px-2.5 py-1 text-[10px] font-semibold text-slate-700">
+            <div className="mt-auto inline-flex items-center rounded-full bg-slate-100 px-2.5 py-1 text-[10px] font-semibold text-slate-700">
               {alumniItem.id}
             </div>
           ) : null}
@@ -217,7 +240,7 @@ export default function AlumniSection({ alumni }) {
   }
 
   return (
-    <div className="bg-white rounded-3xl shadow-sm p-5 flex flex-col gap-4 min-h-0">
+    <div className="bg-white rounded-3xl shadow-sm p-5 flex flex-col gap-4 min-h-0 max-w-full overflow-hidden">
       <div className="flex items-start justify-between gap-3 flex-wrap">
         <div>
           <h2 className="text-base font-semibold text-slate-900">Alumni</h2>
@@ -269,14 +292,14 @@ export default function AlumniSection({ alumni }) {
           {uiText.alumni.noResults}
         </div>
       ) : (
-        <div className="flex flex-col gap-6">
+        <div className="flex flex-col gap-6 overflow-x-hidden">
           {groupedByYear.map((group) => (
             <div key={group.year} className="flex flex-col gap-3">
               <div className="flex items-end justify-between gap-3">
                 <h3 className="text-sm font-semibold text-slate-900">Batch {group.year}</h3>
                 <div className="text-[11px] text-slate-400">{group.items.length} alumni</div>
               </div>
-              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-5">
+              <div className="alumni-container">
                 {group.items.map((a) => (
                   <AlumniCard key={a._docId || a.id} alumniItem={a} />
                 ))}
