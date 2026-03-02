@@ -8,14 +8,11 @@ export default function AlumniSection({ alumni }) {
   const [query, setQuery] = useState('')
   const [year, setYear] = useState('')
   const [isAddOpen, setIsAddOpen] = useState(false)
-  const [newId, setNewId] = useState('')
   const [newName, setNewName] = useState('')
+  const [newBatchYear, setNewBatchYear] = useState('')
   const [newAge, setNewAge] = useState('')
-  const [newAddress, setNewAddress] = useState('')
-  const [newSituation, setNewSituation] = useState('')
   const [newEducationalStatus, setNewEducationalStatus] = useState('')
   const [newNameOfSchool, setNewNameOfSchool] = useState('')
-  const [newNotes, setNewNotes] = useState('')
   const [imageFile, setImageFile] = useState(null)
   const [imagePreviewUrl, setImagePreviewUrl] = useState('')
   const [isSaving, setIsSaving] = useState(false)
@@ -67,10 +64,14 @@ export default function AlumniSection({ alumni }) {
 
   const handleDelete = async (alumniItem) => {
     const docId = alumniItem?._docId
-    if (!docId) return
 
     const confirmed = window.confirm('Delete this alumni record?')
     if (!confirmed) return
+
+    if (!docId) {
+      setItems((prev) => prev.filter((entry) => entry !== alumniItem))
+      return
+    }
 
     setDeleteError('')
     setDeletingDocId(String(docId))
@@ -115,16 +116,10 @@ export default function AlumniSection({ alumni }) {
 
         <div className="w-full flex-1 flex flex-col">
           <div className="text-sm font-semibold text-slate-900 leading-snug">{alumniItem.name}</div>
-          <div className="text-[11px] text-slate-500 mt-1">Age: {alumniItem.age || 'N/A'}</div>
-          <div className="text-[11px] text-slate-500 mt-0.5 truncate">{alumniItem.address || 'No address'}</div>
-          <div className="text-[11px] text-slate-500 mt-0.5 truncate">{alumniItem.situation || 'No situation'}</div>
+          <div className="text-[11px] text-slate-500 mt-1">Batch {alumniItem.batchYear || 'N/A'}</div>
+          <div className="text-[11px] text-slate-500 mt-0.5">Age: {alumniItem.age || 'N/A'}</div>
           <div className="text-[11px] text-slate-500 mt-0.5 truncate">{alumniItem.educationalStatus || 'No educational status'}</div>
           <div className="text-[11px] text-slate-500 mt-0.5 truncate">{alumniItem.nameOfSchool || 'No school'}</div>
-          {alumniItem.id ? (
-            <div className="mt-auto inline-flex items-center rounded-full bg-slate-100 px-2.5 py-1 text-[10px] font-semibold text-slate-700">
-              {alumniItem.id}
-            </div>
-          ) : null}
         </div>
 
         <div className="w-full flex items-center justify-center gap-2 opacity-100 sm:opacity-0 sm:group-hover:opacity-100 transition-opacity">
@@ -156,13 +151,13 @@ export default function AlumniSection({ alumni }) {
   }, [isAddOpen])
 
   const years = useMemo(() => {
-  const set = new Set(items.map((a) => a.age).filter(Boolean))
+  const set = new Set(items.map((a) => a.batchYear).filter(Boolean))
   return Array.from(set).sort((a, b) => b - a)
 }, [items])
 
   const filtered = useMemo(() => {
     return items.filter((a) => {
-      if (year && String(a.age) !== String(year)) return false
+      if (year && String(a.batchYear) !== String(year)) return false
       if (!includesQuery(a.name, query)) return false
       return true
     })
@@ -171,7 +166,7 @@ export default function AlumniSection({ alumni }) {
   const groupedByYear = useMemo(() => {
     const map = new Map()
     filtered.forEach((a) => {
-      const key = String(a.age || 'Unknown')
+      const key = String(a.batchYear || '')
       if (!map.has(key)) map.set(key, [])
       map.get(key).push(a)
     })
@@ -183,14 +178,11 @@ export default function AlumniSection({ alumni }) {
   }, [filtered])
 
   const resetForm = () => {
-    setNewId('')
     setNewName('')
+    setNewBatchYear('')
     setNewAge('')
-    setNewAddress('')
-    setNewSituation('')
     setNewEducationalStatus('')
     setNewNameOfSchool('')
-    setNewNotes('')
     setImageFile(null)
     setImagePreviewUrl('')
     setError('')
@@ -208,18 +200,19 @@ export default function AlumniSection({ alumni }) {
   }
 
   const handleAddAlumni = async () => {
-    const trimmedId = newId.trim()
     const trimmedName = newName.trim()
+    const trimmedBatchYear = String(newBatchYear).trim()
     const trimmedAge = newAge.trim()
 
-    if (!trimmedId || !trimmedName || !trimmedAge) {
-      setError('ID, full name, and age are required.')
+    if (!trimmedName || !trimmedBatchYear || !trimmedAge) {
+      setError('Full name, batch year, and age are required.')
       return
     }
 
+    const batchYearNumber = Number(trimmedBatchYear)
     const ageNumber = Number(trimmedAge)
-    if (!Number.isFinite(ageNumber)) {
-      setError('Age must be a number.')
+    if (!Number.isFinite(batchYearNumber) || !Number.isFinite(ageNumber)) {
+      setError('Batch year and age must be numbers.')
       return
     }
 
@@ -228,14 +221,11 @@ export default function AlumniSection({ alumni }) {
 
     try {
       const created = await alumniService.add({
-        id: trimmedId,
         name: trimmedName,
+        batchYear: batchYearNumber,
         age: ageNumber,
-        address: newAddress.trim(),
-        situation: newSituation.trim(),
         educationalStatus: newEducationalStatus.trim(),
         nameOfSchool: newNameOfSchool.trim(),
-        notes: newNotes.trim(),
         imageFile,
       })
 
@@ -277,13 +267,13 @@ export default function AlumniSection({ alumni }) {
           className="w-full sm:flex-1 rounded-2xl border border-slate-200 px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-[#1B3E2A] focus:border-transparent"
         />
         <div className="w-full sm:w-auto sm:ml-auto flex items-center gap-2 justify-between sm:justify-end">
-          <label className="text-xs font-medium text-slate-600">Filter by Age</label>
+          <label className="text-xs font-medium text-slate-600">{uiText.alumni.filterYearLabel}</label>
           <select
             value={year}
             onChange={(e) => setYear(e.target.value)}
             className="w-[160px] rounded-2xl border border-slate-200 bg-white px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#1B3E2A]"
           >
-            <option value="">All ages</option>
+            <option value="">{uiText.alumni.allYears}</option>
             {years.map((y) => (
               <option key={y} value={String(y)}>
                 {y}
@@ -306,7 +296,7 @@ export default function AlumniSection({ alumni }) {
           {groupedByYear.map((group) => (
             <div key={group.year} className="flex flex-col gap-3">
               <div className="flex items-end justify-between gap-3">
-                <h3 className="text-sm font-semibold text-slate-900">Age {group.year}</h3>
+                <h3 className="text-sm font-semibold text-slate-900">Batch {group.year}</h3>
                 <div className="text-[11px] text-slate-400">{group.items.length} alumni</div>
               </div>
               <div className="alumni-container">
@@ -323,11 +313,11 @@ export default function AlumniSection({ alumni }) {
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
           <button
             type="button"
-            className="absolute inset-0 bg-black/40"
+            className="absolute inset-0 bg-black/40 z-0"
             onClick={() => setIsAddOpen(false)}
             aria-label="Close modal"
           />
-          <div className="relative w-full max-w-2xl bg-white rounded-3xl shadow-xl border border-slate-200 overflow-hidden">
+          <div className="relative z-10 w-full max-w-2xl bg-white rounded-3xl shadow-xl border border-slate-200 overflow-hidden">
             <div className="px-5 py-4 border-b border-slate-200 flex items-center justify-between gap-3">
               <div>
                 <div className="text-sm font-semibold text-slate-900">Add Alumni</div>
@@ -345,18 +335,6 @@ export default function AlumniSection({ alumni }) {
             <div className="px-5 py-4 max-h-[75vh] overflow-y-auto">
               <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
                 <div>
-                  <label className="block text-xs font-medium text-slate-700 mb-1" htmlFor="alumni-id">ID</label>
-                  <input
-                    id="alumni-id"
-                    type="text"
-                    value={newId}
-                    onChange={(e) => setNewId(e.target.value)}
-                    className="w-full rounded-2xl border border-slate-200 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#1B3E2A] focus:border-transparent"
-                    placeholder="AL-2026-0001"
-                    disabled={isSaving}
-                  />
-                </div>
-                <div>
                   <label className="block text-xs font-medium text-slate-700 mb-1" htmlFor="alumni-name">Full Name</label>
                   <input
                     id="alumni-name"
@@ -369,6 +347,18 @@ export default function AlumniSection({ alumni }) {
                   />
                 </div>
                 <div>
+                  <label className="block text-xs font-medium text-slate-700 mb-1" htmlFor="alumni-batch">Batch Year</label>
+                  <input
+                    id="alumni-batch"
+                    type="number"
+                    value={newBatchYear}
+                    onChange={(e) => setNewBatchYear(e.target.value)}
+                    className="w-full rounded-2xl border border-slate-200 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#1B3E2A] focus:border-transparent"
+                    placeholder="2026"
+                    disabled={isSaving}
+                  />
+                </div>
+                <div>
                   <label className="block text-xs font-medium text-slate-700 mb-1" htmlFor="alumni-age">Age</label>
                   <input
                     id="alumni-age"
@@ -377,30 +367,6 @@ export default function AlumniSection({ alumni }) {
                     onChange={(e) => setNewAge(e.target.value)}
                     className="w-full rounded-2xl border border-slate-200 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#1B3E2A] focus:border-transparent"
                     placeholder="25"
-                    disabled={isSaving}
-                  />
-                </div>
-                <div>
-                  <label className="block text-xs font-medium text-slate-700 mb-1" htmlFor="alumni-address">Address</label>
-                  <input
-                    id="alumni-address"
-                    type="text"
-                    value={newAddress}
-                    onChange={(e) => setNewAddress(e.target.value)}
-                    className="w-full rounded-2xl border border-slate-200 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#1B3E2A] focus:border-transparent"
-                    placeholder="123 Main St, City"
-                    disabled={isSaving}
-                  />
-                </div>
-                <div>
-                  <label className="block text-xs font-medium text-slate-700 mb-1" htmlFor="alumni-situation">Situation</label>
-                  <input
-                    id="alumni-situation"
-                    type="text"
-                    value={newSituation}
-                    onChange={(e) => setNewSituation(e.target.value)}
-                    className="w-full rounded-2xl border border-slate-200 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#1B3E2A] focus:border-transparent"
-                    placeholder="Employed, Student, etc."
                     disabled={isSaving}
                   />
                 </div>
@@ -425,17 +391,6 @@ export default function AlumniSection({ alumni }) {
                     onChange={(e) => setNewNameOfSchool(e.target.value)}
                     className="w-full rounded-2xl border border-slate-200 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#1B3E2A] focus:border-transparent"
                     placeholder="University of the Philippines"
-                    disabled={isSaving}
-                  />
-                </div>
-                <div className="md:col-span-2">
-                  <label className="block text-xs font-medium text-slate-700 mb-1" htmlFor="alumni-notes">Notes</label>
-                  <textarea
-                    id="alumni-notes"
-                    value={newNotes}
-                    onChange={(e) => setNewNotes(e.target.value)}
-                    className="w-full min-h-[110px] rounded-2xl border border-slate-200 px-3 py-2 text-sm resize-y focus:outline-none focus:ring-2 focus:ring-[#1B3E2A] focus:border-transparent"
-                    placeholder="Optional notes"
                     disabled={isSaving}
                   />
                 </div>

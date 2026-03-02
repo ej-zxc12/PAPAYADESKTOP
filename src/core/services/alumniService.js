@@ -26,8 +26,10 @@ function normalizeAlumniItem(id, data) {
     id: raw.id || id,
     name: raw.name || '',
     batchYear: raw.batchYear ?? '',
+    age: raw.age ?? '',
+    educationalStatus: raw.educationalStatus || '',
+    nameOfSchool: raw.nameOfSchool || '',
     programOrGrade: raw.programOrGrade || '',
-    notes: raw.notes || '',
     createdAt: createdAt || '',
     imageUrl: raw.imageUrl || '',
     imagePath: raw.imagePath || '',
@@ -53,15 +55,17 @@ export const alumniService = {
     return snap.docs.map((d) => normalizeAlumniItem(d.id, d.data()))
   },
 
-  async add({ id, name, batchYear, programOrGrade, notes, imageFile }) {
+  async add({ id, name, batchYear, age, educationalStatus, nameOfSchool, programOrGrade, imageFile }) {
     const db = getFirebaseDb()
 
     const payload = {
-      id,
+      ...(id ? { id } : {}),
       name,
       batchYear,
+      age: age ?? '',
+      educationalStatus: educationalStatus || '',
+      nameOfSchool: nameOfSchool || '',
       programOrGrade: programOrGrade || '',
-      notes: notes || '',
       imageUrl: '',
       imagePath: '',
       createdAt: serverTimestamp(),

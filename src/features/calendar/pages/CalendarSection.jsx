@@ -35,26 +35,29 @@ export default function CalendarSection() {
       .calendar-wrapper {
         width: 100%;
         max-width: 100%;
-        overflow: hidden;
+        overflow: visible;
       }
       
       .calendar-grid {
         display: grid;
         grid-template-columns: repeat(7, 1fr);
-        gap: 12px;
+        gap: 8px;
         width: 100%;
         box-sizing: border-box;
       }
       
       .calendar-cell {
         width: 100%;
-        aspect-ratio: 1 / 1;
+        min-height: 70px;
         min-width: 0;
         overflow: hidden;
+        display: flex;
+        flex-direction: column;
       }
       
       .main-content {
         overflow-x: hidden;
+        overflow-y: visible;
       }
     `
     document.head.appendChild(style)
@@ -101,12 +104,14 @@ export default function CalendarSection() {
   }, [])
 
   const monthDays = useMemo(() => {
-    const start = startOfWeek(startOfMonth(cursorMonth), { weekStartsOn: 0 })
-    const end = endOfWeek(endOfMonth(cursorMonth), { weekStartsOn: 0 })
+    const monthStart = startOfMonth(cursorMonth)
+    const monthEnd = endOfMonth(cursorMonth)
+    const calendarStart = startOfWeek(monthStart, { weekStartsOn: 0 })
+    const calendarEnd = endOfWeek(monthEnd, { weekStartsOn: 0 })
 
     const days = []
-    let d = start
-    while (d <= end) {
+    let d = calendarStart
+    while (d <= calendarEnd) {
       days.push(d)
       d = addDays(d, 1)
     }
@@ -446,7 +451,7 @@ export default function CalendarSection() {
   }
 
   return (
-    <div className="bg-white rounded-3xl shadow-sm p-5 flex flex-col gap-4 min-h-0 max-w-full overflow-hidden main-content">
+    <div className="bg-white rounded-3xl shadow-sm p-5 flex flex-col gap-4 min-h-0 max-w-full main-content">
       <div className="flex items-start justify-between gap-3 flex-wrap">
         <div>
           <h2 className="text-base font-semibold text-slate-900">Calendar</h2>
@@ -490,8 +495,8 @@ export default function CalendarSection() {
         {error ? <div className="mt-3 text-sm text-rose-600 bg-rose-50 border border-rose-200 rounded-xl p-3">{error}</div> : null}
       </div>
 
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 min-h-0">
-        <div className="lg:col-span-2 rounded-3xl border border-slate-200 bg-white p-4 min-h-0 calendar-wrapper">
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
+        <div className="lg:col-span-2 rounded-3xl border border-slate-200 bg-white p-4 calendar-wrapper">
           <div className="flex items-center justify-between mb-3">
             <button
               type="button"
@@ -533,14 +538,14 @@ export default function CalendarSection() {
               return (
                 <div
                   key={key}
-                  className={`calendar-cell rounded-2xl border border-slate-200 bg-white hover:bg-slate-50 transition p-2 cursor-pointer flex flex-col ${
+                  className={`calendar-cell rounded-2xl border border-slate-200 bg-white hover:bg-slate-50 transition p-1 cursor-pointer flex flex-col overflow-hidden ${
                     isSelected ? 'ring-2 ring-[#1B3E2A] border-[#1B3E2A]' : ''
                   } ${isInMonth ? '' : 'opacity-60'}`}
                   onClick={() => setSelectedDay(d)}
                 >
                   <div className="flex flex-col h-full">
-                    <div className="flex justify-between items-start mb-1">
-                      <div className="text-xs font-semibold text-slate-900">{format(d, 'd')}</div>
+                    <div className="flex justify-between items-start mb-0.5">
+                      <div className="text-[10px] font-semibold leading-none text-slate-900">{format(d, 'd')}</div>
                       {count ? (
                         <div className="rounded-full bg-[#1B3E2A] text-white text-[10px] font-semibold px-1.5 py-0.5 flex-shrink-0">
                           {count}
