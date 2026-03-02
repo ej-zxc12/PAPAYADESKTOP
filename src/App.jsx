@@ -1600,6 +1600,10 @@ function ProgramOverviewSection({ title }) {
         <p className="text-xs text-slate-500">Program details and updates</p>
       </div>
       <div className="text-xs text-slate-500">This is a placeholder for program-specific content.</div>
+    </div>
+  )
+}
+
 function MissionVisionValuesSection() {
   const [content, setContent] = useState({
     mission: { title: 'Our Mission', content: '', image: '' },
