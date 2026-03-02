@@ -30,6 +30,7 @@ import papayaLogo from './shared/assets/logo.jpg?url'
 import siteContent from './core/config/siteContent.json'
 import NewsManager from './features/news/pages/NewsManager.jsx'
 import CalendarSection from './features/calendar/pages/CalendarSection.jsx'
+import { missionVisionService } from './core/services/missionVisionService'
 import { uiText } from './core/constants/uiText'
 import { sf10StudentsMock, sf10RecordsMock } from './features/sf10/models/sf10Content'
 import { alumniMock } from './features/alumni/models/alumniContent'
@@ -623,6 +624,7 @@ function App() {
     sf10: uiText.sf10.title,
     alumni: uiText.alumni.title,
     calendar: 'Calendar',
+    website_home: 'Website Content — Home Page',
     website_about_story: 'About Us — Our Story',
     website_about_mission: 'About Us — Mission & Vision',
     media: 'Media Library',
@@ -644,6 +646,7 @@ function App() {
     sf10: uiText.sf10.subtitle,
     alumni: uiText.alumni.subtitle,
     calendar: 'Create events using quick-add and auto-post when due',
+    website_home: 'Manage homepage content synced to the website',
     website_about_story: 'Edit About Us — Our Story section',
     website_about_mission: 'Edit About Us — Mission & Vision section',
     media: 'Manage images and files for the website',
@@ -1602,244 +1605,231 @@ function ProgramOverviewSection({ title }) {
 }
 
 function MissionVisionValuesSection() {
-  // Local mock data (frontend-only).
-  const [items, setItems] = useState([
-    {
-      id: 'mvv-1',
-      type: 'Mission',
-      title: 'Our Mission',
-      content: 'To provide quality learning experiences that nurture character, competence, and compassion in every learner.',
-    },
-    {
-      id: 'mvv-2',
-      type: 'Vision',
-      title: 'Our Vision',
-      content: 'A future-ready community of learners empowered to lead with integrity and serve with love.',
-    },
-    {
-      id: 'mvv-3',
-      type: 'Values',
-      title: 'Our Values',
-      content: 'Faith\nExcellence\nRespect\nService\nInnovation',
-    },
-  ])
-
+  const [content, setContent] = useState({
+    mission: { title: 'Our Mission', content: '', image: '' },
+    vision: { title: 'Our Vision', content: '', image: '' },
+    values: []
+  })
+  const [isLoading, setIsLoading] = useState(true)
+  const [isSaving, setIsSaving] = useState(false)
   const [modal, setModal] = useState(null)
-  const [formType, setFormType] = useState('Mission')
-  const [formTitle, setFormTitle] = useState('')
-  const [formContent, setFormContent] = useState('')
 
-  const buildId = () => `${Date.now()}-${Math.random().toString(16).slice(2)}`
-
-  const openAdd = () => {
-    setModal({ mode: 'add', id: null })
-    setFormType('Mission')
-    setFormTitle('')
-    setFormContent('')
-  }
-
-  const openEdit = (item) => {
-    setModal({ mode: 'edit', id: item.id })
-    setFormType(item.type)
-    setFormTitle(item.title || '')
-    setFormContent(item.content || '')
-  }
-
-  const handleRemove = (item) => {
-    const label = item.title ? item.title : `${item.type} Content`
-    const ok = window.confirm(`Remove "${label}"? This cannot be undone.`)
-    if (!ok) return
-    setItems((prev) => prev.filter((e) => e.id !== item.id))
-  }
-
-  const handleSave = () => {
-    const nextType = String(formType || '').trim()
-    const nextTitle = String(formTitle || '').trim()
-    const nextContent = String(formContent || '').trim()
-
-    if (!nextType) {
-      window.alert('Please select a Type.')
-      return
+  // Load content from Firebase
+  useEffect(() => {
+    const loadContent = async () => {
+      try {
+        const data = await missionVisionService.getContent()
+        setContent(data)
+      } catch (error) {
+        console.error('Failed to load mission & vision:', error)
+      } finally {
+        setIsLoading(false)
+      }
     }
+    loadContent()
+  }, [])
 
-    if (!nextContent) {
-      window.alert('Please enter Content.')
-      return
-    }
-
-    if (modal?.mode === 'add') {
-      const newItem = { id: buildId(), type: nextType, title: nextTitle, content: nextContent }
-      setItems((prev) => [newItem, ...prev])
-      setModal(null)
-      return
-    }
-
-    if (modal?.mode === 'edit') {
-      setItems((prev) =>
-        prev.map((e) => (e.id === modal.id ? { ...e, type: nextType, title: nextTitle, content: nextContent } : e)),
-      )
-      setModal(null)
+  const handleSaveMission = async (field, value) => {
+    try {
+      setIsSaving(true)
+      const updated = {
+        ...content,
+        mission: { ...content.mission, [field]: value }
+      }
+      await missionVisionService.saveContent(updated)
+      setContent(updated)
+    } catch (error) {
+      console.error('Failed to save mission:', error)
+      alert('Failed to save mission content')
+    } finally {
+      setIsSaving(false)
     }
   }
 
-  const missionItems = items.filter((e) => e.type === 'Mission')
-  const visionItems = items.filter((e) => e.type === 'Vision')
-  const valuesItems = items.filter((e) => e.type === 'Values')
+  const handleSaveVision = async (field, value) => {
+    try {
+      setIsSaving(true)
+      const updated = {
+        ...content,
+        vision: { ...content.vision, [field]: value }
+      }
+      await missionVisionService.saveContent(updated)
+      setContent(updated)
+    } catch (error) {
+      console.error('Failed to save vision:', error)
+      alert('Failed to save vision content')
+    } finally {
+      setIsSaving(false)
+    }
+  }
 
-  const ContentCard = ({ item }) => (
-    <div className="rounded-3xl border border-slate-200 bg-white p-5 shadow-sm hover:shadow-md transition-shadow">
-      <div className="flex items-start justify-between gap-4">
-        <div className="min-w-0">
-          <div className="flex items-center gap-2">
-            <h3 className="text-sm font-semibold text-slate-900 truncate">
-              {item.title ? item.title : `${item.type} Content`}
-            </h3>
-            <span className="inline-flex items-center rounded-full px-2 py-0.5 text-[11px] font-medium bg-slate-100 text-slate-600">
-              {item.type}
-            </span>
-          </div>
-        </div>
-        <div className="flex items-center gap-2 shrink-0">
-          <button
-            type="button"
-            className="inline-flex items-center gap-2 rounded-md border border-slate-200 bg-white px-3 py-2 text-xs font-semibold text-slate-700 hover:bg-slate-50"
-            onClick={() => openEdit(item)}
-          >
-            <FiEdit2 className="h-4 w-4" />
-            Edit
-          </button>
-          <button
-            type="button"
-            className="inline-flex items-center gap-2 rounded-md border border-rose-200 bg-rose-50 px-3 py-2 text-xs font-semibold text-rose-700 hover:bg-rose-100"
-            onClick={() => handleRemove(item)}
-          >
-            <FiTrash2 className="h-4 w-4" />
-            Remove
-          </button>
-        </div>
+  const handleAddValue = async () => {
+    const newValue = {
+      id: Date.now().toString(),
+      title: '',
+      description: '',
+      icon: 'star'
+    }
+    try {
+      setIsSaving(true)
+      const updated = {
+        ...content,
+        values: [...content.values, newValue]
+      }
+      await missionVisionService.saveContent(updated)
+      setContent(updated)
+    } catch (error) {
+      console.error('Failed to add value:', error)
+      alert('Failed to add value')
+    } finally {
+      setIsSaving(false)
+    }
+  }
+
+  const handleUpdateValue = async (index, field, value) => {
+    try {
+      setIsSaving(true)
+      const updatedValues = [...content.values]
+      updatedValues[index] = { ...updatedValues[index], [field]: value }
+      const updated = { ...content, values: updatedValues }
+      await missionVisionService.saveContent(updated)
+      setContent(updated)
+    } catch (error) {
+      console.error('Failed to update value:', error)
+      alert('Failed to update value')
+    } finally {
+      setIsSaving(false)
+    }
+  }
+
+  const handleRemoveValue = async (index) => {
+    if (!confirm('Remove this value?')) return
+    try {
+      setIsSaving(true)
+      const updatedValues = content.values.filter((_, i) => i !== index)
+      const updated = { ...content, values: updatedValues }
+      await missionVisionService.saveContent(updated)
+      setContent(updated)
+    } catch (error) {
+      console.error('Failed to remove value:', error)
+      alert('Failed to remove value')
+    } finally {
+      setIsSaving(false)
+    }
+  }
+
+  if (isLoading) {
+    return (
+      <div className="bg-white rounded-3xl shadow-sm p-5 flex flex-col gap-4 flex-1 text-xs">
+        <div>Loading mission & vision content...</div>
       </div>
-      <div className="mt-3 whitespace-pre-wrap text-xs text-slate-600 leading-relaxed">{item.content}</div>
-    </div>
-  )
-
-  const CardStack = ({ list, emptyLabel }) => (
-    <div className="flex flex-col gap-4">
-      {list.length === 0 ? (
-        <div className="rounded-3xl border border-dashed border-slate-200 bg-slate-50 px-4 py-6 text-xs text-slate-500">
-          {emptyLabel}
-        </div>
-      ) : (
-        list.map((item) => <ContentCard key={item.id} item={item} />)
-      )}
-    </div>
-  )
+    )
+  }
 
   return (
-    <div className="bg-white rounded-3xl shadow-sm p-5 flex flex-col gap-4 flex-1">
-      <div className="flex items-start justify-between gap-3">
+    <div className="bg-white rounded-3xl shadow-sm p-5 flex flex-col gap-4 flex-1 text-xs">
+      <div className="flex items-center justify-between">
         <div>
-          <h2 className="text-base font-semibold text-slate-900">Mission, Vision & Values</h2>
-          <p className="text-xs text-slate-500">Manage the About Us content shown on the website</p>
+          <h2 className="text-base font-semibold text-slate-900">Mission & Vision</h2>
+          <p className="text-xs text-slate-500">Edit mission, vision, and core values</p>
         </div>
-        <button
-          type="button"
-          className="inline-flex items-center gap-2 rounded-md bg-[#1B3E2A] px-3 py-2 text-xs font-semibold text-white hover:bg-[#163021]"
-          onClick={openAdd}
-        >
-          <FiPlus className="h-4 w-4" />
-          Add New
-        </button>
-      </div>
-
-      <div className="flex flex-col gap-6">
-        <div>
-          <div className="text-sm font-semibold text-slate-900 mb-3">Mission</div>
-          <CardStack list={missionItems} emptyLabel="No Mission content yet." />
-        </div>
-
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-          <div>
-            <div className="text-sm font-semibold text-slate-900 mb-3">Vision</div>
-            <CardStack list={visionItems} emptyLabel="No Vision content yet." />
-          </div>
-          <div>
-            <div className="text-sm font-semibold text-slate-900 mb-3">Values</div>
-            <CardStack list={valuesItems} emptyLabel="No Values content yet." />
-          </div>
+        <div className="text-xs text-slate-400">
+          {isSaving ? 'Saving...' : 'All changes saved'}
         </div>
       </div>
 
-      {modal && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/40 px-4" onClick={() => setModal(null)}>
-          <div className="bg-white rounded-3xl shadow-sm p-5 w-full max-w-lg" onClick={(e) => e.stopPropagation()}>
-            <div className="flex items-center justify-between mb-3">
-              <div>
-                <div className="text-[11px] font-medium text-slate-500">
-                  {modal.mode === 'add' ? 'Add content' : 'Edit content'}
-                </div>
-                <div className="text-sm font-semibold text-slate-900">Mission / Vision / Values</div>
-              </div>
-              <button
-                type="button"
-                className="text-[11px] font-medium text-slate-500 hover:text-slate-700"
-                onClick={() => setModal(null)}
-              >
-                Close
-              </button>
-            </div>
+      {/* Mission Section */}
+      <div className="space-y-3">
+        <div className="text-[11px] font-medium text-slate-700">Mission</div>
+        <input
+          type="text"
+          placeholder="Mission title"
+          className="w-full rounded-2xl border border-slate-200 px-3 py-2 text-xs focus:outline-none focus:ring-2 focus:ring-[#1B3E2A] focus:border-transparent"
+          value={content.mission.title}
+          onChange={(e) => setContent(prev => ({ ...prev, mission: { ...prev.mission, title: e.target.value } }))} 
+          onBlur={() => handleSaveMission('title', content.mission.title)}
+        />
+        <textarea
+          placeholder="Mission statement"
+          className="w-full rounded-2xl border border-slate-200 px-3 py-2 text-xs focus:outline-none focus:ring-2 focus:ring-[#1B3E2A] focus:border-transparent resize-none"
+          rows={3}
+          value={content.mission.content}
+          onChange={(e) => setContent(prev => ({ ...prev, mission: { ...prev.mission, content: e.target.value } }))} 
+          onBlur={() => handleSaveMission('content', content.mission.content)}
+        />
+      </div>
 
-            <div className="space-y-3 text-xs max-h-[70vh] overflow-y-auto pr-1">
-              <div>
-                <div className="text-[11px] text-slate-500 mb-1">Type</div>
-                <select
-                  value={formType}
-                  onChange={(e) => setFormType(e.target.value)}
-                  className="w-full rounded-2xl border border-slate-200 px-3 py-2 text-xs focus:outline-none focus:ring-2 focus:ring-[#1B3E2A] focus:border-transparent"
-                >
-                  <option value="Mission">Mission</option>
-                  <option value="Vision">Vision</option>
-                  <option value="Values">Values</option>
-                </select>
-              </div>
-              <div>
-                <div className="text-[11px] text-slate-500 mb-1">Title (optional)</div>
+      {/* Vision Section */}
+      <div className="space-y-3">
+        <div className="text-[11px] font-medium text-slate-700">Vision</div>
+        <input
+          type="text"
+          placeholder="Vision title"
+          className="w-full rounded-2xl border border-slate-200 px-3 py-2 text-xs focus:outline-none focus:ring-2 focus:ring-[#1B3E2A] focus:border-transparent"
+          value={content.vision.title}
+          onChange={(e) => setContent(prev => ({ ...prev, vision: { ...prev.vision, title: e.target.value } }))} 
+          onBlur={() => handleSaveVision('title', content.vision.title)}
+        />
+        <textarea
+          placeholder="Vision statement"
+          className="w-full rounded-2xl border border-slate-200 px-3 py-2 text-xs focus:outline-none focus:ring-2 focus:ring-[#1B3E2A] focus:border-transparent resize-none"
+          rows={3}
+          value={content.vision.content}
+          onChange={(e) => setContent(prev => ({ ...prev, vision: { ...prev.vision, content: e.target.value } }))} 
+          onBlur={() => handleSaveVision('content', content.vision.content)}
+        />
+      </div>
+
+      {/* Core Values Section */}
+      <div className="space-y-3">
+        <div className="flex items-center justify-between">
+          <div className="text-[11px] font-medium text-slate-700">Core Values</div>
+          <button
+            onClick={handleAddValue}
+            className="rounded-xl border border-slate-200 bg-white px-3 py-1.5 text-xs font-medium text-slate-700 hover:bg-slate-50"
+          >
+            Add Value
+          </button>
+        </div>
+        <div className="space-y-2">
+          {content.values.map((value, index) => (
+            <div key={value.id || index} className="rounded-xl border border-slate-200 bg-white p-3 space-y-2">
+              <div className="flex items-center gap-2">
                 <input
                   type="text"
-                  value={formTitle}
-                  onChange={(e) => setFormTitle(e.target.value)}
-                  className="w-full rounded-2xl border border-slate-200 px-3 py-2 text-xs focus:outline-none focus:ring-2 focus:ring-[#1B3E2A] focus:border-transparent"
+                  placeholder="Value title"
+                  className="flex-1 rounded-lg border border-slate-200 px-2 py-1 text-xs focus:outline-none focus:ring-2 focus:ring-[#1B3E2A] focus:border-transparent"
+                  value={value.title}
+                  onChange={(e) => {
+                    const updated = [...content.values]
+                    updated[index] = { ...updated[index], title: e.target.value }
+                    setContent(prev => ({ ...prev, values: updated }))
+                  }}
+                  onBlur={() => handleUpdateValue(index, 'title', value.title)}
                 />
+                <button
+                  onClick={() => handleRemoveValue(index)}
+                  className="rounded-lg border border-rose-200 bg-rose-50 px-2 py-1 text-xs font-medium text-rose-600 hover:bg-rose-100"
+                >
+                  Remove
+                </button>
               </div>
-              <div>
-                <div className="text-[11px] text-slate-500 mb-1">Content</div>
-                <textarea
-                  value={formContent}
-                  onChange={(e) => setFormContent(e.target.value)}
-                  rows={8}
-                  className="w-full rounded-2xl border border-slate-200 px-3 py-2 text-xs focus:outline-none focus:ring-2 focus:ring-[#1B3E2A] focus:border-transparent"
-                />
-              </div>
+              <textarea
+                placeholder="Value description"
+                className="w-full rounded-lg border border-slate-200 px-2 py-1 text-xs focus:outline-none focus:ring-2 focus:ring-[#1B3E2A] focus:border-transparent resize-none"
+                rows={2}
+                value={value.description}
+                onChange={(e) => {
+                  const updated = [...content.values]
+                  updated[index] = { ...updated[index], description: e.target.value }
+                  setContent(prev => ({ ...prev, values: updated }))
+                }}
+                onBlur={() => handleUpdateValue(index, 'description', value.description)}
+              />
             </div>
-
-            <div className="flex items-center justify-end gap-2 mt-5">
-              <button
-                type="button"
-                className="rounded-2xl border border-slate-200 px-4 py-2 text-xs font-medium text-slate-700 hover:bg-slate-50"
-                onClick={() => setModal(null)}
-              >
-                Cancel
-              </button>
-              <button
-                type="button"
-                className="rounded-2xl bg-[#1B3E2A] px-4 py-2 text-xs font-semibold text-white hover:bg-[#163021]"
-                onClick={handleSave}
-              >
-                Save
-              </button>
-            </div>
-          </div>
+          ))}
         </div>
-      )}
+      </div>
     </div>
   )
 }
