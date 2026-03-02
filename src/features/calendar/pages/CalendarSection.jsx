@@ -24,6 +24,45 @@ export default function CalendarSection() {
   const [cursorMonth, setCursorMonth] = useState(() => startOfMonth(new Date()))
   const [selectedDay, setSelectedDay] = useState(() => new Date())
 
+  // Add custom styles for proper calendar layout
+  useEffect(() => {
+    const style = document.createElement('style')
+    style.textContent = `
+      * {
+        box-sizing: border-box;
+      }
+      
+      .calendar-wrapper {
+        width: 100%;
+        max-width: 100%;
+        overflow: hidden;
+      }
+      
+      .calendar-grid {
+        display: grid;
+        grid-template-columns: repeat(7, 1fr);
+        gap: 12px;
+        width: 100%;
+        box-sizing: border-box;
+      }
+      
+      .calendar-cell {
+        width: 100%;
+        aspect-ratio: 1 / 1;
+        min-width: 0;
+        overflow: hidden;
+      }
+      
+      .main-content {
+        overflow-x: hidden;
+      }
+    `
+    document.head.appendChild(style)
+    return () => {
+      document.head.removeChild(style)
+    }
+  }, [])
+
   // Modal form state
   const [modalTitle, setModalTitle] = useState('')
   const [modalDescription, setModalDescription] = useState('')
@@ -407,7 +446,7 @@ export default function CalendarSection() {
   }
 
   return (
-    <div className="bg-white rounded-3xl shadow-sm p-5 flex flex-col gap-4 min-h-0">
+    <div className="bg-white rounded-3xl shadow-sm p-5 flex flex-col gap-4 min-h-0 max-w-full overflow-hidden main-content">
       <div className="flex items-start justify-between gap-3 flex-wrap">
         <div>
           <h2 className="text-base font-semibold text-slate-900">Calendar</h2>
@@ -452,7 +491,7 @@ export default function CalendarSection() {
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 min-h-0">
-        <div className="lg:col-span-2 rounded-3xl border border-slate-200 bg-white p-4 min-h-0">
+        <div className="lg:col-span-2 rounded-3xl border border-slate-200 bg-white p-4 min-h-0 calendar-wrapper">
           <div className="flex items-center justify-between mb-3">
             <button
               type="button"
@@ -478,13 +517,13 @@ export default function CalendarSection() {
           {isLoading ? <div className="text-[11px] text-slate-400">Loading events…</div> : null}
           {!isLoading && loadError ? <div className="text-[11px] text-rose-600">{loadError}</div> : null}
 
-          <div className="grid grid-cols-7 gap-2 text-[11px] text-slate-500 mb-2">
+          <div className="calendar-grid text-[11px] text-slate-500 mb-2">
             {['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'].map((d) => (
               <div key={d} className="text-center font-semibold">{d}</div>
             ))}
           </div>
 
-          <div className="grid grid-cols-7 gap-2">
+          <div className="calendar-grid">
             {monthDays.map((d) => {
               const key = format(d, 'yyyy-MM-dd')
               const count = (eventsByDay.get(key) || []).length
@@ -494,13 +533,13 @@ export default function CalendarSection() {
               return (
                 <div
                   key={key}
-                  className={`rounded-2xl border border-slate-200 bg-white hover:bg-slate-50 transition min-h-[80px] p-3 cursor-pointer flex flex-col ${
+                  className={`calendar-cell rounded-2xl border border-slate-200 bg-white hover:bg-slate-50 transition p-2 cursor-pointer flex flex-col ${
                     isSelected ? 'ring-2 ring-[#1B3E2A] border-[#1B3E2A]' : ''
                   } ${isInMonth ? '' : 'opacity-60'}`}
                   onClick={() => setSelectedDay(d)}
                 >
                   <div className="flex flex-col h-full">
-                    <div className="flex justify-between items-start mb-2">
+                    <div className="flex justify-between items-start mb-1">
                       <div className="text-xs font-semibold text-slate-900">{format(d, 'd')}</div>
                       {count ? (
                         <div className="rounded-full bg-[#1B3E2A] text-white text-[10px] font-semibold px-1.5 py-0.5 flex-shrink-0">
@@ -508,7 +547,7 @@ export default function CalendarSection() {
                         </div>
                       ) : null}
                     </div>
-                    <div className="text-[10px] text-slate-500 line-clamp-2 flex-1 text-left overflow-hidden">
+                    <div className="text-[9px] text-slate-500 line-clamp-2 flex-1 text-left overflow-hidden">
                       {(eventsByDay.get(key) || [])
                         .slice(0, 2)
                         .map((ev) => ev.title)
@@ -521,7 +560,7 @@ export default function CalendarSection() {
           </div>
         </div>
 
-        <div className="rounded-3xl border border-slate-200 bg-white p-4 min-h-0">
+        <div className="rounded-3xl border border-slate-200 bg-white p-4 min-h-0 calendar-wrapper">
           <div className="text-sm font-semibold text-slate-900 mb-1">{format(selectedDay, 'EEEE, MMM d')}</div>
           <div className="text-[11px] text-slate-500 mb-3">{selectedEvents.length} event(s)</div>
 
