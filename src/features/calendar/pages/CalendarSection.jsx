@@ -1,8 +1,15 @@
 import React, { useEffect, useMemo, useState } from 'react'
-import { addDays, addMonths, endOfMonth, endOfWeek, format, isSameDay, startOfMonth, startOfWeek, subMonths } from 'date-fns'
-import { FiChevronLeft, FiChevronRight, FiPlus, FiTrash2, FiX, FiCalendar } from 'react-icons/fi'
+import { addDays, addMonths, endOfMonth, endOfWeek, format, isSameDay, startOfMonth, startOfWeek, subMonths, isSameMonth, isToday } from 'date-fns'
+import { FiChevronLeft, FiChevronRight, FiPlus, FiTrash2, FiX, FiCalendar, FiClock, FiUser, FiMapPin } from 'react-icons/fi'
 import { calendarEventService } from '../../../core/services/calendarEventService'
 import { parseQuickAdd } from '../utils/quickAdd'
+
+const CATEGORIES = [
+  { label: 'Academic', color: 'bg-[#7EB88A]', dot: 'bg-[#7EB88A]' },
+  { label: 'Social', color: 'bg-[#F0C000]', dot: 'bg-[#F0C000]' },
+  { label: 'Board', color: 'bg-[#9CA89F]', dot: 'bg-[#9CA89F]' },
+  { label: 'Holiday', color: 'bg-[#D97070]', dot: 'bg-[#D97070]' },
+]
 
 function toDate(value) {
   if (!value) return null
@@ -12,6 +19,7 @@ function toDate(value) {
 }
 
 export default function CalendarSection() {
+  const [view, setView] = useState('Month')
   const [quickAdd, setQuickAdd] = useState('')
   const [isAdding, setIsAdding] = useState(false)
   const [error, setError] = useState('')
@@ -24,40 +32,62 @@ export default function CalendarSection() {
   const [cursorMonth, setCursorMonth] = useState(() => startOfMonth(new Date()))
   const [selectedDay, setSelectedDay] = useState(() => new Date())
 
+  // Mock data for bottom cards
+  const nextEvent = { title: 'Faculty Orientation', time: 'In 2 hrs' }
+  const coordinator = { name: 'Sarah Jenkins', role: 'Principal' }
+  const venue = { name: 'Conference Center A' }
+
   // Add custom styles for proper calendar layout
   useEffect(() => {
     const style = document.createElement('style')
     style.textContent = `
-      * {
-        box-sizing: border-box;
+      .calendar-container {
+        font-family: 'Inter', sans-serif;
       }
-      
-      .calendar-wrapper {
-        width: 100%;
-        max-width: 100%;
-        overflow: visible;
-      }
-      
       .calendar-grid {
         display: grid;
         grid-template-columns: repeat(7, 1fr);
-        gap: 8px;
-        width: 100%;
-        box-sizing: border-box;
+        border-top: 1px solid #E2E8F0;
+        border-left: 1px solid #E2E8F0;
       }
-      
+      .calendar-day-header {
+        padding: 12px;
+        text-align: center;
+        font-size: 11px;
+        font-weight: 600;
+        color: #5C6560;
+        text-transform: uppercase;
+        border-right: 1px solid #E8EAE8;
+        background-color: #FAFAFA;
+      }
       .calendar-cell {
-        width: 100%;
-        min-height: 70px;
-        min-width: 0;
-        overflow: hidden;
-        display: flex;
-        flex-direction: column;
+        min-height: 120px;
+        padding: 8px;
+        border-right: 1px solid #E8EAE8;
+        border-bottom: 1px solid #E8EAE8;
+        background-color: white;
+        transition: background-color 0.2s;
       }
-      
-      .main-content {
-        overflow-x: hidden;
-        overflow-y: visible;
+      .calendar-cell:hover {
+        background-color: #FAFAFA;
+      }
+      .calendar-cell.outside-month {
+        background-color: #FAFAFA;
+        color: #9CA89F;
+      }
+      .event-badge {
+        padding: 2px 8px;
+        border-radius: 4px;
+        font-size: 10px;
+        font-weight: 500;
+        color: white;
+        margin-bottom: 2px;
+        display: flex;
+        align-items: center;
+        gap: 4px;
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
       }
     `
     document.head.appendChild(style)
@@ -263,19 +293,19 @@ export default function CalendarSection() {
           onClick={(e) => e.stopPropagation()}
         >
           {/* Header */}
-          <div className="bg-gradient-to-r from-[#1B3E2A] to-[#2A5F3F] p-5 text-white sticky top-0 z-10">
+          <div className="bg-[#FAFAFA] border-b border-[#E8EAE8] p-5 text-[#1A1F1B] sticky top-0 z-10">
             <div className="flex items-center justify-between">
               <div>
                 <h3 className="text-lg font-semibold flex items-center gap-2">
-                  <FiCalendar className="h-5 w-5" />
+                  <FiCalendar className="h-5 w-5 text-[#F0C000]" />
                   Add New Event
                 </h3>
-                <p className="text-xs text-white/80 mt-1">Schedule your event with details</p>
+                <p className="text-xs text-[#5C6560] mt-1">Schedule your event with details</p>
               </div>
               <button
                 type="button"
                 onClick={closeModal}
-                className="rounded-xl p-2 text-white/80 hover:text-white hover:bg-white/20 transition-colors"
+                className="rounded-xl p-2 text-[#5C6560] hover:text-[#1A1F1B] hover:bg-[#FAFAFA] transition-colors"
                 aria-label="Close modal"
               >
                 <FiX className="h-5 w-5" />
@@ -287,15 +317,15 @@ export default function CalendarSection() {
           <form onSubmit={handleModalSubmit} className="p-6 space-y-5">
             {/* Event Title */}
             <div>
-              <label className="block text-sm font-semibold text-slate-700 mb-2 flex items-center gap-1">
-                Event Title <span className="text-rose-500">*</span>
+              <label className="block text-sm font-semibold text-[#1A1F1B] mb-2 flex items-center gap-1">
+                Event Title <span className="text-[#D97070]">*</span>
               </label>
               <input
                 id="event-title-input"
                 type="text"
                 value={modalTitle}
                 onChange={(e) => setModalTitle(e.target.value)}
-                className="w-full rounded-xl border border-slate-300 bg-white px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-[#1B3E2A] focus:border-transparent transition-all hover:border-slate-400"
+                className="w-full rounded-xl border border-[#E8EAE8] bg-[#FAFAFA] px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-[#F0C000]/20 focus:border-[#F0C000] transition-all"
                 placeholder="Enter event title"
                 required
                 autoFocus
@@ -304,13 +334,13 @@ export default function CalendarSection() {
 
             {/* Description */}
             <div>
-              <label className="block text-sm font-semibold text-slate-700 mb-2">
+              <label className="block text-sm font-semibold text-[#1A1F1B] mb-2">
                 Description
               </label>
               <textarea
                 value={modalDescription}
                 onChange={(e) => setModalDescription(e.target.value)}
-                className="w-full rounded-xl border border-slate-300 bg-white px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-[#1B3E2A] focus:border-transparent transition-all hover:border-slate-400 resize-none"
+                className="w-full rounded-xl border border-[#E8EAE8] bg-[#FAFAFA] px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-[#F0C000]/20 focus:border-[#F0C000] transition-all resize-none"
                 placeholder="Add event description (optional)"
                 rows={3}
               />
@@ -318,8 +348,8 @@ export default function CalendarSection() {
 
             {/* Date & Time Section */}
             <div className="space-y-4">
-              <h4 className="text-sm font-semibold text-slate-700 flex items-center gap-2 pb-2 border-b border-slate-200">
-                <FiCalendar className="h-4 w-4 text-[#1B3E2A]" />
+              <h4 className="text-sm font-semibold text-[#1A1F1B] flex items-center gap-2 pb-2 border-b border-[#E8EAE8]">
+                <FiCalendar className="h-4 w-4 text-[#F0C000]" />
                 Date & Time
               </h4>
               
@@ -327,26 +357,26 @@ export default function CalendarSection() {
                 {/* Start Date & Time */}
                 <div className="space-y-3">
                   <div>
-                    <label className="block text-xs font-medium text-slate-600 mb-1">
-                      Start Date <span className="text-rose-500">*</span>
+                    <label className="block text-xs font-medium text-[#5C6560] mb-1">
+                      Start Date <span className="text-[#D97070]">*</span>
                     </label>
                     <input
                       type="date"
                       value={modalStartDate}
                       onChange={(e) => setModalStartDate(e.target.value)}
-                      className="w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#1B3E2A] focus:border-transparent transition-all hover:border-slate-400"
+                      className="w-full rounded-lg border border-[#E8EAE8] bg-[#FAFAFA] px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#F0C000]/20 focus:border-[#F0C000] transition-all"
                       required
                     />
                   </div>
                   <div>
-                    <label className="block text-xs font-medium text-slate-600 mb-1">
-                      Start Time <span className="text-rose-500">*</span>
+                    <label className="block text-xs font-medium text-[#5C6560] mb-1">
+                      Start Time <span className="text-[#D97070]">*</span>
                     </label>
                     <input
                       type="time"
                       value={modalStartTime}
                       onChange={(e) => setModalStartTime(e.target.value)}
-                      className="w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#1B3E2A] focus:border-transparent transition-all hover:border-slate-400"
+                      className="w-full rounded-lg border border-[#E8EAE8] bg-[#FAFAFA] px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#F0C000]/20 focus:border-[#F0C000] transition-all"
                       required
                     />
                   </div>
@@ -355,26 +385,26 @@ export default function CalendarSection() {
                 {/* End Date & Time */}
                 <div className="space-y-3">
                   <div>
-                    <label className="block text-xs font-medium text-slate-600 mb-1">
-                      End Date <span className="text-rose-500">*</span>
+                    <label className="block text-xs font-medium text-[#5C6560] mb-1">
+                      End Date <span className="text-[#D97070]">*</span>
                     </label>
                     <input
                       type="date"
                       value={modalEndDate}
                       onChange={(e) => setModalEndDate(e.target.value)}
-                      className="w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#1B3E2A] focus:border-transparent transition-all hover:border-slate-400"
+                      className="w-full rounded-lg border border-[#E8EAE8] bg-[#FAFAFA] px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#F0C000]/20 focus:border-[#F0C000] transition-all"
                       required
                     />
                   </div>
                   <div>
-                    <label className="block text-xs font-medium text-slate-600 mb-1">
-                      End Time <span className="text-rose-500">*</span>
+                    <label className="block text-xs font-medium text-[#5C6560] mb-1">
+                      End Time <span className="text-[#D97070]">*</span>
                     </label>
                     <input
                       type="time"
                       value={modalEndTime}
                       onChange={(e) => setModalEndTime(e.target.value)}
-                      className="w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#1B3E2A] focus:border-transparent transition-all hover:border-slate-400"
+                      className="w-full rounded-lg border border-[#E8EAE8] bg-[#FAFAFA] px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#F0C000]/20 focus:border-[#F0C000] transition-all"
                       required
                     />
                   </div>
@@ -384,13 +414,13 @@ export default function CalendarSection() {
 
             {/* Timezone */}
             <div>
-              <label className="block text-sm font-semibold text-slate-700 mb-2">
+              <label className="block text-sm font-semibold text-[#1A1F1B] mb-2">
                 Timezone
               </label>
               <select
                 value={modalTimezone}
                 onChange={(e) => setModalTimezone(e.target.value)}
-                className="w-full rounded-xl border border-slate-300 bg-white px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-[#1B3E2A] focus:border-transparent transition-all hover:border-slate-400"
+                className="w-full rounded-xl border border-[#E8EAE8] bg-[#FAFAFA] px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-[#F0C000]/20 focus:border-[#F0C000] transition-all"
               >
                 <option value="Asia/Manila">🇵🇭 Philippines (Asia/Manila)</option>
                 <option value="UTC">🌍 UTC</option>
@@ -407,29 +437,29 @@ export default function CalendarSection() {
 
             {/* Error Message */}
             {error && (
-              <div className="bg-rose-50 border border-rose-200 rounded-xl p-3">
+              <div className="bg-[#D97070]/5 border border-[#D97070]/10 rounded-xl p-3">
                 <div className="flex items-start gap-2">
-                  <div className="text-rose-500 mt-0.5">
+                  <div className="text-[#D97070] mt-0.5">
                     <FiX className="h-4 w-4" />
                   </div>
-                  <div className="text-sm text-rose-700">{error}</div>
+                  <div className="text-sm text-[#D97070]">{error}</div>
                 </div>
               </div>
             )}
 
             {/* Action Buttons */}
-            <div className="flex gap-3 pt-4 border-t border-slate-200">
+            <div className="flex gap-3 pt-4 border-t border-[#E8EAE8]">
               <button
                 type="button"
                 onClick={closeModal}
-                className="flex-1 rounded-xl border border-slate-300 bg-white px-6 py-3 text-sm font-semibold text-slate-700 hover:bg-slate-50 transition-colors"
+                className="flex-1 rounded-xl border border-[#E8EAE8] bg-white px-6 py-3 text-sm font-bold text-[#5C6560] hover:bg-[#FAFAFA] transition-all active:scale-95"
               >
                 Cancel
               </button>
               <button
                 type="submit"
                 disabled={isAdding}
-                className="flex-1 rounded-xl bg-gradient-to-r from-[#1B3E2A] to-[#2A5F3F] px-6 py-3 text-sm font-semibold text-white hover:from-[#163021] hover:to-[#1F4A32] transition-all disabled:opacity-60 disabled:cursor-not-allowed shadow-lg"
+                className="flex-1 rounded-xl bg-[#F0C000] px-6 py-3 text-sm font-bold text-white hover:bg-[#B8920A] transition-all disabled:opacity-60 disabled:cursor-not-allowed shadow-md shadow-[#F0C000]/10 active:scale-95"
               >
                 {isAdding ? (
                   <span className="flex items-center justify-center gap-2">
@@ -451,172 +481,157 @@ export default function CalendarSection() {
   }
 
   return (
-    <div className="bg-white rounded-3xl shadow-sm p-5 flex flex-col gap-4 min-h-0 max-w-full main-content">
-      <div className="flex items-start justify-between gap-3 flex-wrap">
-        <div>
-          <h2 className="text-base font-semibold text-slate-900">Calendar</h2>
-          <p className="text-xs text-slate-500">Quick add events, view schedule, and track auto-posting.</p>
-        </div>
-      </div>
-
-      <div className="rounded-3xl border border-slate-200 bg-slate-50/60 p-4">
-        <div className="flex items-center gap-2 flex-wrap mb-4">
-          <input
-            type="text"
-            value={quickAdd}
-            onChange={(e) => setQuickAdd(e.target.value)}
-            placeholder='Quick add: "team meeting tomorrow 3pm"'
-            className="flex-1 min-w-[240px] rounded-2xl border border-slate-200 bg-white px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-[#1B3E2A] focus:border-transparent"
-            disabled={isAdding}
-          />
-          <button
-            type="button"
-            className="inline-flex items-center gap-2 rounded-2xl bg-[#1B3E2A] px-6 py-3 text-sm font-semibold text-white hover:bg-[#163021] disabled:opacity-60 transition-colors shadow-md"
-            onClick={handleQuickAdd}
-            disabled={isAdding}
-          >
-            <FiPlus className="h-4 w-4" />
-            {isAdding ? 'Adding…' : 'Quick Add'}
-          </button>
-        </div>
-        
-        <div className="flex items-center justify-between">
-          <button
-            type="button"
-            className="inline-flex items-center gap-3 rounded-2xl bg-gradient-to-r from-[#1B3E2A] to-[#2A5F3F] px-6 py-3 text-sm font-semibold text-white hover:from-[#163021] hover:to-[#1F4A32] transition-all shadow-lg hover:shadow-xl transform hover:scale-105"
-            onClick={openModal}
-          >
-            <FiCalendar className="h-5 w-5" />
-            Add Event with Details
-          </button>
-          <span className="text-xs text-slate-500 italic">For specific dates and times</span>
-        </div>
-        
-        {error ? <div className="mt-3 text-sm text-rose-600 bg-rose-50 border border-rose-200 rounded-xl p-3">{error}</div> : null}
-      </div>
-
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
-        <div className="lg:col-span-2 rounded-3xl border border-slate-200 bg-white p-4 calendar-wrapper">
-          <div className="flex items-center justify-between mb-3">
-            <button
-              type="button"
-              className="inline-flex items-center gap-1 rounded-xl border border-slate-200 px-3 py-2 text-xs font-semibold text-slate-700 hover:bg-slate-50"
-              onClick={() => setCursorMonth((prev) => subMonths(prev, 1))}
-              title="Previous month"
+    <div className="calendar-container p-6 bg-[#F5F6F5] min-h-screen max-w-full">
+      <div className="max-w-[1400px] mx-auto">
+        {/* Header */}
+      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-6">
+        <div className="flex items-center gap-4">
+          <h1 className="text-2xl font-bold text-[#1A1F1B]">{format(cursorMonth, 'MMMM yyyy')}</h1>
+          <div className="flex items-center bg-white border border-[#E8EAE8] rounded-lg p-1">
+            <button 
+              onClick={() => setCursorMonth(prev => subMonths(prev, 1))}
+              className="p-1.5 hover:bg-[#FAFAFA] rounded transition-colors text-[#5C6560]"
             >
-              <FiChevronLeft className="h-4 w-4" />
-              Prev
+              <FiChevronLeft className="w-5 h-5" />
             </button>
-            <div className="text-sm font-semibold text-slate-900">{format(cursorMonth, 'MMMM yyyy')}</div>
-            <button
-              type="button"
-              className="inline-flex items-center gap-1 rounded-xl border border-slate-200 px-3 py-2 text-xs font-semibold text-slate-700 hover:bg-slate-50"
-              onClick={() => setCursorMonth((prev) => addMonths(prev, 1))}
-              title="Next month"
+            <button 
+              onClick={() => {
+                setCursorMonth(startOfMonth(new Date()))
+                setSelectedDay(new Date())
+              }}
+              className="px-3 py-1 text-sm font-medium hover:bg-[#FAFAFA] rounded transition-colors text-[#1A1F1B]"
             >
-              Next
-              <FiChevronRight className="h-4 w-4" />
+              Today
+            </button>
+            <button 
+              onClick={() => setCursorMonth(prev => addMonths(prev, 1))}
+              className="p-1.5 hover:bg-[#FAFAFA] rounded transition-colors text-[#5C6560]"
+            >
+              <FiChevronRight className="w-5 h-5" />
             </button>
           </div>
+        </div>
 
-          {isLoading ? <div className="text-[11px] text-slate-400">Loading events…</div> : null}
-          {!isLoading && loadError ? <div className="text-[11px] text-rose-600">{loadError}</div> : null}
-
-          <div className="calendar-grid text-[11px] text-slate-500 mb-2">
-            {['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'].map((d) => (
-              <div key={d} className="text-center font-semibold">{d}</div>
+        <div className="flex items-center gap-3">
+          <div className="flex items-center bg-white border border-[#E8EAE8] rounded-lg p-1 shadow-sm">
+            {['Month', 'Week', 'Day'].map((v) => (
+              <button
+                key={v}
+                onClick={() => setView(v)}
+                className={`px-4 py-1.5 text-sm font-medium rounded-md transition-all ${
+                  view === v 
+                    ? 'bg-[#F0C000] text-white shadow-sm' 
+                    : 'text-[#5C6560] hover:text-[#1A1F1B] hover:bg-[#FAFAFA]'
+                }`}
+              >
+                {v}
+              </button>
             ))}
           </div>
+          <button
+            onClick={openModal}
+            className="inline-flex items-center gap-2 bg-[#F0C000] text-white px-4 py-2.5 rounded-lg text-sm font-bold hover:bg-[#B8920A] transition-all shadow-md shadow-[#F0C000]/10 active:scale-95"
+          >
+            <FiPlus className="w-4 h-4" />
+            Add Event
+          </button>
+        </div>
+      </div>
 
-          <div className="calendar-grid">
-            {monthDays.map((d) => {
-              const key = format(d, 'yyyy-MM-dd')
-              const count = (eventsByDay.get(key) || []).length
-              const isSelected = isSameDay(d, selectedDay)
-              const isInMonth = d.getMonth() === cursorMonth.getMonth()
+      {/* Legend */}
+      <div className="flex items-center gap-6 mb-6">
+        {CATEGORIES.map((cat) => (
+          <div key={cat.label} className="flex items-center gap-2">
+            <div className={`w-2.5 h-2.5 rounded-full ${cat.dot}`} />
+            <span className="text-xs font-medium text-[#5C6560]">{cat.label}</span>
+          </div>
+        ))}
+      </div>
 
-              return (
-                <div
-                  key={key}
-                  className={`calendar-cell rounded-2xl border border-slate-200 bg-white hover:bg-slate-50 transition p-1 cursor-pointer flex flex-col overflow-hidden ${
-                    isSelected ? 'ring-2 ring-[#1B3E2A] border-[#1B3E2A]' : ''
-                  } ${isInMonth ? '' : 'opacity-60'}`}
-                  onClick={() => setSelectedDay(d)}
-                >
-                  <div className="flex flex-col h-full">
-                    <div className="flex justify-between items-start mb-0.5">
-                      <div className="text-[10px] font-semibold leading-none text-slate-900">{format(d, 'd')}</div>
-                      {count ? (
-                        <div className="rounded-full bg-[#1B3E2A] text-white text-[10px] font-semibold px-1.5 py-0.5 flex-shrink-0">
-                          {count}
-                        </div>
-                      ) : null}
+      {/* Calendar Card */}
+      <div className="bg-white rounded-2xl shadow-sm border border-[#E8EAE8] mb-6 overflow-hidden">
+        <div className="overflow-x-auto">
+          <div className="min-w-[1000px]">
+            <div className="grid grid-cols-7 bg-[#FAFAFA]">
+              {['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'].map((day) => (
+                <div key={day} className="calendar-day-header border-b border-r border-[#E8EAE8] last:border-r-0">{day}</div>
+              ))}
+            </div>
+            <div className="grid grid-cols-7 border-collapse">
+              {monthDays.map((date) => {
+                const dateKey = format(date, 'yyyy-MM-dd')
+                const dayEvents = eventsByDay.get(dateKey) || []
+                const isSelected = isSameDay(date, selectedDay)
+                const isCurrMonth = isSameMonth(date, cursorMonth)
+                const isTodayDate = isToday(date)
+
+                return (
+                  <div 
+                    key={dateKey} 
+                    onClick={() => setSelectedDay(date)}
+                    className={`calendar-cell border-b border-r border-[#E8EAE8] last:border-r-0 ${!isCurrMonth ? 'outside-month' : ''} ${isSelected ? 'bg-[#FFFAE8]' : ''}`}
+                  >
+                    <div className="flex justify-between items-start mb-2">
+                      <span className={`text-sm font-semibold w-7 h-7 flex items-center justify-center rounded-full ${
+                        isTodayDate ? 'bg-[#F0C000] text-white' : 'text-[#1A1F1B]'
+                      }`}>
+                        {format(date, 'd')}
+                      </span>
                     </div>
-                    <div className="text-[9px] text-slate-500 line-clamp-2 flex-1 text-left overflow-hidden">
-                      {(eventsByDay.get(key) || [])
-                        .slice(0, 2)
-                        .map((ev) => ev.title)
-                        .join(' · ')}
+                    <div className="space-y-1">
+                      {dayEvents.map((event) => {
+                        const cat = CATEGORIES[Math.floor(Math.random() * CATEGORIES.length)]
+                        return (
+                          <div key={event.id} className={`event-badge ${cat.color}`}>
+                            <FiClock className="w-2.5 h-2.5" />
+                            {event.title}
+                          </div>
+                        )
+                      })}
                     </div>
                   </div>
-                </div>
-              )
-            })}
+                )
+              })}
+            </div>
+          </div>
+        </div>
+      </div>
+
+      {/* Bottom Info Cards */}
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+        <div className="bg-white p-4 rounded-2xl border border-[#E8EAE8] shadow-sm flex items-center gap-4">
+          <div className="w-12 h-12 bg-[#F0F8F1] rounded-full flex items-center justify-center text-[#7EB88A]">
+            <FiClock className="w-6 h-6" />
+          </div>
+          <div>
+            <p className="text-[10px] font-bold text-[#9CA89F] uppercase tracking-wider">Next Event</p>
+            <p className="text-sm font-bold text-[#1A1F1B]">{nextEvent.title} ({nextEvent.time})</p>
           </div>
         </div>
 
-        <div className="rounded-3xl border border-slate-200 bg-white p-4 min-h-0 calendar-wrapper">
-          <div className="text-sm font-semibold text-slate-900 mb-1">{format(selectedDay, 'EEEE, MMM d')}</div>
-          <div className="text-[11px] text-slate-500 mb-3">{selectedEvents.length} event(s)</div>
+        <div className="bg-white p-4 rounded-2xl border border-[#E8EAE8] shadow-sm flex items-center gap-4">
+          <div className="w-12 h-12 bg-[#FFFAE8] rounded-full flex items-center justify-center text-[#F0C000]">
+            <FiUser className="w-6 h-6" />
+          </div>
+          <div>
+            <p className="text-[10px] font-bold text-[#9CA89F] uppercase tracking-wider">Coordinator</p>
+            <p className="text-sm font-bold text-[#1A1F1B]">{coordinator.name} ({coordinator.role})</p>
+          </div>
+        </div>
 
-          <div className="space-y-2 overflow-y-auto max-h-[55vh] pr-1">
-            {selectedEvents.map((ev) => {
-              const startAt = toDate(ev.startAt)
-              const timeLabel = startAt ? format(startAt, 'p') : ''
-
-              return (
-                <div key={ev.id} className="rounded-2xl border border-slate-200 bg-white px-3 py-3">
-                  <div className="flex items-start justify-between gap-3">
-                    <div className="min-w-0">
-                      <div className="text-sm font-semibold text-slate-900 truncate">{ev.title}</div>
-                      <div className="text-[11px] text-slate-500 mt-0.5">
-                        {timeLabel}
-                        {ev.timezone ? ` • ${ev.timezone}` : ''}
-                        {ev.rrule ? ' • recurring' : ''}
-                      </div>
-                      {ev.status === 'posted' ? (
-                        <div className="mt-1 inline-flex items-center rounded-full bg-emerald-50 border border-emerald-100 px-2 py-0.5 text-[10px] font-semibold text-emerald-700">
-                          Posted
-                        </div>
-                      ) : (
-                        <div className="mt-1 inline-flex items-center rounded-full bg-slate-50 border border-slate-200 px-2 py-0.5 text-[10px] font-semibold text-slate-700">
-                          Scheduled
-                        </div>
-                      )}
-                    </div>
-
-                    <button
-                      type="button"
-                      className="inline-flex items-center gap-1 rounded-xl border border-rose-200 bg-rose-50 px-2 py-1 text-[11px] font-semibold text-rose-700 hover:bg-rose-100"
-                      onClick={() => handleDelete(ev.id)}
-                      title="Delete event"
-                    >
-                      <FiTrash2 className="h-3.5 w-3.5" />
-                      Delete
-                    </button>
-                  </div>
-                </div>
-              )
-            })}
-
-            {selectedEvents.length === 0 ? (
-              <div className="text-[11px] text-slate-400">No events for this day.</div>
-            ) : null}
+        <div className="bg-white p-4 rounded-2xl border border-[#E8EAE8] shadow-sm flex items-center gap-4">
+          <div className="w-12 h-12 bg-[#FAFAFA] rounded-full flex items-center justify-center text-[#5C6560]">
+            <FiMapPin className="w-6 h-6" />
+          </div>
+          <div>
+            <p className="text-[10px] font-bold text-[#9CA89F] uppercase tracking-wider">Primary Venue</p>
+            <p className="text-sm font-bold text-[#1A1F1B]">{venue.name}</p>
           </div>
         </div>
       </div>
       
       <EventModal />
+      </div>
     </div>
   )
 }

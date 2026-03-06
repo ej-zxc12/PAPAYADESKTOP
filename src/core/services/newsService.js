@@ -30,7 +30,6 @@ function normalizeNewsItem(id, data) {
     content: raw.content || '',
     author: raw.author || '',
     category: raw.category || 'Featured',
-    article: raw.article || '',
     slug: raw.slug || '',
     date: dateValue || '',
     imageUrl: raw.imageUrl || '',
@@ -56,14 +55,13 @@ export const newsService = {
     return snap.docs.map((d) => normalizeNewsItem(d.id, d.data()))
   },
 
-  async add({ title, content, author, category, article, slug, imageFile }) {
+  async add({ title, content, author, category, slug, imageFile }) {
     const db = getFirebaseDb()
     const payload = {
       title,
       content,
       author: author || '',
       category: category || 'Featured',
-      article: article || '',
       slug: slug || '',
       date: new Date().toISOString(),
       imageUrl: '',
@@ -87,7 +85,7 @@ export const newsService = {
     return normalizeNewsItem(ref.id, payload)
   },
 
-  async update({ id, title, content, author, category, article, slug, imageFile, previousImagePath }) {
+  async update({ id, title, content, author, category, slug, imageFile, previousImagePath }) {
     const db = getFirebaseDb()
     const ref = doc(db, COLLECTION, String(id))
     const payload = {
@@ -95,7 +93,6 @@ export const newsService = {
       content,
       author: author || '',
       category: category || 'Featured',
-      article: article || '',
       slug: slug || '',
       updatedAt: serverTimestamp(),
     }
@@ -123,7 +120,6 @@ export const newsService = {
       content,
       author: author || '',
       category: category || 'Featured',
-      article: article || '',
       slug: slug || '',
       ...(uploaded ? { imageUrl: uploaded.url, imagePath: uploaded.path } : {}),
     }

@@ -1,5 +1,6 @@
 import React, { useEffect, useState } from 'react'
 import { newsService } from '../../../core/services/newsService'
+import { FiFileText, FiPlus, FiImage } from 'react-icons/fi'
 
 function formatNewsDate(value) {
   if (!value) return ''
@@ -31,7 +32,6 @@ function NewsManager() {
   const [content, setContent] = useState('')
   const [author, setAuthor] = useState('')
   const [category, setCategory] = useState('Featured')
-  const [article, setArticle] = useState('')
   const [slug, setSlug] = useState('')
   const [imageFile, setImageFile] = useState(null)
   const [imagePreviewUrl, setImagePreviewUrl] = useState('')
@@ -78,7 +78,6 @@ function NewsManager() {
     setContent('')
     setAuthor('')
     setCategory('Featured')
-    setArticle('')
     setSlug('')
     setImageFile(null)
     setImagePreviewUrl('')
@@ -94,7 +93,6 @@ function NewsManager() {
     setContent(item.content || '')
     setAuthor(item.author || '')
     setCategory(item.category || 'Featured')
-    setArticle(item.article || '')
     setSlug(item.slug || '')
     setSelectedImagePath(item.imagePath || '')
     setImageFile(null)
@@ -111,7 +109,6 @@ function NewsManager() {
     const trimmedContent = content.trim()
     const trimmedAuthor = author.trim()
     const trimmedCategory = String(category || '').trim() || 'Featured'
-    const trimmedArticle = article.trim()
     const trimmedSlug = slug.trim()
 
     if (!trimmedTitle || !trimmedContent) {
@@ -128,7 +125,6 @@ function NewsManager() {
         content: trimmedContent,
         author: trimmedAuthor,
         category: trimmedCategory,
-        article: trimmedArticle,
         slug: trimmedSlug,
         imageFile,
       })
@@ -152,7 +148,6 @@ function NewsManager() {
     const trimmedContent = content.trim()
     const trimmedAuthor = author.trim()
     const trimmedCategory = String(category || '').trim() || 'Featured'
-    const trimmedArticle = article.trim()
     const trimmedSlug = slug.trim()
 
     if (!trimmedTitle || !trimmedContent) {
@@ -170,7 +165,6 @@ function NewsManager() {
         content: trimmedContent,
         author: trimmedAuthor,
         category: trimmedCategory,
-        article: trimmedArticle,
         slug: trimmedSlug,
         imageFile,
         previousImagePath: selectedImagePath,
@@ -250,19 +244,26 @@ function NewsManager() {
   const isDeleteDisabled = isNewMode || isLoading
 
   return (
-    <div className="bg-white rounded-3xl shadow-sm p-5 flex flex-row gap-5 flex-1 overflow-hidden min-h-0">
-      <div className="w-1/2 flex flex-col gap-3 overflow-hidden">
-        <div className="flex items-center justify-between">
+    <div className="flex flex-col lg:flex-row gap-8 min-h-0 h-full">
+      {/* Left Column: News List */}
+      <div className="w-full lg:w-[450px] flex flex-col gap-4 overflow-hidden">
+        <div className="flex items-center justify-between px-2">
           <div>
-            <h2 className="text-base font-semibold text-slate-900">News Posts</h2>
-            <p className="text-xs text-slate-500">View and select existing news posts</p>
+            <h2 className="text-xl font-bold text-[#1A1F1B]">News Posts</h2>
+            <p className="text-sm text-[#5C6560]">Manage your website's news feed</p>
           </div>
-          <div className="text-xs text-slate-400">{sortedItems.length} items</div>
+          <div className="px-3 py-1 bg-[#F0F8F1] text-[#4A8058] rounded-full text-xs font-bold border border-[#D6EDD9]">
+            {sortedItems.length} Posts
+          </div>
         </div>
-        <div className="flex-1 overflow-y-auto rounded-2xl border border-slate-100 bg-slate-50/60 p-2">
+
+        <div className="flex-1 overflow-y-auto rounded-[32px] border border-[#E8EAE8] bg-white shadow-sm p-4 space-y-3">
           {sortedItems.length === 0 && (
-            <div className="h-full flex items-center justify-center text-xs text-slate-400">
-              No news posts yet.
+            <div className="h-full flex flex-col items-center justify-center text-center p-8 opacity-50">
+              <div className="w-16 h-16 bg-[#FAFAFA] rounded-3xl flex items-center justify-center mb-4">
+                <FiFileText className="w-8 h-8 text-[#9CA89F]" />
+              </div>
+              <p className="text-sm font-medium text-[#5C6560]">No news posts yet.</p>
             </div>
           )}
           {sortedItems.map((item) => {
@@ -272,27 +273,37 @@ function NewsManager() {
                 key={item.id}
                 type="button"
                 onClick={() => handleSelectItem(item.id)}
-                className={`w-full flex flex-col items-start text-left rounded-2xl px-3 py-2 mb-1 text-xs transition border
+                className={`w-full flex flex-col items-start text-left rounded-[24px] p-4 transition-all border
                   ${
                     isActive
-                      ? 'bg-white border-[#1B3E2A]/40 shadow-sm text-slate-900'
-                      : 'bg-white/60 border-transparent hover:bg-white hover:border-slate-200 text-slate-700'
+                      ? 'bg-[#FFFAE8] border-[#F0C000] shadow-md ring-4 ring-[#F0C000]/10'
+                      : 'bg-white border-[#E8EAE8] hover:border-[#F0C000]/40 hover:bg-[#FAFAFA] text-[#5C6560]'
                   }`}
               >
-                <div className="flex items-center justify-between w-full mb-0.5">
-                  <div className="font-semibold truncate mr-2">{item.title || '(Untitled)'}</div>
-                  <div className="text-[10px] text-slate-400 whitespace-nowrap ml-2">
+                <div className="flex items-center justify-between w-full mb-2">
+                  <span className={`px-2.5 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wider border ${
+                    isActive ? 'bg-[#F0C000] text-white border-[#F0C000]' : 'bg-[#FAFAFA] text-[#9CA89F] border-[#E8EAE8]'
+                  }`}>
+                    {item.category || 'General'}
+                  </span>
+                  <div className="text-[10px] font-bold text-[#9CA89F]">
                     {formatNewsDate(item.date)}
                   </div>
                 </div>
-                {item.author && (
-                  <div className="text-[11px] text-slate-500 mb-0.5">By {item.author}</div>
-                )}
+                <div className={`font-bold text-sm mb-1 line-clamp-1 ${isActive ? 'text-[#1A1F1B]' : 'text-[#1A1F1B]'}`}>
+                  {item.title || '(Untitled)'}
+                </div>
                 {item.content && (
-                  <div className="text-[11px] text-slate-500 line-clamp-2">
-                    {String(item.content).length > 140
-                      ? `${String(item.content).slice(0, 140)}...`
-                      : String(item.content)}
+                  <div className={`text-[11px] line-clamp-2 leading-relaxed ${isActive ? 'text-[#5C6560]' : 'text-[#9CA89F]'}`}>
+                    {String(item.content)}
+                  </div>
+                )}
+                {item.author && (
+                  <div className="mt-3 flex items-center gap-2">
+                    <div className="w-5 h-5 rounded-full bg-[#E8EAE8] flex items-center justify-center text-[10px] font-bold text-[#5C6560]">
+                      {item.author[0]}
+                    </div>
+                    <span className="text-[10px] font-bold text-[#5C6560] opacity-70">By {item.author}</span>
                   </div>
                 )}
               </button>
@@ -301,178 +312,186 @@ function NewsManager() {
         </div>
       </div>
 
-      <div className="w-1/2 flex flex-col gap-3 overflow-y-auto min-h-0 pr-1">
-        <div>
-          <h2 className="text-base font-semibold text-slate-900">Add / Edit News</h2>
-          <p className="text-xs text-slate-500">Fill out the form and use the buttons below to manage posts</p>
+      {/* Right Column: Editor */}
+      <div className="flex-1 flex flex-col gap-4 overflow-y-auto min-h-0 pr-2">
+        <div className="flex items-center justify-between px-2">
+          <div>
+            <h2 className="text-xl font-bold text-[#1A1F1B]">{isNewMode ? 'Create New Post' : 'Edit Post'}</h2>
+            <p className="text-sm text-[#5C6560]">{isNewMode ? 'Compose your latest update' : 'Update the details of your article'}</p>
+          </div>
+          {!isNewMode && (
+            <button 
+              onClick={handleAddMode}
+              className="px-4 py-2 bg-white border border-[#E8EAE8] text-[#1A1F1B] rounded-xl text-xs font-bold hover:bg-[#FAFAFA] transition-all shadow-sm active:scale-95 flex items-center gap-2"
+            >
+              <FiPlus className="w-4 h-4" />
+              New Post
+            </button>
+          )}
         </div>
 
-        <div className="space-y-3">
-          <div>
-            <label className="block text-xs font-medium text-slate-700 mb-1" htmlFor="news-title">
-              Title
-            </label>
-            <input
-              id="news-title"
-              type="text"
-              value={title}
-              onChange={(event) => setTitle(event.target.value)}
-              className="w-full rounded-2xl border border-slate-200 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#1B3E2A] focus:border-transparent"
-              placeholder="Enter news title"
-            />
-          </div>
-
-          <div>
-            <label className="block text-xs font-medium text-slate-700 mb-1" htmlFor="news-slug">
-              Slug (URL identifier)
-            </label>
-            <input
-              id="news-slug"
-              type="text"
-              value={slug}
-              onChange={(event) => setSlug(event.target.value)}
-              className="w-full rounded-2xl border border-slate-200 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#1B3E2A] focus:border-transparent"
-              placeholder="e.g., my-news-article (auto-generated from title)"
-              disabled={!selectedId} // Allow editing only when editing existing item
-            />
-            {!selectedId && (
-              <p className="text-xs text-slate-500 mt-1">Slug auto-generated from title. You can edit it when updating an existing article.</p>
-            )}
-          </div>
-
-          <div>
-            <label className="block text-xs font-medium text-slate-700 mb-1" htmlFor="news-author">
-              Author
-            </label>
-            <input
-              id="news-author"
-              type="text"
-              value={author}
-              onChange={(event) => setAuthor(event.target.value)}
-              className="w-full rounded-2xl border border-slate-200 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#1B3E2A] focus:border-transparent"
-              placeholder="Optional author name"
-            />
-          </div>
-
-          <div>
-            <label className="block text-xs font-medium text-slate-700 mb-1" htmlFor="news-content">
-              Content
-            </label>
-            <textarea
-              id="news-content"
-              value={content}
-              onChange={(event) => setContent(event.target.value)}
-              className="w-full min-h-[160px] rounded-2xl border border-slate-200 px-3 py-2 text-sm resize-y focus:outline-none focus:ring-2 focus:ring-[#1B3E2A] focus:border-transparent"
-              placeholder="Write the full news content here"
-            />
-          </div>
-
-          <div>
-            <label className="block text-xs font-medium text-slate-700 mb-1" htmlFor="news-article">
-              Article
-            </label>
-            <textarea
-              id="news-article"
-              value={article}
-              onChange={(event) => setArticle(event.target.value)}
-              className="w-full min-h-[200px] rounded-2xl border border-slate-200 px-3 py-2 text-sm resize-y focus:outline-none focus:ring-2 focus:ring-[#1B3E2A] focus:border-transparent"
-              placeholder="Write the full article content here (for website 'Read more' page)"
-            />
-          </div>
-
-          <div>
-            <label className="block text-xs font-medium text-slate-700 mb-1" htmlFor="news-category">
-              Category
-            </label>
-            <select
-              id="news-category"
-              value={category}
-              onChange={(event) => setCategory(event.target.value)}
-              className="w-full rounded-2xl border border-slate-200 px-3 py-2 text-sm bg-white focus:outline-none focus:ring-2 focus:ring-[#1B3E2A] focus:border-transparent"
-              disabled={isLoading}
-            >
-              <option value="Featured">Featured</option>
-              <option value="Cultural">Cultural</option>
-              <option value="Academic">Academic</option>
-              <option value="Sports">Sports</option>
-            </select>
-          </div>
-
-          <div>
-            <label className="block text-xs font-medium text-slate-700 mb-1" htmlFor="news-image">
-              Image
-            </label>
-            <input
-              id="news-image"
-              type="file"
-              accept="image/*"
-              onChange={handleImageChange}
-              className="w-full rounded-2xl border border-slate-200 px-3 py-2 text-sm bg-white focus:outline-none focus:ring-2 focus:ring-[#1B3E2A] focus:border-transparent"
-              disabled={isLoading}
-            />
-            {imagePreviewUrl && (
-              <div className="mt-2 rounded-2xl border border-slate-200 bg-slate-50/60 p-2">
-                <img
-                  src={imagePreviewUrl}
-                  alt="News preview"
-                  className="w-full max-h-48 object-contain rounded-xl bg-white"
+        <div className="bg-white rounded-[32px] border border-[#E8EAE8] shadow-sm overflow-hidden flex flex-col">
+          <div className="p-8 space-y-6">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+              <div className="space-y-2">
+                <label className="text-[10px] font-bold text-[#9CA89F] uppercase tracking-wider ml-1">Article Title</label>
+                <input
+                  type="text"
+                  value={title}
+                  onChange={(event) => setTitle(event.target.value)}
+                  className="w-full rounded-2xl border border-[#E8EAE8] bg-[#FAFAFA] px-5 py-3 text-sm font-bold text-[#1A1F1B] focus:outline-none focus:ring-2 focus:ring-[#F0C000] focus:bg-white transition-all"
+                  placeholder="Enter a catchy title..."
                 />
               </div>
-            )}
+
+              <div className="space-y-2">
+                <label className="text-[10px] font-bold text-[#9CA89F] uppercase tracking-wider ml-1">Author Name</label>
+                <input
+                  type="text"
+                  value={author}
+                  onChange={(event) => setAuthor(event.target.value)}
+                  className="w-full rounded-2xl border border-[#E8EAE8] bg-[#FAFAFA] px-5 py-3 text-sm font-bold text-[#1A1F1B] focus:outline-none focus:ring-2 focus:ring-[#F0C000] focus:bg-white transition-all"
+                  placeholder="Optional author name"
+                />
+              </div>
+            </div>
+
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+              <div className="space-y-2">
+                <label className="text-[10px] font-bold text-[#9CA89F] uppercase tracking-wider ml-1">Category</label>
+                <select
+                  value={category}
+                  onChange={(event) => setCategory(event.target.value)}
+                  className="w-full rounded-2xl border border-[#E8EAE8] bg-[#FAFAFA] px-5 py-3 text-sm font-bold text-[#1A1F1B] focus:outline-none focus:ring-2 focus:ring-[#F0C000] focus:bg-white transition-all appearance-none"
+                  disabled={isLoading}
+                >
+                  <option value="Featured">Featured News</option>
+                  <option value="Cultural">Cultural Events</option>
+                  <option value="Academic">Academic Updates</option>
+                  <option value="Sports">Sports News</option>
+                </select>
+              </div>
+
+              <div className="space-y-2">
+                <label className="text-[10px] font-bold text-[#9CA89F] uppercase tracking-wider ml-1">URL Slug</label>
+                <input
+                  type="text"
+                  value={slug}
+                  onChange={(event) => setSlug(event.target.value)}
+                  className="w-full rounded-2xl border border-[#E8EAE8] bg-[#FAFAFA] px-5 py-3 text-sm font-medium text-[#5C6560] focus:outline-none focus:ring-2 focus:ring-[#F0C000] focus:bg-white transition-all disabled:opacity-50"
+                  placeholder="auto-generated-slug"
+                  disabled={!selectedId}
+                />
+              </div>
+            </div>
+
+            <div className="space-y-2">
+              <label className="text-[10px] font-bold text-[#9CA89F] uppercase tracking-wider ml-1">Post Content</label>
+              <textarea
+                value={content}
+                onChange={(event) => setContent(event.target.value)}
+                className="w-full min-h-[240px] rounded-2xl border border-[#E8EAE8] bg-[#FAFAFA] px-5 py-4 text-sm font-medium leading-relaxed text-[#5C6560] focus:outline-none focus:ring-2 focus:ring-[#F0C000] focus:bg-white transition-all resize-none"
+                placeholder="Share your story with the community..."
+              />
+            </div>
+
+            <div className="space-y-4">
+              <label className="text-[10px] font-bold text-[#9CA89F] uppercase tracking-wider ml-1">Cover Image</label>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-6 items-start">
+                <div className="relative group">
+                  <input
+                    type="file"
+                    id="news-image-input"
+                    accept="image/*"
+                    onChange={handleImageChange}
+                    className="hidden"
+                    disabled={isLoading}
+                  />
+                  <label 
+                    htmlFor="news-image-input"
+                    className="flex flex-col items-center justify-center w-full h-48 rounded-3xl border-2 border-dashed border-[#E8EAE8] bg-[#FAFAFA] hover:bg-white hover:border-[#F0C000]/40 transition-all cursor-pointer group"
+                  >
+                    <div className="flex flex-col items-center justify-center pt-5 pb-6">
+                      <FiImage className="w-10 h-10 text-[#9CA89F] mb-3 group-hover:text-[#F0C000] transition-colors" />
+                      <p className="text-sm font-bold text-[#5C6560]">Click to upload image</p>
+                      <p className="text-[10px] text-[#9CA89F] mt-1 uppercase font-bold tracking-tighter">PNG, JPG or WEBP (Max 5MB)</p>
+                    </div>
+                  </label>
+                </div>
+
+                {imagePreviewUrl ? (
+                  <div className="relative rounded-3xl border border-[#E8EAE8] bg-[#FAFAFA] p-3 h-48 overflow-hidden flex items-center justify-center group">
+                    <img
+                      src={imagePreviewUrl}
+                      alt="News preview"
+                      className="w-full h-full object-cover rounded-2xl bg-white transition-transform duration-500 group-hover:scale-105"
+                    />
+                    <div className="absolute inset-0 bg-[#1A1F1B]/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center rounded-2xl">
+                      <p className="text-white text-xs font-bold uppercase tracking-widest">Preview Mode</p>
+                    </div>
+                  </div>
+                ) : (
+                  <div className="h-48 rounded-3xl border border-[#E8EAE8] bg-[#FAFAFA] flex items-center justify-center">
+                    <p className="text-[10px] font-bold text-[#9CA89F] uppercase tracking-widest">No Image Selected</p>
+                  </div>
+                )}
+              </div>
+            </div>
+          </div>
+
+          {/* Editor Footer Actions */}
+          <div className="px-8 py-6 bg-[#FAFAFA] border-t border-[#E8EAE8] flex items-center justify-between">
+            <div className="flex items-center gap-2">
+              <button
+                type="button"
+                onClick={resetForm}
+                disabled={isLoading}
+                className="rounded-xl border border-[#E8EAE8] bg-white px-6 py-2.5 text-xs font-bold text-[#5C6560] hover:bg-[#FAFAFA] transition-all active:scale-95 disabled:opacity-60"
+              >
+                Reset Form
+              </button>
+              {!isNewMode && (
+                <button
+                  type="button"
+                  onClick={handleDelete}
+                  disabled={isDeleteDisabled}
+                  className="rounded-xl bg-[#D97070]/10 px-6 py-2.5 text-xs font-bold text-[#D97070] hover:bg-[#D97070]/20 transition-all active:scale-95 disabled:opacity-60"
+                >
+                  Delete Post
+                </button>
+              )}
+            </div>
+
+            <div className="flex items-center gap-3">
+              {isNewMode ? (
+                <button
+                  type="button"
+                  onClick={handleSaveNew}
+                  disabled={isSaveDisabled}
+                  className="rounded-xl bg-[#F0C000] px-8 py-2.5 text-xs font-bold text-white hover:bg-[#B8920A] shadow-lg shadow-[#F0C000]/20 transition-all active:scale-95 disabled:opacity-60"
+                >
+                  {isLoading ? 'Publishing...' : 'Publish Post'}
+                </button>
+              ) : (
+                <button
+                  type="button"
+                  onClick={handleUpdateExisting}
+                  disabled={isUpdateDisabled}
+                  className="rounded-xl bg-[#1A1F1B] px-8 py-2.5 text-xs font-bold text-white hover:bg-black shadow-lg shadow-black/10 transition-all active:scale-95 disabled:opacity-60"
+                >
+                  {isLoading ? 'Updating...' : 'Update Article'}
+                </button>
+              )}
+            </div>
           </div>
         </div>
 
         {error && (
-          <div className="text-[11px] text-rose-600 bg-rose-50 border border-rose-100 rounded-2xl px-3 py-2">
-            {error}
+          <div className="mt-2 bg-[#D97070]/5 border border-[#D97070]/10 rounded-2xl px-4 py-3 flex items-center gap-3">
+            <div className="w-2 h-2 rounded-full bg-[#D97070] animate-pulse" />
+            <span className="text-xs font-bold text-[#D97070]">{error}</span>
           </div>
         )}
-
-        <div className="mt-2 flex flex-wrap items-center gap-2">
-          <button
-            type="button"
-            onClick={handleAddMode}
-            disabled={isLoading}
-            className="rounded-2xl border border-slate-200 px-3 py-1.5 text-xs font-medium text-slate-700 hover:bg-slate-50 disabled:opacity-60 disabled:cursor-not-allowed"
-          >
-            Add
-          </button>
-          <button
-            type="button"
-            onClick={handleSaveNew}
-            disabled={isSaveDisabled}
-            className="rounded-2xl border border-[#1B3E2A] bg-[#1B3E2A] px-3 py-1.5 text-xs font-medium text-white hover:bg-[#163021] disabled:opacity-60 disabled:cursor-not-allowed"
-          >
-            Save
-          </button>
-          <button
-            type="button"
-            onClick={handleUpdateExisting}
-            disabled={isUpdateDisabled}
-            className="rounded-2xl border border-amber-500 bg-amber-500/90 px-3 py-1.5 text-xs font-medium text-slate-900 hover:bg-amber-500 disabled:opacity-60 disabled:cursor-not-allowed"
-          >
-            Update
-          </button>
-          <button
-            type="button"
-            onClick={handleDelete}
-            disabled={isDeleteDisabled}
-            className="rounded-2xl border border-rose-500 bg-rose-500/90 px-3 py-1.5 text-xs font-medium text-white hover:bg-rose-500 disabled:opacity-60 disabled:cursor-not-allowed"
-          >
-            Delete
-          </button>
-          <button
-            type="button"
-            onClick={resetForm}
-            disabled={isLoading}
-            className="rounded-2xl border border-slate-200 px-3 py-1.5 text-xs font-medium text-slate-600 hover:bg-slate-50 disabled:opacity-60 disabled:cursor-not-allowed"
-          >
-            Clear
-          </button>
-          {selectedId && (
-            <span className="ml-auto text-[11px] text-slate-400">Editing ID: {selectedId}</span>
-          )}
-        </div>
       </div>
     </div>
   )

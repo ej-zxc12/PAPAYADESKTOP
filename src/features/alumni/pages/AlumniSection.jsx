@@ -21,6 +21,18 @@ export default function AlumniSection({ alumni }) {
   const [deleteError, setDeleteError] = useState('')
   const [deletingDocId, setDeletingDocId] = useState('')
 
+  // Edit state
+  const [isEditOpen, setIsEditOpen] = useState(false)
+  const [editingAlumni, setEditingAlumni] = useState(null)
+  const [editName, setEditName] = useState('')
+  const [editBatchYear, setEditBatchYear] = useState('')
+  const [editAge, setEditAge] = useState('')
+  const [editEducationalStatus, setEditEducationalStatus] = useState('')
+  const [editNameOfSchool, setEditNameOfSchool] = useState('')
+  const [editImageFile, setEditImageFile] = useState(null)
+  const [editImagePreviewUrl, setEditImagePreviewUrl] = useState('')
+  const [isUpdating, setIsUpdating] = useState(false)
+
   // Add custom styles for proper grid layout
   useEffect(() => {
     const style = document.createElement('style')
@@ -90,9 +102,9 @@ export default function AlumniSection({ alumni }) {
 
     return (
       <div
-        className={`rounded-full bg-white ring-2 ring-[#1B3E2A]/70 shadow-sm flex items-center justify-center ${sizeClass}`}
+        className={`rounded-full bg-white ring-2 ring-[#7EB88A]/70 shadow-sm flex items-center justify-center ${sizeClass}`}
       >
-        <div className="h-[calc(100%-10px)] w-[calc(100%-10px)] rounded-full bg-slate-100 text-slate-700 font-semibold flex items-center justify-center">
+        <div className="h-[calc(100%-10px)] w-[calc(100%-10px)] rounded-full bg-[#FAFAFA] text-[#1A1F1B] font-semibold flex items-center justify-center">
           {String(label || '?').slice(0, 1).toUpperCase()}
         </div>
       </div>
@@ -100,14 +112,14 @@ export default function AlumniSection({ alumni }) {
   }
 
   const AlumniCard = ({ alumniItem }) => (
-    <div className="group w-[250px] h-[280px] rounded-3xl border border-slate-200 bg-white shadow-sm transition hover:shadow-md hover:-translate-y-0.5 flex flex-col">
+    <div className="group w-[250px] h-[280px] rounded-3xl border border-[#E8EAE8] bg-white shadow-sm transition hover:shadow-md hover:-translate-y-0.5 flex flex-col">
       <div className="p-5 flex flex-col items-center text-center gap-3 flex-1">
         <div>
           {alumniItem.imageUrl ? (
             <img
               src={alumniItem.imageUrl}
               alt={alumniItem.name}
-              className="h-20 w-20 rounded-full object-cover bg-white ring-2 ring-[#1B3E2A]/70 shadow-sm"
+              className="h-20 w-20 rounded-full object-cover bg-white ring-2 ring-[#7EB88A]/70 shadow-sm"
             />
           ) : (
             <Avatar label={alumniItem.name} size="md" />
@@ -115,17 +127,25 @@ export default function AlumniSection({ alumni }) {
         </div>
 
         <div className="w-full flex-1 flex flex-col">
-          <div className="text-sm font-semibold text-slate-900 leading-snug">{alumniItem.name}</div>
-          <div className="text-[11px] text-slate-500 mt-1">Batch {alumniItem.batchYear || 'N/A'}</div>
-          <div className="text-[11px] text-slate-500 mt-0.5">Age: {alumniItem.age || 'N/A'}</div>
-          <div className="text-[11px] text-slate-500 mt-0.5 truncate">{alumniItem.educationalStatus || 'No educational status'}</div>
-          <div className="text-[11px] text-slate-500 mt-0.5 truncate">{alumniItem.nameOfSchool || 'No school'}</div>
+          <div className="text-sm font-semibold text-[#1A1F1B] leading-snug">{alumniItem.name}</div>
+          <div className="text-[11px] text-[#5C6560] mt-1">Batch {alumniItem.batchYear || 'N/A'}</div>
+          <div className="text-[11px] text-[#5C6560] mt-0.5">Age: {alumniItem.age || 'N/A'}</div>
+          <div className="text-[11px] text-[#5C6560] mt-0.5 truncate">{alumniItem.educationalStatus || 'No educational status'}</div>
+          <div className="text-[11px] text-[#5C6560] mt-0.5 truncate">{alumniItem.nameOfSchool || 'No school'}</div>
         </div>
 
         <div className="w-full flex items-center justify-center gap-2 opacity-100 sm:opacity-0 sm:group-hover:opacity-100 transition-opacity">
           <button
             type="button"
-            className="inline-flex items-center gap-1.5 rounded-xl border border-rose-200 bg-rose-50 px-3 py-1.5 text-[11px] font-semibold text-rose-700 hover:bg-rose-100 disabled:opacity-60"
+            className="inline-flex items-center gap-1.5 rounded-xl border border-[#E8EAE8] bg-[#FAFAFA] px-3 py-1.5 text-[11px] font-bold text-[#5C6560] hover:bg-[#E8EAE8] transition-all active:scale-95"
+            onClick={() => handleEdit(alumniItem)}
+            title="Edit alumni"
+          >
+            Edit
+          </button>
+          <button
+            type="button"
+            className="inline-flex items-center gap-1.5 rounded-xl border border-[#D97070]/20 bg-[#D97070]/5 px-3 py-1.5 text-[11px] font-bold text-[#D97070] hover:bg-[#D97070]/10 transition-all active:scale-95 disabled:opacity-60"
             onClick={() => handleDelete(alumniItem)}
             disabled={deletingDocId === String(alumniItem._docId)}
             title="Delete alumni"
@@ -199,6 +219,86 @@ export default function AlumniSection({ alumni }) {
     }
   }
 
+  const handleEdit = (alumniItem) => {
+    setEditingAlumni(alumniItem)
+    setEditName(alumniItem.name || '')
+    setEditBatchYear(String(alumniItem.batchYear || ''))
+    setEditAge(String(alumniItem.age || ''))
+    setEditEducationalStatus(alumniItem.educationalStatus || '')
+    setEditNameOfSchool(alumniItem.nameOfSchool || '')
+    setEditImageFile(null)
+    setEditImagePreviewUrl(alumniItem.imageUrl || '')
+    setIsEditOpen(true)
+    setError('')
+  }
+
+  const handleEditImageChange = (e) => {
+    const file = e.target.files[0]
+    if (file) {
+      setEditImageFile(file)
+      const reader = new FileReader()
+      reader.onloadend = () => {
+        setEditImagePreviewUrl(reader.result)
+      }
+      reader.readAsDataURL(file)
+    }
+  }
+
+  const handleUpdateAlumni = async () => {
+    const trimmedName = editName.trim()
+    const trimmedBatchYear = String(editBatchYear).trim()
+    const trimmedAge = editAge.trim()
+
+    if (!trimmedName || !trimmedBatchYear || !trimmedAge) {
+      setError('Full name, batch year, and age are required.')
+      return
+    }
+
+    const batchYearNumber = Number(trimmedBatchYear)
+    const ageNumber = Number(trimmedAge)
+    if (!Number.isFinite(batchYearNumber) || !Number.isFinite(ageNumber)) {
+      setError('Batch year and age must be numbers.')
+      return
+    }
+
+    setIsUpdating(true)
+    setError('')
+
+    try {
+      const updated = await alumniService.update(editingAlumni._docId || editingAlumni.id, {
+        name: trimmedName,
+        batchYear: batchYearNumber,
+        age: ageNumber,
+        educationalStatus: editEducationalStatus.trim(),
+        nameOfSchool: editNameOfSchool.trim(),
+        imageFile: editImageFile,
+      })
+
+      setItems((prev) => 
+        prev.map((item) => 
+          (item._docId || item.id) === (editingAlumni._docId || editingAlumni.id) 
+            ? updated 
+            : item
+        )
+      )
+      
+      setIsEditOpen(false)
+      setEditingAlumni(null)
+      // Reset edit form
+      setEditName('')
+      setEditBatchYear('')
+      setEditAge('')
+      setEditEducationalStatus('')
+      setEditNameOfSchool('')
+      setEditImageFile(null)
+      setEditImagePreviewUrl('')
+    } catch (e) {
+      setError(e?.message || 'Failed to update alumni. Please try again.')
+    } finally {
+      setIsUpdating(false)
+    }
+  }
+
   const handleAddAlumni = async () => {
     const trimmedName = newName.trim()
     const trimmedBatchYear = String(newBatchYear).trim()
@@ -243,8 +343,8 @@ export default function AlumniSection({ alumni }) {
     <div className="bg-white rounded-3xl shadow-sm p-5 flex flex-col gap-4 min-h-0 max-w-full overflow-hidden">
       <div className="flex items-start justify-between gap-3 flex-wrap">
         <div>
-          <h2 className="text-base font-semibold text-slate-900">Alumni</h2>
-          <p className="text-xs text-slate-500">School alumni directory</p>
+          <h2 className="text-base font-semibold text-[#1A1F1B]">Alumni</h2>
+          <p className="text-xs text-[#5C6560]">School alumni directory</p>
         </div>
         <button
           type="button"
@@ -252,7 +352,7 @@ export default function AlumniSection({ alumni }) {
             resetForm()
             setIsAddOpen(true)
           }}
-          className="rounded-2xl border border-[#1B3E2A] bg-[#1B3E2A] px-4 py-2 text-xs font-semibold text-white hover:bg-[#163021]"
+          className="rounded-2xl bg-[#F0C000] px-4 py-2 text-xs font-bold text-white hover:bg-[#B8920A] shadow-md shadow-[#F0C000]/10 transition-all active:scale-95"
         >
           Add Alumni
         </button>
@@ -264,14 +364,14 @@ export default function AlumniSection({ alumni }) {
           value={query}
           onChange={(e) => setQuery(e.target.value)}
           placeholder={uiText.alumni.searchPlaceholder}
-          className="w-full sm:flex-1 rounded-2xl border border-slate-200 px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-[#1B3E2A] focus:border-transparent"
+          className="w-full sm:flex-1 rounded-2xl border border-[#E8EAE8] px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-[#F0C000] focus:border-transparent"
         />
         <div className="w-full sm:w-auto sm:ml-auto flex items-center gap-2 justify-between sm:justify-end">
-          <label className="text-xs font-medium text-slate-600">{uiText.alumni.filterYearLabel}</label>
+          <label className="text-xs font-medium text-[#5C6560]">{uiText.alumni.filterYearLabel}</label>
           <select
             value={year}
             onChange={(e) => setYear(e.target.value)}
-            className="w-[160px] rounded-2xl border border-slate-200 bg-white px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#1B3E2A]"
+            className="w-[160px] rounded-2xl border border-[#E8EAE8] bg-white px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#F0C000]"
           >
             <option value="">{uiText.alumni.allYears}</option>
             {years.map((y) => (
@@ -284,11 +384,11 @@ export default function AlumniSection({ alumni }) {
       </div>
 
       {deleteError ? (
-        <div className="text-[11px] text-rose-600 bg-rose-50 border border-rose-100 rounded-2xl px-3 py-2">{deleteError}</div>
+        <div className="text-[11px] text-[#D97070] bg-[#D97070]/5 border border-[#D97070]/10 rounded-2xl px-3 py-2">{deleteError}</div>
       ) : null}
 
       {filtered.length === 0 ? (
-        <div className="rounded-3xl border border-slate-200 bg-white px-4 py-10 text-center text-slate-500 text-sm">
+        <div className="rounded-3xl border border-[#E8EAE8] bg-white px-4 py-10 text-center text-[#5C6560] text-sm">
           {uiText.alumni.noResults}
         </div>
       ) : (
@@ -296,8 +396,8 @@ export default function AlumniSection({ alumni }) {
           {groupedByYear.map((group) => (
             <div key={group.year} className="flex flex-col gap-3">
               <div className="flex items-end justify-between gap-3">
-                <h3 className="text-sm font-semibold text-slate-900">Batch {group.year}</h3>
-                <div className="text-[11px] text-slate-400">{group.items.length} alumni</div>
+                <h3 className="text-sm font-semibold text-[#1A1F1B]">Batch {group.year}</h3>
+                <div className="text-[11px] text-[#9CA89F]">{group.items.length} alumni</div>
               </div>
               <div className="alumni-container">
                 {group.items.map((a) => (
@@ -317,16 +417,16 @@ export default function AlumniSection({ alumni }) {
             onClick={() => setIsAddOpen(false)}
             aria-label="Close modal"
           />
-          <div className="relative z-10 w-full max-w-2xl bg-white rounded-3xl shadow-xl border border-slate-200 overflow-hidden">
-            <div className="px-5 py-4 border-b border-slate-200 flex items-center justify-between gap-3">
+          <div className="relative z-10 w-full max-w-2xl bg-white rounded-3xl shadow-xl border border-[#E8EAE8] overflow-hidden">
+            <div className="px-5 py-4 border-b border-[#E8EAE8] flex items-center justify-between gap-3">
               <div>
-                <div className="text-sm font-semibold text-slate-900">Add Alumni</div>
-                <div className="text-xs text-slate-500">Fill out the form and save</div>
+                <div className="text-sm font-semibold text-[#1A1F1B]">Add Alumni</div>
+                <div className="text-xs text-[#5C6560]">Fill out the form and save</div>
               </div>
               <button
                 type="button"
                 onClick={() => setIsAddOpen(false)}
-                className="rounded-2xl border border-slate-200 px-3 py-1.5 text-xs font-medium text-slate-700 hover:bg-slate-50"
+                className="rounded-2xl border border-[#E8EAE8] px-3 py-1.5 text-xs font-medium text-[#5C6560] hover:bg-[#FAFAFA]"
               >
                 Close
               </button>
@@ -335,77 +435,77 @@ export default function AlumniSection({ alumni }) {
             <div className="px-5 py-4 max-h-[75vh] overflow-y-auto">
               <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
                 <div>
-                  <label className="block text-xs font-medium text-slate-700 mb-1" htmlFor="alumni-name">Full Name</label>
+                  <label className="block text-xs font-medium text-[#5C6560] mb-1" htmlFor="alumni-name">Full Name</label>
                   <input
                     id="alumni-name"
                     type="text"
                     value={newName}
                     onChange={(e) => setNewName(e.target.value)}
-                    className="w-full rounded-2xl border border-slate-200 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#1B3E2A] focus:border-transparent"
+                    className="w-full rounded-2xl border border-[#E8EAE8] px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#F0C000] focus:border-transparent"
                     placeholder="Juan Dela Cruz"
                     disabled={isSaving}
                   />
                 </div>
                 <div>
-                  <label className="block text-xs font-medium text-slate-700 mb-1" htmlFor="alumni-batch">Batch Year</label>
+                  <label className="block text-xs font-medium text-[#5C6560] mb-1" htmlFor="alumni-batch">Batch Year</label>
                   <input
                     id="alumni-batch"
                     type="number"
                     value={newBatchYear}
                     onChange={(e) => setNewBatchYear(e.target.value)}
-                    className="w-full rounded-2xl border border-slate-200 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#1B3E2A] focus:border-transparent"
+                    className="w-full rounded-2xl border border-[#E8EAE8] px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#F0C000] focus:border-transparent"
                     placeholder="2026"
                     disabled={isSaving}
                   />
                 </div>
                 <div>
-                  <label className="block text-xs font-medium text-slate-700 mb-1" htmlFor="alumni-age">Age</label>
+                  <label className="block text-xs font-medium text-[#5C6560] mb-1" htmlFor="alumni-age">Age</label>
                   <input
                     id="alumni-age"
                     type="number"
                     value={newAge}
                     onChange={(e) => setNewAge(e.target.value)}
-                    className="w-full rounded-2xl border border-slate-200 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#1B3E2A] focus:border-transparent"
+                    className="w-full rounded-2xl border border-[#E8EAE8] px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#F0C000] focus:border-transparent"
                     placeholder="25"
                     disabled={isSaving}
                   />
                 </div>
                 <div>
-                  <label className="block text-xs font-medium text-slate-700 mb-1" htmlFor="alumni-educational-status">Educational Status</label>
+                  <label className="block text-xs font-medium text-[#5C6560] mb-1" htmlFor="alumni-educational-status">Educational Status</label>
                   <input
                     id="alumni-educational-status"
                     type="text"
                     value={newEducationalStatus}
                     onChange={(e) => setNewEducationalStatus(e.target.value)}
-                    className="w-full rounded-2xl border border-slate-200 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#1B3E2A] focus:border-transparent"
+                    className="w-full rounded-2xl border border-[#E8EAE8] px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#F0C000] focus:border-transparent"
                     placeholder="College Graduate, High School, etc."
                     disabled={isSaving}
                   />
                 </div>
                 <div className="md:col-span-2">
-                  <label className="block text-xs font-medium text-slate-700 mb-1" htmlFor="alumni-school">Name of School</label>
+                  <label className="block text-xs font-medium text-[#5C6560] mb-1" htmlFor="alumni-school">Name of School</label>
                   <input
                     id="alumni-school"
                     type="text"
                     value={newNameOfSchool}
                     onChange={(e) => setNewNameOfSchool(e.target.value)}
-                    className="w-full rounded-2xl border border-slate-200 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#1B3E2A] focus:border-transparent"
+                    className="w-full rounded-2xl border border-[#E8EAE8] px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#F0C000] focus:border-transparent"
                     placeholder="University of the Philippines"
                     disabled={isSaving}
                   />
                 </div>
                 <div className="md:col-span-2">
-                  <label className="block text-xs font-medium text-slate-700 mb-1" htmlFor="alumni-image">Image</label>
+                  <label className="block text-xs font-medium text-[#5C6560] mb-1" htmlFor="alumni-image">Image</label>
                   <input
                     id="alumni-image"
                     type="file"
                     accept="image/*"
                     onChange={handleImageChange}
-                    className="w-full rounded-2xl border border-slate-200 px-3 py-2 text-sm bg-white focus:outline-none focus:ring-2 focus:ring-[#1B3E2A] focus:border-transparent"
+                    className="w-full rounded-2xl border border-[#E8EAE8] px-3 py-2 text-sm bg-white focus:outline-none focus:ring-2 focus:ring-[#F0C000] focus:border-transparent"
                     disabled={isSaving}
                   />
                   {imagePreviewUrl && (
-                    <div className="mt-2 rounded-2xl border border-slate-200 bg-slate-50/60 p-2">
+                    <div className="mt-2 rounded-2xl border border-[#E8EAE8] bg-[#FAFAFA] p-2">
                       <img src={imagePreviewUrl} alt="Alumni preview" className="w-full max-h-64 object-contain rounded-xl bg-white" />
                     </div>
                   )}
@@ -413,18 +513,18 @@ export default function AlumniSection({ alumni }) {
               </div>
 
               {error && (
-                <div className="mt-3 text-[11px] text-rose-600 bg-rose-50 border border-rose-100 rounded-2xl px-3 py-2">
+                <div className="mt-3 text-[11px] text-[#D97070] bg-[#D97070]/5 border border-[#D97070]/10 rounded-2xl px-3 py-2">
                   {error}
                 </div>
               )}
             </div>
 
-            <div className="px-5 py-4 border-t border-slate-200 flex items-center justify-end gap-2">
+            <div className="px-5 py-4 border-t border-[#E8EAE8] flex items-center justify-end gap-2">
               <button
                 type="button"
                 onClick={() => setIsAddOpen(false)}
                 disabled={isSaving}
-                className="rounded-2xl border border-slate-200 px-4 py-2 text-xs font-semibold text-slate-700 hover:bg-slate-50 disabled:opacity-60 disabled:cursor-not-allowed"
+                className="rounded-2xl border border-[#E8EAE8] px-4 py-2 text-xs font-bold text-[#5C6560] hover:bg-[#FAFAFA] transition-all active:scale-95 disabled:opacity-60 disabled:cursor-not-allowed"
               >
                 Cancel
               </button>
@@ -432,9 +532,141 @@ export default function AlumniSection({ alumni }) {
                 type="button"
                 onClick={handleAddAlumni}
                 disabled={isSaving}
-                className="rounded-2xl border border-[#1B3E2A] bg-[#1B3E2A] px-4 py-2 text-xs font-semibold text-white hover:bg-[#163021] disabled:opacity-60 disabled:cursor-not-allowed"
+                className="rounded-2xl bg-[#F0C000] px-4 py-2 text-xs font-bold text-white hover:bg-[#B8920A] shadow-md shadow-[#F0C000]/10 transition-all active:scale-95 disabled:opacity-60 disabled:cursor-not-allowed"
               >
                 {isSaving ? 'Saving…' : 'Save'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {isEditOpen && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+          <button
+            type="button"
+            className="absolute inset-0 bg-black/40 z-0"
+            onClick={() => setIsEditOpen(false)}
+            aria-label="Close modal"
+          />
+          <div className="relative z-10 w-full max-w-2xl bg-white rounded-3xl shadow-xl border border-[#E8EAE8] overflow-hidden">
+            <div className="px-5 py-4 border-b border-[#E8EAE8] flex items-center justify-between gap-3">
+              <div>
+                <div className="text-sm font-semibold text-[#1A1F1B]">Edit Alumni</div>
+                <div className="text-xs text-[#5C6560]">Update the information and save</div>
+              </div>
+              <button
+                type="button"
+                onClick={() => setIsEditOpen(false)}
+                className="rounded-2xl border border-[#E8EAE8] px-3 py-1.5 text-xs font-medium text-[#5C6560] hover:bg-[#FAFAFA]"
+              >
+                Close
+              </button>
+            </div>
+
+            <div className="px-5 py-4 max-h-[75vh] overflow-y-auto">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                <div>
+                  <label className="block text-xs font-medium text-[#5C6560] mb-1" htmlFor="edit-alumni-name">Full Name</label>
+                  <input
+                    id="edit-alumni-name"
+                    type="text"
+                    value={editName}
+                    onChange={(e) => setEditName(e.target.value)}
+                    className="w-full rounded-2xl border border-[#E8EAE8] px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#F0C000] focus:border-transparent"
+                    placeholder="Juan Dela Cruz"
+                    disabled={isUpdating}
+                  />
+                </div>
+                <div>
+                  <label className="block text-xs font-medium text-[#5C6560] mb-1" htmlFor="edit-alumni-batch">Batch Year</label>
+                  <input
+                    id="edit-alumni-batch"
+                    type="number"
+                    value={editBatchYear}
+                    onChange={(e) => setEditBatchYear(e.target.value)}
+                    className="w-full rounded-2xl border border-[#E8EAE8] px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#F0C000] focus:border-transparent"
+                    placeholder="2026"
+                    disabled={isUpdating}
+                  />
+                </div>
+                <div>
+                  <label className="block text-xs font-medium text-[#5C6560] mb-1" htmlFor="edit-alumni-age">Age</label>
+                  <input
+                    id="edit-alumni-age"
+                    type="number"
+                    value={editAge}
+                    onChange={(e) => setEditAge(e.target.value)}
+                    className="w-full rounded-2xl border border-[#E8EAE8] px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#F0C000] focus:border-transparent"
+                    placeholder="25"
+                    disabled={isUpdating}
+                  />
+                </div>
+                <div>
+                  <label className="block text-xs font-medium text-[#5C6560] mb-1" htmlFor="edit-alumni-educational-status">Educational Status</label>
+                  <input
+                    id="edit-alumni-educational-status"
+                    type="text"
+                    value={editEducationalStatus}
+                    onChange={(e) => setEditEducationalStatus(e.target.value)}
+                    className="w-full rounded-2xl border border-[#E8EAE8] px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#F0C000] focus:border-transparent"
+                    placeholder="College Graduate, High School, etc."
+                    disabled={isUpdating}
+                  />
+                </div>
+                <div className="md:col-span-2">
+                  <label className="block text-xs font-medium text-[#5C6560] mb-1" htmlFor="edit-alumni-school">Name of School</label>
+                  <input
+                    id="edit-alumni-school"
+                    type="text"
+                    value={editNameOfSchool}
+                    onChange={(e) => setEditNameOfSchool(e.target.value)}
+                    className="w-full rounded-2xl border border-[#E8EAE8] px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#F0C000] focus:border-transparent"
+                    placeholder="University of the Philippines"
+                    disabled={isUpdating}
+                  />
+                </div>
+                <div className="md:col-span-2">
+                  <label className="block text-xs font-medium text-[#5C6560] mb-1" htmlFor="edit-alumni-image">Update Image (optional)</label>
+                  <input
+                    id="edit-alumni-image"
+                    type="file"
+                    accept="image/*"
+                    onChange={handleEditImageChange}
+                    className="w-full rounded-2xl border border-[#E8EAE8] px-3 py-2 text-sm bg-white focus:outline-none focus:ring-2 focus:ring-[#F0C000] focus:border-transparent"
+                    disabled={isUpdating}
+                  />
+                  {editImagePreviewUrl && (
+                    <div className="mt-2 rounded-2xl border border-[#E8EAE8] bg-[#FAFAFA] p-2">
+                      <img src={editImagePreviewUrl} alt="Alumni preview" className="w-full max-h-64 object-contain rounded-xl bg-white" />
+                    </div>
+                  )}
+                </div>
+              </div>
+
+              {error && (
+                <div className="mt-3 text-[11px] text-[#D97070] bg-[#D97070]/5 border border-[#D97070]/10 rounded-2xl px-3 py-2">
+                  {error}
+                </div>
+              )}
+            </div>
+
+            <div className="px-5 py-4 border-t border-[#E8EAE8] flex items-center justify-end gap-2">
+              <button
+                type="button"
+                onClick={() => setIsEditOpen(false)}
+                disabled={isUpdating}
+                className="rounded-2xl border border-[#E8EAE8] px-4 py-2 text-xs font-bold text-[#5C6560] hover:bg-[#FAFAFA] transition-all active:scale-95 disabled:opacity-60 disabled:cursor-not-allowed"
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                onClick={handleUpdateAlumni}
+                disabled={isUpdating}
+                className="rounded-2xl bg-[#F0C000] px-4 py-2 text-xs font-bold text-white hover:bg-[#B8920A] shadow-md shadow-[#F0C000]/10 transition-all active:scale-95 disabled:opacity-60 disabled:cursor-not-allowed"
+              >
+                {isUpdating ? 'Updating…' : 'Update'}
               </button>
             </div>
           </div>

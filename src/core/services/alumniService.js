@@ -4,6 +4,7 @@ import {
   deleteDoc,
   doc,
   getDocs,
+  getDoc,
   orderBy,
   query,
   serverTimestamp,
@@ -99,5 +100,47 @@ export const alumniService = {
       } catch {
       }
     }
+  },
+
+  async update(docId, { name, batchYear, age, educationalStatus, nameOfSchool, imageFile }) {
+    const db = getFirebaseDb()
+    const docRef = doc(db, COLLECTION, String(docId))
+
+    // Get current document to preserve existing image if not updating
+    const currentDoc = await getDoc(docRef)
+    const currentData = currentDoc.exists() ? currentDoc.data() : {}
+
+    const payload = {
+      name,
+      batchYear,
+      age: age ?? '',
+      educationalStatus: educationalStatus || '',
+      nameOfSchool: nameOfSchool || '',
+      updatedAt: serverTimestamp(),
+    }
+
+    // Handle image update if new image provided
+    if (imageFile) {
+      const uploaded = await uploadAlumniImage({ docId, file: imageFile })
+      payload.imageUrl = uploaded.url
+      payload.imagePath = uploaded.path
+      
+      // Delete old image if it exists
+      if (currentData.imagePath) {
+        try {
+          const storage = getFirebaseStorage()
+          await deleteObject(storageRef(storage, currentData.imagePath))
+        } catch {
+          // Ignore errors when deleting old image
+        }
+      }
+    } else {
+      // Keep existing image data
+      payload.imageUrl = currentData.imageUrl || ''
+      payload.imagePath = currentData.imagePath || ''
+    }
+
+    await updateDoc(docRef, payload)
+    return normalizeAlumniItem(docId, { ...currentData, ...payload })
   },
 }

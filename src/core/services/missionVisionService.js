@@ -1,5 +1,5 @@
 import { collection, doc, getDoc, getDocs, setDoc, updateDoc, serverTimestamp } from 'firebase/firestore'
-import { db } from './firebase'
+import { getFirebaseDb } from './firebase'
 
 const COLLECTION_NAME = 'missionVision'
 
@@ -7,6 +7,7 @@ export const missionVisionService = {
   // Get mission & vision content
   async getContent() {
     try {
+      const db = getFirebaseDb()
       const docRef = doc(db, COLLECTION_NAME, 'main')
       const docSnap = await getDoc(docRef)
       
@@ -58,6 +59,7 @@ export const missionVisionService = {
   // Update mission & vision content
   async updateContent(content) {
     try {
+      const db = getFirebaseDb()
       const docRef = doc(db, COLLECTION_NAME, 'main')
       await updateDoc(docRef, {
         ...content,
@@ -73,6 +75,7 @@ export const missionVisionService = {
   // Create initial mission & vision content
   async createContent(content) {
     try {
+      const db = getFirebaseDb()
       const docRef = doc(db, COLLECTION_NAME, 'main')
       await setDoc(docRef, {
         ...content,

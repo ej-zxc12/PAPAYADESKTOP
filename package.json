@@ -12,6 +12,10 @@
     "lint": "echo \"No linter configured\""
   },
   "dependencies": {
+    "@fortawesome/fontawesome-free": "^7.2.0",
+    "@fortawesome/fontawesome-svg-core": "^7.2.0",
+    "@fortawesome/free-solid-svg-icons": "^7.2.0",
+    "@fortawesome/react-fontawesome": "^3.2.0",
     "chrono-node": "^2.9.0",
     "exceljs": "^4.4.0",
     "firebase": "^12.9.0",

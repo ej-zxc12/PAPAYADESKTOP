@@ -24,8 +24,21 @@ import {
   FiPlus,
   FiTrash2,
   FiChevronDown,
+  FiChevronLeft,
   FiChevronRight,
+  FiActivity,
+  FiGlobe,
+  FiShield,
+  FiClock,
+  FiSearch,
+  FiEye,
+  FiXCircle,
+  FiAlertCircle,
+  FiCheckCircle,
 } from 'react-icons/fi'
+import AutoExpandingSidebar from './components/AutoExpandingSidebar'
+import TopBar from './components/TopBar'
+import BottomBar from './components/BottomBar'
 import papayaLogo from './shared/assets/logo.jpg?url'
 import siteContent from './core/config/siteContent.json'
 import NewsManager from './features/news/pages/NewsManager.jsx'
@@ -329,6 +342,14 @@ const partners = [
   { name: 'Autodesk', label: 'Software company' },
 ]
 
+const events = [
+  { id: 1, title: 'Faculty Orientation', time: 'In 2 hrs', location: 'Conference Center A' },
+  { id: 2, title: 'Board Meeting', time: '10:00 AM', location: 'Main Office' },
+  { id: 3, title: 'Student Council', time: '2:00 PM', location: 'Auditorium' },
+  { id: 4, title: 'P.T.A. Meeting', time: '4:00 PM', location: 'Library' },
+  { id: 5, title: 'Sports Festival', time: 'Tomorrow', location: 'School Grounds' },
+]
+
 const conversations = [
   { name: 'Albert Flores', message: 'Fringilla sit morbi tincidunt augue.', time: '2 m ago' },
   { name: 'Ronald Richards', message: 'Curabitur in tempus imperdiet nulla.', time: '16 m ago' },
@@ -353,6 +374,10 @@ function App() {
   // Sidebar dropdown state.
   // Important UX: keep all groups collapsed by default, and only toggle on the parent group button click.
   const [openGroups, setOpenGroups] = useState({ website: false, about: false, programs: false, donations: false })
+
+  const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(false)
+
+  const [isSidebarExpanded, setIsSidebarExpanded] = useState(false)
 
   // Sidebar toggle helpers (kept near state to keep behavior predictable).
   const toggleWebsiteGroup = () => {
@@ -730,11 +755,11 @@ function App() {
           <div className="flex flex-col items-center gap-3 mb-4">
             <img
               src={papayaLogo}
-              alt="Papaya Academy, Inc. logo"
+              alt="Papaya Academy logo"
               className="h-[120px] w-[120px] rounded-full object-cover bg-white p-1 shadow-[0_10px_30px_rgba(0,0,0,0.18)]"
             />
             <div className="text-center">
-              <div className="text-xl font-semibold tracking-tight text-slate-900">Papaya Academy, Inc.</div>
+              <div className="text-xl font-semibold tracking-tight text-slate-900">Papaya Academy</div>
             </div>
           </div>
 
@@ -788,295 +813,472 @@ function App() {
 
   return (
     <ErrorBoundary>
-      <div className="flex h-screen overflow-hidden bg-slate-100 text-slate-900">
-        {/* Sidebar is fixed to 100vh (Tailwind h-screen) and uses a scrollable nav region to keep lower items reachable. */}
-        <aside className="w-64 shrink-0 sticky top-0 h-screen overflow-hidden bg-[#1B3E2A] text-slate-100 flex flex-col py-6 px-4">
-        <div className="flex items-center gap-2 px-3 mb-8">
-          <img
-            src={papayaLogo}
-            alt="Papaya Academy, Inc. logo"
-            className="h-9 w-9 rounded-full object-cover bg-white p-[2px] shadow-[0_4px_14px_rgba(0,0,0,0.25)]"
-          />
-          <div className="text-xl font-semibold tracking-tight">Papaya Academy, Inc.</div>
-        </div>
+      <div className="flex h-screen overflow-hidden bg-[#F5F6F5] text-[#1A1F1B]">
+        {/* New Auto-Expanding Sidebar */}
+        <AutoExpandingSidebar
+          activePage={activePage}
+          setActivePage={setActivePage}
+          openGroups={openGroups}
+          setOpenGroups={setOpenGroups}
+          onLogout={confirmAndLogout}
+          onExpandedChange={setIsSidebarExpanded}
+        />
 
-        {/* Scroll container: flex child must have min-h-0 for overflow-y to work reliably in Electron/Chromium. */}
-        <nav className="sidebar-scroll flex-1 min-h-0 overflow-y-auto space-y-1 pr-1">
-          <button
-            className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium transition ${
-              activePage === 'dashboard' ? 'bg-white/10 text-white shadow-sm' : 'text-slate-100/80 hover:bg-white/5 hover:text-white'
-            }`}
-            onClick={() => setActivePage('dashboard')}
-          >
-            <FiHome className="h-4 w-4 shrink-0" />
-            <span className="truncate">Dashboard</span>
-          </button>
+        <TopBar 
+          title={headerTitle}
+          subtitle={headerSubtitle}
+          isSidebarExpanded={isSidebarExpanded}
+          onNotificationClick={() => setIsNotificationsOpen(true)}
+        />
 
-          <div>
-            <button
-              className="w-full flex items-center justify-between gap-3 px-3 py-2.5 rounded-xl text-sm font-medium text-slate-100/80 hover:bg-white/5 hover:text-white"
-              onClick={toggleWebsiteGroup}
-            >
-              <div className="flex items-center gap-3">
-                <FiFileText className="h-4 w-4 shrink-0" />
-                <span className="truncate">Website Content</span>
-              </div>
-              {openGroups.website ? <FiChevronDown className="h-4 w-4" /> : <FiChevronRight className="h-4 w-4" />}
-            </button>
-            {openGroups.website && (
-              <div className="mt-1 space-y-1">
-                <div>
-                  <button
-                    className="w-full flex items-center justify-between gap-3 pl-6 pr-3 py-2.5 rounded-xl text-sm font-medium text-slate-100/80 hover:bg-white/5 hover:text-white"
-                    onClick={toggleAboutGroup}
-                  >
-                    <div className="flex items-center gap-3 pl-4">
-                      <FiUsers className="h-4 w-4 shrink-0" />
-                      <span className="truncate">About Us</span>
+        {/* Main Content Area */}
+        <main
+          className={`flex-1 flex flex-col overflow-y-auto min-h-0 transition-all duration-300 ease-[cubic-bezier(0.4,0,0.2,1)] mt-[70px] mb-[40px] ${
+            isSidebarExpanded ? 'ml-[280px]' : 'ml-[70px]'
+          }`}
+          style={{ transitionTimingFunction: 'cubic-bezier(0.4, 0, 0.2, 1)', transitionDuration: '0.3s' }}
+        >
+          <div className="flex-1 flex flex-col w-full mx-auto p-4 md:p-6 lg:p-8">
+            <div className="flex-1 flex gap-6 min-h-0">
+              <section className="flex-1 flex flex-col gap-6 min-h-0">
+                {activePage === 'dashboard' && (
+                  <>
+                    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
+                      <SummaryCard
+                        title="Website Visitors (Monthly)"
+                        value={String(
+                          (trafficChartData.find((e) => e.month === currentMonthName)?.visitors || 0).toLocaleString('en-PH')
+                        )}
+                        subtitle={`This month (${selectedYear})`}
+                        tone="yellow"
+                      />
+                      <SummaryCard
+                        title="Active Published Programs"
+                        value="2"
+                        subtitle="Live on website"
+                        tone="sage"
+                      />
+                      <SummaryCard
+                        title="Pending Website Inquiries"
+                        value="2"
+                        subtitle="Unread messages"
+                        tone="yellow"
+                      />
+                      <SummaryCard
+                        title="Draft Website Content"
+                        value="0"
+                        subtitle="Unpublished items"
+                        tone="default"
+                      />
                     </div>
-                    {openGroups.about ? <FiChevronDown className="h-4 w-4" /> : <FiChevronRight className="h-4 w-4" />}
-                  </button>
-                  {openGroups.about && (
-                    <div className="mt-1 space-y-1">
-                      <button
-                        className={`w-full flex items-center gap-3 pl-14 pr-3 py-2.5 rounded-xl text-sm font-medium transition ${
-                          activePage === 'website_about_story' ? 'bg-white/10 text-white shadow-sm' : 'text-slate-100/80 hover:bg-white/5 hover:text-white'
-                        }`}
-                        onClick={() => setActivePage('website_about_story')}
-                      >
-                        <FiFileText className="h-4 w-4 shrink-0" />
-                        <span className="truncate">Our Story</span>
-                      </button>
-                      <button
-                        className={`w-full flex items-center gap-3 pl-14 pr-3 py-2.5 rounded-xl text-sm font-medium transition ${
-                          activePage === 'website_about_mission' ? 'bg-white/10 text-white shadow-sm' : 'text-slate-100/80 hover:bg-white/5 hover:text-white'
-                        }`}
-                        onClick={() => setActivePage('website_about_mission')}
-                      >
-                        <FiFileText className="h-4 w-4 shrink-0" />
-                        <span className="truncate">Mission & Vision</span>
-                      </button>
-                      <button
-                        className={`w-full flex items-center gap-3 pl-14 pr-3 py-2.5 rounded-xl text-sm font-medium transition ${
-                          activePage === 'orgchart' ? 'bg-white/10 text-white shadow-sm' : 'text-slate-100/80 hover:bg-white/5 hover:text-white'
-                        }`}
-                        onClick={() => setActivePage('orgchart')}
-                      >
-                        <FiUsers className="h-4 w-4 shrink-0" />
-                        <span className="truncate">Organizational Chart</span>
-                      </button>
-                      <button
-                        className={`w-full flex items-center gap-3 pl-14 pr-3 py-2.5 rounded-xl text-sm font-medium transition ${
-                          activePage === 'partners' ? 'bg-white/10 text-white shadow-sm' : 'text-slate-100/80 hover:bg-white/5 hover:text-white'
-                        }`}
-                        onClick={() => setActivePage('partners')}
-                      >
-                        <FiUsers className="h-4 w-4 shrink-0" />
-                        <span className="truncate">Partners & Sponsors</span>
-                      </button>
+
+                    <div className="bg-white rounded-3xl border border-[#E8EAE8] shadow-sm p-6">
+                      <div className="flex flex-wrap items-center justify-between gap-4 mb-6">
+                        <div>
+                          <h2 className="text-lg font-bold text-[#1A1F1B]">Statistics</h2>
+                          <p className="text-sm text-[#5C6560]">Monthly donations vs disbursements</p>
+                        </div>
+                        <div className="flex items-center gap-3 text-sm text-[#5C6560]">
+                          {selectedStatTab === 'donations' && (
+                            <>
+                              <LegendDot color="bg-[#F0C000]" label="Donations Received" />
+                              <LegendDot color="bg-[#7EB88A]" label="Disbursements / Expenses" />
+                            </>
+                          )}
+                          {selectedStatTab === 'traffic' && <LegendDot color="bg-[#F0C000]" label="Visitors" />}
+                          {selectedStatTab === 'inquiries' && <LegendDot color="bg-[#F0C000]" label="Inquiries" />}
+                          {selectedStatTab === 'engagement' && <LegendDot color="bg-[#F0C000]" label="Engagement" />}
+                          <div className="ml-2 inline-flex items-center rounded-full bg-[#FAFAFA] border border-[#E8EAE8] p-0.5">
+                            <button
+                              className={`px-2 py-1 rounded-full ${selectedStatTab === 'donations' ? 'bg-white text-[#1A1F1B] border border-[#E8EAE8]' : 'text-[#5C6560]'}`}
+                              onClick={() => setSelectedStatTab('donations')}
+                            >
+                              Donations
+                            </button>
+                            <button
+                              className={`px-2 py-1 rounded-full ${selectedStatTab === 'traffic' ? 'bg-white text-[#1A1F1B] border border-[#E8EAE8]' : 'text-[#5C6560]'}`}
+                              onClick={() => setSelectedStatTab('traffic')}
+                            >
+                              Website Traffic
+                            </button>
+                            <button
+                              className={`px-2 py-1 rounded-full ${selectedStatTab === 'inquiries' ? 'bg-white text-[#1A1F1B] border border-[#E8EAE8]' : 'text-[#5C6560]'}`}
+                              onClick={() => setSelectedStatTab('inquiries')}
+                            >
+                              Inquiries
+                            </button>
+                            <button
+                              className={`px-2 py-1 rounded-full ${selectedStatTab === 'engagement' ? 'bg-white text-[#1A1F1B] border border-[#E8EAE8]' : 'text-[#5C6560]'}`}
+                              onClick={() => setSelectedStatTab('engagement')}
+                            >
+                              Engagement
+                            </button>
+                          </div>
+                          <select
+                            className="ml-2 rounded-full border border-[#E8EAE8] bg-white px-3 py-1 text-xs focus:outline-none focus:ring-2 focus:ring-[#F0C000]"
+                            value={selectedYear}
+                            onChange={(event) => setSelectedYear(event.target.value)}
+                          >
+                            <option value="2025">2025</option>
+                            <option value="2024">2024</option>
+                          </select>
+                        </div>
+                      </div>
+
+                      <div className="h-[300px] w-full">
+                        <ResponsiveContainer width="100%" height="100%">
+                          <AreaChart data={currentChartData} margin={{ top: 10, right: 10, left: 0, bottom: 0 }}>
+                            <defs>
+                              <linearGradient id="donations" x1="0" y1="0" x2="0" y2="1">
+                                <stop offset="5%" stopColor="#F0C000" stopOpacity={0.5} />
+                                <stop offset="95%" stopColor="#F0C000" stopOpacity={0} />
+                              </linearGradient>
+                              <linearGradient id="disbursements" x1="0" y1="0" x2="0" y2="1">
+                                <stop offset="5%" stopColor="#7EB88A" stopOpacity={0.5} />
+                                <stop offset="95%" stopColor="#7EB88A" stopOpacity={0} />
+                              </linearGradient>
+                              <linearGradient id="visitors" x1="0" y1="0" x2="0" y2="1">
+                                <stop offset="5%" stopColor="#F0C000" stopOpacity={0.5} />
+                                <stop offset="95%" stopColor="#F0C000" stopOpacity={0} />
+                              </linearGradient>
+                              <linearGradient id="uniqueVisitors" x1="0" y1="0" x2="0" y2="1">
+                                <stop offset="5%" stopColor="#A8CDB0" stopOpacity={0.5} />
+                                <stop offset="95%" stopColor="#A8CDB0" stopOpacity={0} />
+                              </linearGradient>
+                              <linearGradient id="inquiries" x1="0" y1="0" x2="0" y2="1">
+                                <stop offset="5%" stopColor="#F0C000" stopOpacity={0.5} />
+                                <stop offset="95%" stopColor="#F0C000" stopOpacity={0} />
+                              </linearGradient>
+                              <linearGradient id="engagement" x1="0" y1="0" x2="0" y2="1">
+                                <stop offset="5%" stopColor="#F0C000" stopOpacity={0.5} />
+                                <stop offset="95%" stopColor="#F0C000" stopOpacity={0} />
+                              </linearGradient>
+                            </defs>
+                            <CartesianGrid strokeDasharray="3 3" stroke="#E8EAE8" vertical={false} />
+                            <XAxis
+                              dataKey="month"
+                              tickLine={false}
+                              axisLine={false}
+                              tick={{ fill: '#9CA89F', fontSize: 12 }}
+                            />
+                            <YAxis tickLine={false} axisLine={false} tick={{ fill: '#9CA89F', fontSize: 12 }} />
+                            <Tooltip
+                              contentStyle={{
+                                borderRadius: '0.75rem',
+                                border: '1px solid #E8EAE8',
+                                boxShadow: '0 10px 40px rgba(26, 31, 27, 0.1)',
+                                padding: '0.5rem 0.75rem',
+                              }}
+                              labelStyle={{ fontSize: 12, color: '#5C6560' }}
+                              labelFormatter={(label) => `Month: ${label}`}
+                              formatter={(value, name) => [
+                                selectedStatTab === 'donations'
+                                  ? formatCurrency(value)
+                                  : typeof value === 'number'
+                                  ? value.toLocaleString('en-PH')
+                                  : value,
+                                selectedStatTab === 'donations'
+                                  ? name === 'donations'
+                                    ? 'Donations Received'
+                                    : 'Disbursements / Expenses'
+                                  : selectedStatTab === 'traffic'
+                                  ? name === 'visitors'
+                                    ? 'Visitors'
+                                    : 'Unique Visitors'
+                                  : selectedStatTab === 'inquiries'
+                                  ? 'Inquiries'
+                                  : 'Engagement',
+                              ]}
+                            />
+                            {selectedStatTab === 'donations' && (
+                              <>
+                                <Area type="monotone" dataKey="donations" stroke="#F0C000" strokeWidth={2.5} fillOpacity={1} fill="url(#donations)" />
+                                <Area type="monotone" dataKey="disbursements" stroke="#7EB88A" strokeWidth={2.5} fillOpacity={1} fill="url(#disbursements)" />
+                              </>
+                            )}
+                            {selectedStatTab === 'traffic' && (
+                              <>
+                                <Area type="monotone" dataKey="visitors" stroke="#F0C000" strokeWidth={2.5} fillOpacity={1} fill="url(#visitors)" />
+                                <Area type="monotone" dataKey="uniqueVisitors" stroke="#A8CDB0" strokeWidth={2.5} fillOpacity={1} fill="url(#uniqueVisitors)" />
+                              </>
+                            )}
+                            {selectedStatTab === 'inquiries' && (
+                              <Area type="monotone" dataKey="inquiries" stroke="#F0C000" strokeWidth={2.5} fillOpacity={1} fill="url(#inquiries)" />
+                            )}
+                            {selectedStatTab === 'engagement' && (
+                              <Area type="monotone" dataKey="engagement" stroke="#F0C000" strokeWidth={2.5} fillOpacity={1} fill="url(#engagement)" />
+                            )}
+                          </AreaChart>
+                        </ResponsiveContainer>
+                      </div>
                     </div>
-                  )}
-                </div>
-              </div>
-            )}
-          </div>
 
-          <div>
-            <button
-              className="w-full flex items-center justify-between gap-3 px-3 py-2.5 rounded-xl text-sm font-medium text-slate-100/80 hover:bg-white/5 hover:text-white"
-              onClick={toggleProgramsGroup}
-            >
-              <div className="flex items-center gap-3">
-                <FiBriefcase className="h-4 w-4 shrink-0" />
-                <span className="truncate">Programs</span>
-              </div>
-              {openGroups.programs ? <FiChevronDown className="h-4 w-4" /> : <FiChevronRight className="h-4 w-4" />}
-            </button>
-            {openGroups.programs && (
-              <div className="mt-1 space-y-1">
-                <button
-                  className={`w-full flex items-center gap-3 pl-10 pr-3 py-2.5 rounded-xl text-sm font-medium transition ${
-                    activePage === 'programs_apple_scholarship'
-                      ? 'bg-white/10 text-white shadow-sm'
-                      : 'text-slate-100/80 hover:bg-white/5 hover:text-white'
-                  }`}
-                  onClick={() => setActivePage('programs_apple_scholarship')}
-                >
-                  <FiBriefcase className="h-4 w-4 shrink-0" />
-                  <span className="truncate">Apple Scholarship</span>
-                </button>
-                <button
-                  className={`w-full flex items-center gap-3 pl-10 pr-3 py-2.5 rounded-xl text-sm font-medium transition ${
-                    activePage === 'programs_pineapple_project'
-                      ? 'bg-white/10 text-white shadow-sm'
-                      : 'text-slate-100/80 hover:bg-white/5 hover:text-white'
-                  }`}
-                  onClick={() => setActivePage('programs_pineapple_project')}
-                >
-                  <FiBriefcase className="h-4 w-4 shrink-0" />
-                  <span className="truncate">Pineapple Project</span>
-                </button>
-              </div>
-            )}
-          </div>
+                    <div className="bg-white rounded-3xl border border-[#E8EAE8] shadow-sm p-6">
+                      <div className="flex items-center justify-between mb-6">
+                        <h2 className="text-lg font-bold text-[#1A1F1B]">Top Partners & Sponsors</h2>
+                      </div>
+                      <div className="overflow-hidden">
+                        <div className="overflow-x-auto">
+                          <table className="min-w-full text-sm">
+                            <thead>
+                              <tr className="bg-[#FAFAFA] text-left text-[#5C6560] border-b border-[#E8EAE8]">
+                                <th className="py-4 px-6 font-semibold whitespace-nowrap">Organization</th>
+                                <th className="py-4 px-6 font-semibold whitespace-nowrap">Contribution Type</th>
+                                <th className="py-4 px-6 font-semibold whitespace-nowrap">Status</th>
+                              </tr>
+                            </thead>
+                            <tbody className="divide-y divide-[#E8EAE8]">
+                              {partners.slice(0, 6).map((partner) => (
+                                <tr key={partner.id || partner.name} className="hover:bg-[#FAFAFA] transition-colors">
+                                  <td className="py-4 px-6 whitespace-nowrap text-[#1A1F1B] font-medium">{partner.name}</td>
+                                  <td className="py-4 px-6 whitespace-nowrap text-[#5C6560]">{partner.type || partner.label}</td>
+                                  <td className="py-4 px-6 whitespace-nowrap">
+                                    <span
+                                      className={`inline-flex items-center rounded-full px-3 py-1 text-xs font-semibold ${
+                                        partner.status === 'Active'
+                                          ? 'bg-[#F0F8F1] text-[#4A8058] border border-[#7EB88A]/20'
+                                          : 'bg-[#FAFAFA] text-[#9CA89F] border border-[#E8EAE8]'
+                                      }`}
+                                    >
+                                      {partner.status || 'Active'}
+                                    </span>
+                                  </td>
+                                </tr>
+                              ))}
+                            </tbody>
+                          </table>
+                        </div>
+                      </div>
+                    </div>
+                  </>
+                )}
 
-          <div>
-            <button
-              className="w-full flex items-center justify-between gap-3 px-3 py-2.5 rounded-xl text-sm font-medium text-slate-100/80 hover:bg-white/5 hover:text-white"
-              onClick={toggleDonationsGroup}
-            >
-              <div className="flex items-center gap-3">
-                <FiGift className="h-4 w-4 shrink-0" />
-                <span className="truncate">Donations</span>
-              </div>
-              {openGroups.donations ? <FiChevronDown className="h-4 w-4" /> : <FiChevronRight className="h-4 w-4" />}
-            </button>
-            {openGroups.donations && (
-              <div className="mt-1 space-y-1">
-                <button
-                  className={`w-full flex items-center gap-3 pl-10 pr-3 py-2.5 rounded-xl text-sm font-medium transition ${
-                    activePage === 'donations' ? 'bg-white/10 text-white shadow-sm' : 'text-slate-100/80 hover:bg-white/5 hover:text-white'
-                  }`}
-                  onClick={() => setActivePage('donations')}
-                >
-                  <FiGift className="h-4 w-4 shrink-0" />
-                  <span className="truncate">Online Donations</span>
-                </button>
-                <button
-                  className={`w-full flex items-center gap-3 pl-10 pr-3 py-2.5 rounded-xl text-sm font-medium transition ${
-                    activePage === 'donations_reports' ? 'bg-white/10 text-white shadow-sm' : 'text-slate-100/80 hover:bg-white/5 hover:text-white'
-                  }`}
-                  onClick={() => setActivePage('donations_reports')}
-                >
-                  <FiFileText className="h-4 w-4 shrink-0" />
-                  <span className="truncate">Donation Reports</span>
-                </button>
-              </div>
-            )}
-          </div>
+                {activePage === 'donations' && (
+                  <DonationsSection
+                    donations={donations}
+                    selectedDonationId={selectedDonationId}
+                    onSelectDonation={handleSelectDonation}
+                    baseCurrency={settings.currency}
+                  />
+                )}
+                {activePage === 'campaigns' && (
+                  <CampaignsSection
+                    campaigns={campaignStats}
+                    selectedCampaignId={selectedCampaignId}
+                    onSelectCampaign={handleSelectCampaign}
+                    onEditCampaign={(campaignId, newTargetAmount) => {
+                      const campaign = campaignStats.find((c) => c.id === campaignId)
+                      if (!campaign) return
+                      const currentTarget = campaign.targetAmount || 0
+                      const parsed =
+                        typeof newTargetAmount === 'number'
+                          ? newTargetAmount
+                          : Number(String(newTargetAmount || '').replace(/[^0-9.]/g, ''))
+                      if (Number.isNaN(parsed) || parsed <= 0) {
+                        window.alert('Please enter a valid amount.')
+                        return
+                      }
 
-          <button
-            className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium transition ${
-              activePage === 'news' ? 'bg-white/10 text-white shadow-sm' : 'text-slate-100/80 hover:bg-white/5 hover:text-white'
-            }`}
-            onClick={() => setActivePage('news')}
-          >
-            <FiFileText className="h-4 w-4 shrink-0" />
-            <span className="truncate">News & Updates</span>
-          </button>
+                      setCampaigns((prev) =>
+                        prev.map((c) =>
+                          c.id === campaignId
+                            ? {
+                                ...c,
+                                targetAmount: parsed,
+                              }
+                            : c,
+                        ),
+                      )
+                    }}
+                    onArchiveCampaign={(campaignId) => {
+                      setCampaigns((prev) =>
+                        prev.map((campaign) =>
+                          campaign.id === campaignId
+                            ? {
+                                ...campaign,
+                                status: 'Archived',
+                              }
+                            : campaign,
+                        ),
+                      )
+                    }}
+                    onAddCampaign={() => {
+                      const name = window.prompt('Program name:')
+                      if (!name) return
+                      const targetInput = window.prompt('Target amount:', '100000')
+                      if (!targetInput) return
+                      const parsed = Number(targetInput.replace(/[^0-9.]/g, ''))
+                      if (Number.isNaN(parsed) || parsed <= 0) {
+                        window.alert('Please enter a valid amount.')
+                        return
+                      }
+                      const id = `CP-${String(campaigns.length + 1).padStart(3, '0')}`
+                      setCampaigns((prev) => [
+                        ...prev,
+                        {
+                          id,
+                          name,
+                          targetAmount: parsed,
+                          status: 'Active',
+                        },
+                      ])
+                    }}
+                  />
+                )}
+                {activePage === 'donors' && (
+                  <DonorsSection
+                    donors={donorsWithStats}
+                    selectedDonorId={selectedDonorId}
+                    onSelectDonor={handleSelectDonor}
+                  />
+                )}
+                {(activePage === 'reports' || activePage === 'donations_reports') && (
+                  <ReportsSection donations={donations} campaigns={campaigns} />
+                )}
+                {activePage === 'partners' && (
+                  <PartnersSection
+                    partners={partners}
+                    selectedPartnerId={selectedPartnerId}
+                    onSelectPartner={handleSelectPartner}
+                    onAddPartner={() => {
+                      const name = window.prompt('Organization name:')
+                      if (!name) return
+                      const contact = window.prompt('Contact person (optional):') || ''
+                      const type = window.prompt('Contribution type (e.g., Cash, Sponsorship, In-kind):') || 'Cash'
+                      const status = window.prompt('Status (Active / Inactive):', 'Active') || 'Active'
+                      const id = `PT-${String(partners.length + 1).padStart(3, '0')}`
+                      setPartners((prev) => [
+                        ...prev,
+                        {
+                          id,
+                          name,
+                          contact,
+                          type,
+                          status: status === 'Inactive' ? 'Inactive' : 'Active',
+                        },
+                      ])
+                    }}
+                  />
+                )}
+                {activePage === 'news' && <NewsManager />}
+                {activePage === 'messages' && (
+                  <ContactsSection
+                    messages={messages}
+                    selectedMessageId={selectedMessageId}
+                    onSelectMessage={handleSelectMessage}
+                    onToggleMessageRead={handleToggleMessageRead}
+                  />
+                )}
+                {activePage === 'orgchart' && <OrgChartHtmlSection />}
+                {activePage === 'sf10' && (
+                  <>
+                    {!selectedSf10StudentId && (
+                      <SF10Section
+                        students={sf10Students}
+                        sf10ByStudentId={sf10ByStudentId}
+                        onViewSf10={handleViewSf10}
+                        onAddStudent={() => window.alert(uiText.sf10.placeholders.add)}
+                        onEditSf10={() => window.alert(uiText.sf10.placeholders.edit)}
+                        onRemoveStudent={(studentId) => {
+                          const confirmed = window.confirm(uiText.sf10.placeholders.remove)
+                          if (!confirmed) return
+                          setSf10Students((prev) => prev.filter((s) => String(s.id) !== String(studentId)))
+                          setSf10Records((prev) => prev.filter((r) => String(r.studentId) !== String(studentId)))
+                        }}
+                      />
+                    )}
+                    {selectedSf10StudentId && (
+                      <SF10View
+                        student={selectedSf10Student}
+                        record={selectedSf10Record}
+                        onBack={handleBackToSf10List}
+                      />
+                    )}
+                  </>
+                )}
+                {activePage === 'alumni' && <AlumniSection alumni={alumniMock} />}
+                {activePage === 'calendar' && <CalendarSection />}
+                {activePage === 'website_about_story' && <StaticContentSection title="Our Story" />}
+                {activePage === 'website_about_mission' && <MissionVisionValuesSection />}
+                {activePage === 'media' && <MediaLibrarySection />}
+                {activePage === 'programs_apple_scholarship' && <ProgramOverviewSection title="Apple Scholarship" />}
+                {activePage === 'programs_pineapple_project' && <ProgramOverviewSection title="Pineapple Project" />}
+              </section>
 
-          <button
-            className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium transition ${
-              activePage === 'sf10' ? 'bg-white/10 text-white shadow-sm' : 'text-slate-100/80 hover:bg-white/5 hover:text-white'
-            }`}
-            onClick={() => {
-              setSelectedSf10StudentId(null)
-              setActivePage('sf10')
-            }}
-          >
-            <FiFileText className="h-4 w-4 shrink-0" />
-            <span className="truncate">{uiText.nav.sf10}</span>
-          </button>
+              {activePage === 'dashboard' && (
+                <aside className="w-80 flex flex-col gap-6">
+                  <div className="bg-white rounded-3xl border border-[#E8EAE8] shadow-sm p-6 flex-1 flex flex-col min-h-0">
+                    <div className="flex items-center justify-between mb-6">
+                      <h2 className="text-lg font-bold text-[#1A1F1B]">Upcoming Events</h2>
+                      <span className="text-xs font-medium text-[#9CA89F]">Today</span>
+                    </div>
+                    <div className="space-y-3 overflow-y-auto pr-1 flex-1 max-h-[400px]">
+                      {events.map((event) => (
+                        <div
+                          key={event.id}
+                          className="flex items-start gap-3 rounded-2xl px-3 py-3 hover:bg-[#FAFAFA] transition-colors cursor-pointer group"
+                        >
+                          <div className="h-10 w-10 rounded-2xl bg-[#F0F8F1] flex items-center justify-center text-xs font-bold text-[#7EB88A] group-hover:scale-105 transition-transform">
+                            <FiCalendar className="h-4 w-4" />
+                          </div>
+                          <div className="flex-1 min-w-0">
+                            <div className="flex items-center justify-between mb-0.5">
+                              <div className="text-sm font-bold text-[#1A1F1B] truncate">{event.title}</div>
+                              <div className="text-[10px] font-medium text-[#9CA89F] whitespace-nowrap ml-2">{event.time}</div>
+                            </div>
+                            <div className="text-xs text-[#5C6560] truncate">{event.location}</div>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
 
-          <button
-            className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium transition ${
-              activePage === 'alumni' ? 'bg-white/10 text-white shadow-sm' : 'text-slate-100/80 hover:bg-white/5 hover:text-white'
-            }`}
-            onClick={() => setActivePage('alumni')}
-          >
-            <FiUsers className="h-4 w-4 shrink-0" />
-            <span className="truncate">{uiText.nav.alumni}</span>
-          </button>
-
-          <button
-            className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium transition ${
-              activePage === 'calendar' ? 'bg-white/10 text-white shadow-sm' : 'text-slate-100/80 hover:bg-white/5 hover:text-white'
-            }`}
-            onClick={() => setActivePage('calendar')}
-          >
-            <FiCalendar className="h-4 w-4 shrink-0" />
-            <span className="truncate">Calendar</span>
-          </button>
-
-          <button
-            className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium transition ${
-              activePage === 'messages' ? 'bg-white/10 text-white shadow-sm' : 'text-slate-100/80 hover:bg-white/5 hover:text-white'
-            }`}
-            onClick={() => setActivePage('messages')}
-          >
-            <FiMail className="h-4 w-4 shrink-0" />
-            <span className="truncate">Messages / Website Inquiries</span>
-          </button>
-
-          <button
-            className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium transition ${
-              activePage === 'media' ? 'bg-white/10 text-white shadow-sm' : 'text-slate-100/80 hover:bg-white/5 hover:text-white'
-            }`}
-            onClick={() => setActivePage('media')}
-          >
-            <FiImage className="h-4 w-4 shrink-0" />
-            <span className="truncate">Media Library</span>
-          </button>
-
-          <button
-            className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium text-slate-100/80 hover:bg-white/5 hover:text-white`}
-            onClick={confirmAndLogout}
-          >
-            <FiLogOut className="h-4 w-4 shrink-0" />
-            <span className="truncate">Logout</span>
-          </button>
-        </nav>
-
-        <div className="mt-6 px-3">
-          <div className="rounded-2xl bg-white/5 px-4 py-3 text-xs text-slate-100/80">
-            <div className="font-semibold text-white mb-1">Papaya Academy, Inc. 2025</div>
-            <p className="text-slate-100/70">
-              Track your donations, alumni, and partners in a single dashboard.
-            </p>
-          </div>
-        </div>
-      </aside>
-
-      <main className="flex-1 flex flex-col px-6 py-5 gap-6 overflow-y-auto min-h-0">
-        <header className="flex items-center justify-between gap-4">
-          <div>
-            <h1 className="text-2xl font-semibold text-slate-900">{headerTitle}</h1>
-            <p className="text-sm text-slate-500">{headerSubtitle}</p>
-          </div>
-
-          <div className="flex items-center gap-4">
-            <button
-              className="relative h-9 w-9 rounded-full bg-white border border-slate-200 flex items-center justify-center text-slate-500 hover:bg-slate-50"
-              title="Notifications"
-              onClick={() => setIsNotificationsOpen(true)}
-              type="button"
-            >
-              <FiBell className="h-4 w-4" />
-              {messages.some((m) => !m.read) && (
-                <span className="absolute -top-1 -right-1 h-4 min-w-[16px] px-1 rounded-full bg-rose-500 text-white text-[10px] font-semibold flex items-center justify-center">
-                  {messages.filter((m) => !m.read).length}
-                </span>
+                  <div className="bg-white rounded-3xl border border-[#E8EAE8] shadow-sm p-6 flex-1 flex flex-col min-h-0">
+                    <div className="flex items-center justify-between mb-6">
+                      <h2 className="text-lg font-bold text-[#1A1F1B]">Upcoming Events</h2>
+                      <span className="text-xs font-medium text-[#9CA89F]">Today</span>
+                    </div>
+                    <div className="space-y-3 overflow-y-auto pr-1 flex-1 max-h-[400px]">
+                      {events.map((event) => (
+                        <div
+                          key={event.id}
+                          className="flex items-start gap-3 rounded-2xl px-3 py-3 hover:bg-[#FAFAFA] transition-colors cursor-pointer group"
+                        >
+                          <div className="h-10 w-10 rounded-2xl bg-[#F0F8F1] flex items-center justify-center text-xs font-bold text-[#7EB88A] group-hover:scale-105 transition-transform">
+                            <FiCalendar className="h-4 w-4" />
+                          </div>
+                          <div className="flex-1 min-w-0">
+                            <div className="flex items-center justify-between mb-0.5">
+                              <div className="text-sm font-bold text-[#1A1F1B] truncate">{event.title}</div>
+                              <div className="text-[10px] font-medium text-[#9CA89F] whitespace-nowrap ml-2">{event.time}</div>
+                            </div>
+                            <div className="text-xs text-[#5C6560] truncate">{event.location}</div>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                </aside>
               )}
-            </button>
-            <div className="h-9 w-9 rounded-full bg-gradient-to-tr from-[#1B3E2A] to-[#28573F] text-sm font-semibold text-white flex items-center justify-center">
-              D
             </div>
           </div>
-        </header>
+        </main>
+
+        <BottomBar isSidebarExpanded={isSidebarExpanded} />
 
         <div
           className={`fixed inset-0 z-[60] ${isNotificationsOpen ? 'pointer-events-auto' : 'pointer-events-none'}`}
           aria-hidden={!isNotificationsOpen}
         >
           <div
-            className={`absolute inset-0 bg-slate-900/40 transition-opacity duration-200 ${
+            className={`absolute inset-0 bg-[#1A1F1B]/40 transition-opacity duration-200 ${
               isNotificationsOpen ? 'opacity-100' : 'opacity-0'
             }`}
             onClick={closeNotifications}
           />
 
           <aside
-            className={`absolute right-0 top-0 h-full w-[420px] max-w-[92vw] bg-white shadow-[0_30px_90px_rgba(15,23,42,0.35)] transition-transform duration-200 ease-out flex flex-col ${
+            className={`absolute right-0 top-0 h-full w-[420px] max-w-[92vw] bg-white shadow-[0_30px_90px_rgba(26, 31, 27, 0.1)] transition-transform duration-200 ease-out flex flex-col ${
               isNotificationsOpen ? 'translate-x-0' : 'translate-x-full'
             }`}
             role="dialog"
@@ -1084,14 +1286,14 @@ function App() {
             aria-label="Notifications panel"
             onClick={(e) => e.stopPropagation()}
           >
-            <div className="px-5 py-4 border-b border-slate-200 flex items-start justify-between gap-4">
+            <div className="px-5 py-4 border-b border-[#E8EAE8] flex items-start justify-between gap-4">
               <div>
-                <div className="text-base font-semibold text-slate-900">Notifications</div>
-                <div className="text-xs text-slate-500">{messages.filter((m) => !m.read).length} unread</div>
+                <div className="text-base font-semibold text-[#1A1F1B]">Notifications</div>
+                <div className="text-xs text-[#5C6560]">{messages.filter((m) => !m.read).length} unread</div>
               </div>
               <button
                 type="button"
-                className="h-9 w-9 rounded-full border border-slate-200 text-slate-500 hover:bg-slate-50"
+                className="h-9 w-9 rounded-full border border-[#E8EAE8] text-[#5C6560] hover:bg-[#FAFAFA]"
                 onClick={closeNotifications}
                 aria-label="Close notifications"
                 title="Close"
@@ -1102,36 +1304,47 @@ function App() {
 
             <div className="flex-1 overflow-y-auto">
               {messages.length === 0 && (
-                <div className="px-5 py-10 text-center text-sm text-slate-500">No notifications yet.</div>
+                <div className="px-5 py-10 text-center text-sm text-[#5C6560]">No notifications yet.</div>
               )}
 
-              <div className="divide-y divide-slate-100">
+              <div className="divide-y divide-[#E8EAE8]">
                 {messages.map((m) => (
                   <button
                     key={m.id}
                     type="button"
-                    className="w-full text-left px-5 py-4 hover:bg-slate-50 transition flex items-start gap-3"
+                    className="w-full text-left px-5 py-4 hover:bg-[#FFFAE8] transition flex items-start gap-3"
                     onClick={() => {
-                      setMessages((prev) => prev.map((msg) => (String(msg.id) === String(m.id) ? { ...msg, read: true } : msg)))
+                      setMessages((prev) =>
+                        prev.map((msg) =>
+                          String(msg.id) === String(m.id)
+                            ? {
+                                ...msg,
+                                read: true,
+                              }
+                            : msg,
+                        ),
+                      )
                     }}
                   >
                     <div className="pt-1">
-                      <div className={`h-2.5 w-2.5 rounded-full ${m.read ? 'bg-slate-200' : 'bg-emerald-500'}`} />
+                      <div className={`h-2.5 w-2.5 rounded-full ${m.read ? 'bg-[#E8EAE8]' : 'bg-[#7EB88A]'}`} />
                     </div>
                     <div className="flex-1 min-w-0">
-                      <div className="text-sm font-semibold text-slate-900 truncate">{m.name || 'Inquiry'}</div>
-                      <div className="text-xs text-slate-500 mt-0.5">{m.message || m.subject || 'New message received.'}</div>
-                      {m.time && <div className="text-[11px] text-slate-400 mt-1">{m.time}</div>}
+                      <div className="text-sm font-semibold text-[#1A1F1B] truncate">{m.name || 'Inquiry'}</div>
+                      <div className="text-xs text-[#5C6560] mt-0.5">
+                        {m.message || m.subject || 'New message received.'}
+                      </div>
+                      {m.time && <div className="text-[11px] text-[#9CA89F] mt-1">{m.time}</div>}
                     </div>
                   </button>
                 ))}
               </div>
             </div>
 
-            <div className="px-5 py-4 border-t border-slate-200 bg-white">
+            <div className="px-5 py-4 border-t border-[#E8EAE8] bg-white">
               <button
                 type="button"
-                className="w-full rounded-2xl border border-slate-200 px-4 py-2.5 text-sm font-medium text-slate-700 hover:bg-slate-50"
+                className="w-full rounded-2xl border border-[#E8EAE8] px-4 py-2.5 text-sm font-medium text-[#5C6560] hover:bg-[#FAFAFA]"
                 onClick={() => setMessages((prev) => prev.map((m) => ({ ...m, read: true })))}
               >
                 Mark all as read
@@ -1139,442 +1352,6 @@ function App() {
             </div>
           </aside>
         </div>
-
-        <div className="flex-1 flex gap-6 min-h-0">
-          <section className="flex-1 flex flex-col gap-6 min-h-0">
-            {activePage === 'dashboard' && (
-              <>
-                <div className="grid grid-cols-4 gap-4">
-                  <SummaryCard
-                    title="Website Visitors (Monthly)"
-                    value={String(
-                      (trafficChartData.find((e) => e.month === currentMonthName)?.visitors || 0).toLocaleString('en-PH')
-                    )}
-                    subtitle={`This month (${selectedYear})`}
-                    tone="green"
-                    onClick={() => setActivePage('dashboard')}
-                  />
-                  <SummaryCard
-                    title="Active Published Programs"
-                    value={String(activeCampaignCount)}
-                    subtitle="Live on website"
-                    tone="amber"
-                    onClick={() => setActivePage('campaigns')}
-                  />
-                  <SummaryCard
-                    title="Pending Website Inquiries"
-                    value={String(messages.filter((m) => !m.read).length)}
-                    subtitle="Unread messages"
-                    tone="sky"
-                    onClick={() => setActivePage('messages')}
-                  />
-                  <SummaryCard
-                    title="Draft Website Content"
-                    value={String(0)}
-                    subtitle="Unpublished items"
-                    tone="sky"
-                    onClick={() => setActivePage('news')}
-                  />
-                </div>
-
-                <div className="bg-white rounded-3xl shadow-sm p-5 flex flex-col gap-4 flex-1">
-                  <div className="flex items-center justify-between">
-                    <div>
-                      <h2 className="text-base font-semibold text-slate-900">Statistics</h2>
-                      <p className="text-xs text-slate-500">
-                        {selectedStatTab === 'donations' && 'Monthly donations vs disbursements'}
-                        {selectedStatTab === 'traffic' && 'Monthly website visitors'}
-                        {selectedStatTab === 'inquiries' && 'Monthly inquiry submissions'}
-                        {selectedStatTab === 'engagement' && 'Program engagement by donations (count)'}
-                      </p>
-                    </div>
-                    <div className="flex items-center gap-3 text-xs text-slate-500">
-                      {selectedStatTab === 'donations' && (
-                        <>
-                          <LegendDot color="bg-[#1B3E2A]" label="Donations Received" />
-                          <LegendDot color="bg-[#F2C94C]" label="Disbursements / Expenses" />
-                        </>
-                      )}
-                      {selectedStatTab === 'traffic' && <LegendDot color="bg-[#1B3E2A]" label="Visitors" />}
-                      {selectedStatTab === 'inquiries' && <LegendDot color="bg-[#1B3E2A]" label="Inquiries" />}
-                      {selectedStatTab === 'engagement' && <LegendDot color="bg-[#1B3E2A]" label="Engagement" />}
-                      <div className="ml-2 inline-flex items-center rounded-full bg-slate-50 border border-slate-200 p-0.5">
-                        <button
-                          className={`px-2 py-1 rounded-full ${selectedStatTab === 'donations' ? 'bg-white text-slate-700 border border-slate-200' : 'text-slate-500'}`}
-                          onClick={() => setSelectedStatTab('donations')}
-                        >
-                          Donations
-                        </button>
-                        <button
-                          className={`px-2 py-1 rounded-full ${selectedStatTab === 'traffic' ? 'bg-white text-slate-700 border border-slate-200' : 'text-slate-500'}`}
-                          onClick={() => setSelectedStatTab('traffic')}
-                        >
-                          Website Traffic
-                        </button>
-                        <button
-                          className={`px-2 py-1 rounded-full ${selectedStatTab === 'inquiries' ? 'bg-white text-slate-700 border border-slate-200' : 'text-slate-500'}`}
-                          onClick={() => setSelectedStatTab('inquiries')}
-                        >
-                          Inquiries
-                        </button>
-                        <button
-                          className={`px-2 py-1 rounded-full ${selectedStatTab === 'engagement' ? 'bg-white text-slate-700 border border-slate-200' : 'text-slate-500'}`}
-                          onClick={() => setSelectedStatTab('engagement')}
-                        >
-                          Engagement
-                        </button>
-                      </div>
-                      <select
-                        className="ml-2 rounded-full border border-slate-200 bg-white px-3 py-1 text-xs focus:outline-none focus:ring-2 focus:ring-[#1B3E2A]"
-                        value={selectedYear}
-                        onChange={(event) => setSelectedYear(event.target.value)}
-                      >
-                        <option value="2025">2025</option>
-                        <option value="2024">2024</option>
-                      </select>
-                    </div>
-                  </div>
-
-                  <div className="flex-1 min-h-[260px]">
-                    <ResponsiveContainer width="100%" height="100%">
-                      <AreaChart data={currentChartData} margin={{ top: 10, right: 10, left: 0, bottom: 0 }}>
-                        <defs>
-                          <linearGradient id="donations" x1="0" y1="0" x2="0" y2="1">
-                            <stop offset="5%" stopColor="#1B3E2A" stopOpacity={0.5} />
-                            <stop offset="95%" stopColor="#1B3E2A" stopOpacity={0} />
-                          </linearGradient>
-                          <linearGradient id="disbursements" x1="0" y1="0" x2="0" y2="1">
-                            <stop offset="5%" stopColor="#F2C94C" stopOpacity={0.5} />
-                            <stop offset="95%" stopColor="#F2C94C" stopOpacity={0} />
-                          </linearGradient>
-                          <linearGradient id="visitors" x1="0" y1="0" x2="0" y2="1">
-                            <stop offset="5%" stopColor="#1B3E2A" stopOpacity={0.5} />
-                            <stop offset="95%" stopColor="#1B3E2A" stopOpacity={0} />
-                          </linearGradient>
-                          <linearGradient id="uniqueVisitors" x1="0" y1="0" x2="0" y2="1">
-                            <stop offset="5%" stopColor="#6EE7B7" stopOpacity={0.5} />
-                            <stop offset="95%" stopColor="#6EE7B7" stopOpacity={0} />
-                          </linearGradient>
-                          <linearGradient id="inquiries" x1="0" y1="0" x2="0" y2="1">
-                            <stop offset="5%" stopColor="#1B3E2A" stopOpacity={0.5} />
-                            <stop offset="95%" stopColor="#1B3E2A" stopOpacity={0} />
-                          </linearGradient>
-                          <linearGradient id="engagement" x1="0" y1="0" x2="0" y2="1">
-                            <stop offset="5%" stopColor="#1B3E2A" stopOpacity={0.5} />
-                            <stop offset="95%" stopColor="#1B3E2A" stopOpacity={0} />
-                          </linearGradient>
-                        </defs>
-                        <CartesianGrid strokeDasharray="3 3" stroke="#e5e7eb" vertical={false} />
-                        <XAxis
-                          dataKey="month"
-                          tickLine={false}
-                          axisLine={false}
-                          tick={{ fill: '#9ca3af', fontSize: 12 }}
-                        />
-                        <YAxis tickLine={false} axisLine={false} tick={{ fill: '#9ca3af', fontSize: 12 }} />
-                        <Tooltip
-                          contentStyle={{
-                            borderRadius: '0.75rem',
-                            border: '1px solid #e5e7eb',
-                            boxShadow: '0 10px 40px rgba(15, 23, 42, 0.25)',
-                            padding: '0.5rem 0.75rem',
-                          }}
-                          labelStyle={{ fontSize: 12, color: '#6b7280' }}
-                          labelFormatter={(label) => `Month: ${label}`}
-                          formatter={(value, name) => [
-                            selectedStatTab === 'donations'
-                              ? formatCurrency(value)
-                              : typeof value === 'number'
-                              ? value.toLocaleString('en-PH')
-                              : value,
-                            selectedStatTab === 'donations'
-                              ? name === 'donations'
-                                ? 'Donations Received'
-                                : 'Disbursements / Expenses'
-                              : selectedStatTab === 'traffic'
-                              ? name === 'visitors'
-                                ? 'Visitors'
-                                : 'Unique Visitors'
-                              : selectedStatTab === 'inquiries'
-                              ? 'Inquiries'
-                              : 'Engagement',
-                          ]}
-                        />
-                        {selectedStatTab === 'donations' && (
-                          <>
-                            <Area type="monotone" dataKey="donations" stroke="#1B3E2A" strokeWidth={2.5} fillOpacity={1} fill="url(#donations)" />
-                            <Area type="monotone" dataKey="disbursements" stroke="#F2C94C" strokeWidth={2.5} fillOpacity={1} fill="url(#disbursements)" />
-                          </>
-                        )}
-                        {selectedStatTab === 'traffic' && (
-                          <>
-                            <Area type="monotone" dataKey="visitors" stroke="#1B3E2A" strokeWidth={2.5} fillOpacity={1} fill="url(#visitors)" />
-                            <Area type="monotone" dataKey="uniqueVisitors" stroke="#6EE7B7" strokeWidth={2.5} fillOpacity={1} fill="url(#uniqueVisitors)" />
-                          </>
-                        )}
-                        {selectedStatTab === 'inquiries' && (
-                          <Area type="monotone" dataKey="inquiries" stroke="#1B3E2A" strokeWidth={2.5} fillOpacity={1} fill="url(#inquiries)" />
-                        )}
-                        {selectedStatTab === 'engagement' && (
-                          <Area type="monotone" dataKey="engagement" stroke="#1B3E2A" strokeWidth={2.5} fillOpacity={1} fill="url(#engagement)" />
-                        )}
-                      </AreaChart>
-                    </ResponsiveContainer>
-                  </div>
-                </div>
-
-                <div className="bg-white rounded-3xl shadow-sm p-5">
-                  <div className="flex items-center justify-between mb-4">
-                    <h2 className="text-base font-semibold text-slate-900">Top Partners & Sponsors</h2>
-                  </div>
-                  <div className="rounded-2xl border border-slate-200 overflow-hidden">
-                    <div className="overflow-x-auto">
-                      <table className="min-w-full text-sm">
-                        <thead>
-                          <tr className="bg-white text-left text-slate-500 border-b border-slate-200">
-                            <th className="py-3 px-4 font-medium whitespace-nowrap">Organization</th>
-                            <th className="py-3 px-4 font-medium whitespace-nowrap">Contribution Type</th>
-                            <th className="py-3 px-4 font-medium whitespace-nowrap">Status</th>
-                          </tr>
-                        </thead>
-                        <tbody className="divide-y divide-slate-100">
-                          {partners.slice(0, 6).map((partner) => (
-                            <tr key={partner.id || partner.name} className="bg-white">
-                              <td className="py-3 px-4 whitespace-nowrap text-slate-900">{partner.name}</td>
-                              <td className="py-3 px-4 whitespace-nowrap text-slate-700">{partner.type || partner.label}</td>
-                              <td className="py-3 px-4 whitespace-nowrap">
-                                <span
-                                  className={`inline-flex items-center rounded-full px-2 py-0.5 text-xs font-medium ${
-                                    partner.status === 'Active'
-                                      ? 'bg-[#1B3E2A]/10 text-[#1B3E2A]'
-                                      : 'bg-slate-100 text-slate-500'
-                                  }`}
-                                >
-                                  {partner.status || 'Active'}
-                                </span>
-                              </td>
-                            </tr>
-                          ))}
-                        </tbody>
-                      </table>
-                    </div>
-                  </div>
-                </div>
-              </>
-            )}
-
-            {activePage === 'donations' && (
-              <DonationsSection
-                donations={donations}
-                selectedDonationId={selectedDonationId}
-                onSelectDonation={handleSelectDonation}
-                baseCurrency={settings.currency}
-              />
-            )}
-            {activePage === 'campaigns' && (
-              <CampaignsSection
-                campaigns={campaignStats}
-                selectedCampaignId={selectedCampaignId}
-                onSelectCampaign={handleSelectCampaign}
-                onEditCampaign={(campaignId, newTargetAmount) => {
-                  const campaign = campaignStats.find((c) => c.id === campaignId)
-                  if (!campaign) return
-                  const currentTarget = campaign.targetAmount || 0
-                  const parsed =
-                    typeof newTargetAmount === 'number'
-                      ? newTargetAmount
-                      : Number(String(newTargetAmount || '').replace(/[^0-9.]/g, ''))
-                  if (Number.isNaN(parsed) || parsed <= 0) {
-                    window.alert('Please enter a valid amount.')
-                    return
-                  }
-
-                  setCampaigns((prev) =>
-                    prev.map((c) =>
-                      c.id === campaignId
-                        ? {
-                            ...c,
-                            targetAmount: parsed,
-                          }
-                        : c,
-                    ),
-                  )
-                }}
-                onArchiveCampaign={(campaignId) => {
-                  setCampaigns((prev) =>
-                    prev.map((campaign) =>
-                      campaign.id === campaignId
-                        ? {
-                            ...campaign,
-                            status: 'Archived',
-                          }
-                        : campaign,
-                    ),
-                  )
-                }}
-                onAddCampaign={() => {
-                  const name = window.prompt('Program name:')
-                  if (!name) return
-                  const targetInput = window.prompt('Target amount:', '100000')
-                  if (!targetInput) return
-                  const parsed = Number(targetInput.replace(/[^0-9.]/g, ''))
-                  if (Number.isNaN(parsed) || parsed <= 0) {
-                    window.alert('Please enter a valid amount.')
-                    return
-                  }
-                  const id = `CP-${String(campaigns.length + 1).padStart(3, '0')}`
-                  setCampaigns((prev) => [
-                    ...prev,
-                    {
-                      id,
-                      name,
-                      targetAmount: parsed,
-                      status: 'Active',
-                    },
-                  ])
-                }}
-              />
-            )}
-            {activePage === 'donors' && (
-              <DonorsSection
-                donors={donorsWithStats}
-                selectedDonorId={selectedDonorId}
-                onSelectDonor={handleSelectDonor}
-              />
-            )}
-            {(activePage === 'reports' || activePage === 'donations_reports') && (
-              <ReportsSection donations={donations} campaigns={campaigns} />
-            )}
-            {activePage === 'partners' && (
-              <PartnersSection
-                partners={partners}
-                selectedPartnerId={selectedPartnerId}
-                onSelectPartner={handleSelectPartner}
-                onAddPartner={() => {
-                  const name = window.prompt('Organization name:')
-                  if (!name) return
-                  const contact = window.prompt('Contact person (optional):') || ''
-                  const type = window.prompt('Contribution type (e.g., Cash, Sponsorship, In-kind):') || 'Cash'
-                  const status = window.prompt('Status (Active / Inactive):', 'Active') || 'Active'
-                  const id = `PT-${String(partners.length + 1).padStart(3, '0')}`
-                  setPartners((prev) => [
-                    ...prev,
-                    {
-                      id,
-                      name,
-                      contact,
-                      type,
-                      status: status === 'Inactive' ? 'Inactive' : 'Active',
-                    },
-                  ])
-                }}
-              />
-            )}
-            {activePage === 'news' && <NewsManager />}
-            {activePage === 'messages' && (
-              <ContactsSection
-                messages={messages}
-                selectedMessageId={selectedMessageId}
-                onSelectMessage={handleSelectMessage}
-                onToggleMessageRead={handleToggleMessageRead}
-              />
-            )}
-            {activePage === 'orgchart' && <OrgChartHtmlSection />}
-            {activePage === 'sf10' && (
-              <>
-                {!selectedSf10StudentId && (
-                  <SF10Section
-                    students={sf10Students}
-                    sf10ByStudentId={sf10ByStudentId}
-                    onViewSf10={handleViewSf10}
-                    onAddStudent={() => window.alert(uiText.sf10.placeholders.add)}
-                    onEditSf10={() => window.alert(uiText.sf10.placeholders.edit)}
-                    onRemoveStudent={(studentId) => {
-                      const confirmed = window.confirm(uiText.sf10.placeholders.remove)
-                      if (!confirmed) return
-                      setSf10Students((prev) => prev.filter((s) => String(s.id) !== String(studentId)))
-                      setSf10Records((prev) => prev.filter((r) => String(r.studentId) !== String(studentId)))
-                    }}
-                  />
-                )}
-                {selectedSf10StudentId && (
-                  <SF10View
-                    student={selectedSf10Student}
-                    record={selectedSf10Record}
-                    onBack={handleBackToSf10List}
-                  />
-                )}
-              </>
-            )}
-            {activePage === 'alumni' && <AlumniSection alumni={alumniMock} />}
-            {activePage === 'calendar' && <CalendarSection />}
-            {activePage === 'website_about_story' && <StaticContentSection title="Our Story" />}
-            {activePage === 'website_about_mission' && <MissionVisionValuesSection />}
-            {activePage === 'media' && <MediaLibrarySection />}
-            {activePage === 'programs_apple_scholarship' && <ProgramOverviewSection title="Apple Scholarship" />}
-            {activePage === 'programs_pineapple_project' && <ProgramOverviewSection title="Pineapple Project" />}
-          </section>
-
-          {activePage === 'dashboard' && (
-            <aside className="w-80 flex flex-col gap-4">
-              <div className="bg-white rounded-3xl shadow-sm p-5">
-                <div className="flex items-center gap-3 mb-4">
-                  <div className="h-12 w-12 rounded-2xl bg-gradient-to-tr from-[#1B3E2A] to-[#28573F] flex items-center justify-center text-lg font-semibold text-white">
-                    D
-                  </div>
-                  <div className="flex-1">
-                    <div className="text-sm font-semibold text-slate-900">Devon Lane</div>
-                    <div className="text-xs text-slate-500">devonlane@gmail.com</div>
-                  </div>
-                </div>
-                <div className="space-y-2 text-sm">
-                  <ProfileRow
-                    icon={FiUser}
-                    label="View Profile"
-                    onClick={() => {
-                      window.alert('Admin: Devon Lane (admin@papaya.com)')
-                    }}
-                  />
-                  <ProfileRow icon={FiLogOut} label="Log out" highlight onClick={confirmAndLogout} />
-                </div>
-              </div>
-
-              <div className="bg-white rounded-3xl shadow-sm p-5 flex-1 flex flex-col">
-                <div className="flex items-center justify-between mb-4">
-                  <h2 className="text-base font-semibold text-slate-900">Conversations</h2>
-                  <span className="text-xs text-slate-400">Today</span>
-                </div>
-                <div className="space-y-3 overflow-y-auto pr-1">
-                  {conversations.map((c) => (
-                    <div
-                      key={c.name}
-                      className="flex items-start gap-3 rounded-2xl px-2 py-2.5 hover:bg-slate-50 transition"
-                    >
-                      <div className="h-9 w-9 rounded-2xl bg-gradient-to-tr from-[#1B3E2A] to-[#28573F] flex items-center justify-center text-xs font-semibold text-white">
-                        {c.name
-                          .split(' ')
-                          .map((n) => n[0])
-                          .join('')}
-                      </div>
-                      <div className="flex-1 min-w-0">
-                        <div className="flex items-center justify-between">
-                          <div className="text-sm font-semibold text-slate-900 truncate">
-                            {c.name}
-                          </div>
-                          <div className="text-[11px] text-slate-400 whitespace-nowrap">
-                            {c.time}
-                          </div>
-                        </div>
-                        <div className="text-xs text-slate-500 truncate">{c.message}</div>
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              </div>
-            </aside>
-          )}
-        </div>
-      </main>
       </div>
     </ErrorBoundary>
   )
@@ -1582,7 +1359,7 @@ function App() {
 
 function StaticContentSection({ title }) {
   return (
-    <div className="bg-white rounded-3xl shadow-sm p-5 flex flex-col gap-4 flex-1 text-xs">
+    <div className="bg-white p-5 flex flex-col gap-4 flex-1 text-xs">
       <div>
         <h2 className="text-base font-semibold text-slate-900">{title}</h2>
         <p className="text-xs text-slate-500">Edit content for the About Us section</p>
@@ -1594,7 +1371,7 @@ function StaticContentSection({ title }) {
 
 function ProgramOverviewSection({ title }) {
   return (
-    <div className="bg-white rounded-3xl shadow-sm p-5 flex flex-col gap-4 flex-1 text-xs">
+    <div className="bg-white p-5 flex flex-col gap-4 flex-1 text-xs">
       <div>
         <h2 className="text-base font-semibold text-slate-900">{title}</h2>
         <p className="text-xs text-slate-500">Program details and updates</p>
@@ -1612,7 +1389,6 @@ function MissionVisionValuesSection() {
   })
   const [isLoading, setIsLoading] = useState(true)
   const [isSaving, setIsSaving] = useState(false)
-  const [modal, setModal] = useState(null)
 
   // Load content from Firebase
   useEffect(() => {
@@ -1720,114 +1496,175 @@ function MissionVisionValuesSection() {
 
   if (isLoading) {
     return (
-      <div className="bg-white rounded-3xl shadow-sm p-5 flex flex-col gap-4 flex-1 text-xs">
-        <div>Loading mission & vision content...</div>
+      <div className="bg-white rounded-3xl border border-[#E8EAE8] shadow-sm p-8 flex flex-col items-center justify-center min-h-[400px]">
+        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-[#F0C000]"></div>
+        <p className="mt-4 text-sm text-[#5C6560]">Loading mission & vision content...</p>
       </div>
     )
   }
 
   return (
-    <div className="bg-white rounded-3xl shadow-sm p-5 flex flex-col gap-4 flex-1 text-xs">
+    <div className="w-full space-y-8 pb-12">
       <div className="flex items-center justify-between">
         <div>
-          <h2 className="text-base font-semibold text-slate-900">Mission & Vision</h2>
-          <p className="text-xs text-slate-500">Edit mission, vision, and core values</p>
+          <h2 className="text-2xl font-bold text-[#1A1F1B]">Mission, Vision & Core Values</h2>
+          <p className="text-sm text-[#5C6560]">Shape the identity and guiding principles of Papaya Academy</p>
         </div>
-        <div className="text-xs text-slate-400">
-          {isSaving ? 'Saving...' : 'All changes saved'}
+        <div className={`px-4 py-1.5 rounded-full text-xs font-bold transition-all ${
+          isSaving ? 'bg-[#FFFAE8] text-[#B8920A]' : 'bg-[#F0F8F1] text-[#4A8058]'
+        }`}>
+          {isSaving ? 'Saving changes...' : 'All changes saved'}
         </div>
       </div>
 
-      {/* Mission Section */}
-      <div className="space-y-3">
-        <div className="text-[11px] font-medium text-slate-700">Mission</div>
-        <input
-          type="text"
-          placeholder="Mission title"
-          className="w-full rounded-2xl border border-slate-200 px-3 py-2 text-xs focus:outline-none focus:ring-2 focus:ring-[#1B3E2A] focus:border-transparent"
-          value={content.mission.title}
-          onChange={(e) => setContent(prev => ({ ...prev, mission: { ...prev.mission, title: e.target.value } }))} 
-          onBlur={() => handleSaveMission('title', content.mission.title)}
-        />
-        <textarea
-          placeholder="Mission statement"
-          className="w-full rounded-2xl border border-slate-200 px-3 py-2 text-xs focus:outline-none focus:ring-2 focus:ring-[#1B3E2A] focus:border-transparent resize-none"
-          rows={3}
-          value={content.mission.content}
-          onChange={(e) => setContent(prev => ({ ...prev, mission: { ...prev.mission, content: e.target.value } }))} 
-          onBlur={() => handleSaveMission('content', content.mission.content)}
-        />
-      </div>
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+        {/* Mission Card */}
+        <div className="bg-white rounded-3xl border border-[#E8EAE8] shadow-sm overflow-hidden group hover:shadow-md transition-all">
+          <div className="bg-[#FAFAFA] px-6 py-4 border-b border-[#E8EAE8] flex items-center gap-3">
+            <div className="w-10 h-10 rounded-2xl bg-[#FFFAE8] flex items-center justify-center text-[#F0C000]">
+              <FiShield className="h-5 w-5" />
+            </div>
+            <h3 className="font-bold text-[#1A1F1B]">Our Mission</h3>
+          </div>
+          <div className="p-6 space-y-4">
+            <div className="space-y-1.5">
+              <label className="text-[10px] font-bold text-[#9CA89F] uppercase tracking-wider">Mission Title</label>
+              <input
+                type="text"
+                placeholder="Enter mission title..."
+                className="w-full rounded-xl border border-[#E8EAE8] bg-[#FAFAFA] px-4 py-2.5 text-sm font-semibold text-[#1A1F1B] focus:outline-none focus:ring-2 focus:ring-[#F0C000] focus:bg-white transition-all"
+                value={content.mission.title}
+                onChange={(e) => setContent(prev => ({ ...prev, mission: { ...prev.mission, title: e.target.value } }))} 
+                onBlur={() => handleSaveMission('title', content.mission.title)}
+              />
+            </div>
+            <div className="space-y-1.5">
+              <label className="text-[10px] font-bold text-[#9CA89F] uppercase tracking-wider">Mission Statement</label>
+              <textarea
+                placeholder="What is our primary purpose?"
+                className="w-full rounded-xl border border-[#E8EAE8] bg-[#FAFAFA] px-4 py-3 text-sm font-medium text-[#5C6560] focus:outline-none focus:ring-2 focus:ring-[#F0C000] focus:bg-white transition-all resize-none min-h-[120px]"
+                value={content.mission.content}
+                onChange={(e) => setContent(prev => ({ ...prev, mission: { ...prev.mission, content: e.target.value } }))} 
+                onBlur={() => handleSaveMission('content', content.mission.content)}
+              />
+            </div>
+          </div>
+        </div>
 
-      {/* Vision Section */}
-      <div className="space-y-3">
-        <div className="text-[11px] font-medium text-slate-700">Vision</div>
-        <input
-          type="text"
-          placeholder="Vision title"
-          className="w-full rounded-2xl border border-slate-200 px-3 py-2 text-xs focus:outline-none focus:ring-2 focus:ring-[#1B3E2A] focus:border-transparent"
-          value={content.vision.title}
-          onChange={(e) => setContent(prev => ({ ...prev, vision: { ...prev.vision, title: e.target.value } }))} 
-          onBlur={() => handleSaveVision('title', content.vision.title)}
-        />
-        <textarea
-          placeholder="Vision statement"
-          className="w-full rounded-2xl border border-slate-200 px-3 py-2 text-xs focus:outline-none focus:ring-2 focus:ring-[#1B3E2A] focus:border-transparent resize-none"
-          rows={3}
-          value={content.vision.content}
-          onChange={(e) => setContent(prev => ({ ...prev, vision: { ...prev.vision, content: e.target.value } }))} 
-          onBlur={() => handleSaveVision('content', content.vision.content)}
-        />
+        {/* Vision Card */}
+        <div className="bg-white rounded-3xl border border-[#E8EAE8] shadow-sm overflow-hidden group hover:shadow-md transition-all">
+          <div className="bg-[#FAFAFA] px-6 py-4 border-b border-[#E8EAE8] flex items-center gap-3">
+            <div className="w-10 h-10 rounded-2xl bg-[#F0F8F1] flex items-center justify-center text-[#7EB88A]">
+              <FiGlobe className="h-5 w-5" />
+            </div>
+            <h3 className="font-bold text-[#1A1F1B]">Our Vision</h3>
+          </div>
+          <div className="p-6 space-y-4">
+            <div className="space-y-1.5">
+              <label className="text-[10px] font-bold text-[#9CA89F] uppercase tracking-wider">Vision Title</label>
+              <input
+                type="text"
+                placeholder="Enter vision title..."
+                className="w-full rounded-xl border border-[#E8EAE8] bg-[#FAFAFA] px-4 py-2.5 text-sm font-semibold text-[#1A1F1B] focus:outline-none focus:ring-2 focus:ring-[#F0C000] focus:bg-white transition-all"
+                value={content.vision.title}
+                onChange={(e) => setContent(prev => ({ ...prev, vision: { ...prev.vision, title: e.target.value } }))} 
+                onBlur={() => handleSaveVision('title', content.vision.title)}
+              />
+            </div>
+            <div className="space-y-1.5">
+              <label className="text-[10px] font-bold text-[#9CA89F] uppercase tracking-wider">Vision Statement</label>
+              <textarea
+                placeholder="Where do we see ourselves in the future?"
+                className="w-full rounded-xl border border-[#E8EAE8] bg-[#FAFAFA] px-4 py-3 text-sm font-medium text-[#5C6560] focus:outline-none focus:ring-2 focus:ring-[#F0C000] focus:bg-white transition-all resize-none min-h-[120px]"
+                value={content.vision.content}
+                onChange={(e) => setContent(prev => ({ ...prev, vision: { ...prev.vision, content: e.target.value } }))} 
+                onBlur={() => handleSaveVision('content', content.vision.content)}
+              />
+            </div>
+          </div>
+        </div>
       </div>
 
       {/* Core Values Section */}
-      <div className="space-y-3">
-        <div className="flex items-center justify-between">
-          <div className="text-[11px] font-medium text-slate-700">Core Values</div>
+      <div className="bg-white rounded-3xl border border-[#E8EAE8] shadow-sm overflow-hidden">
+        <div className="bg-[#FAFAFA] px-8 py-6 border-b border-[#E8EAE8] flex items-center justify-between">
+          <div className="flex items-center gap-3">
+            <div className="w-10 h-10 rounded-2xl bg-[#F5F6F5] flex items-center justify-center text-[#1A1F1B]">
+              <FiActivity className="h-5 w-5" />
+            </div>
+            <div>
+              <h3 className="font-bold text-[#1A1F1B]">Core Values</h3>
+              <p className="text-xs text-[#5C6560]">The fundamental beliefs that guide our actions</p>
+            </div>
+          </div>
           <button
             onClick={handleAddValue}
-            className="rounded-xl border border-slate-200 bg-white px-3 py-1.5 text-xs font-medium text-slate-700 hover:bg-slate-50"
+            className="inline-flex items-center gap-2 rounded-xl bg-[#F0C000] text-white text-sm font-bold px-6 py-2.5 hover:bg-[#B8920A] shadow-md shadow-[#F0C000]/10 transition-all active:scale-95"
           >
-            Add Value
+            <FiPlus className="h-4 w-4" />
+            <span>Add New Value</span>
           </button>
         </div>
-        <div className="space-y-2">
-          {content.values.map((value, index) => (
-            <div key={value.id || index} className="rounded-xl border border-slate-200 bg-white p-3 space-y-2">
-              <div className="flex items-center gap-2">
-                <input
-                  type="text"
-                  placeholder="Value title"
-                  className="flex-1 rounded-lg border border-slate-200 px-2 py-1 text-xs focus:outline-none focus:ring-2 focus:ring-[#1B3E2A] focus:border-transparent"
-                  value={value.title}
-                  onChange={(e) => {
-                    const updated = [...content.values]
-                    updated[index] = { ...updated[index], title: e.target.value }
-                    setContent(prev => ({ ...prev, values: updated }))
-                  }}
-                  onBlur={() => handleUpdateValue(index, 'title', value.title)}
-                />
-                <button
-                  onClick={() => handleRemoveValue(index)}
-                  className="rounded-lg border border-rose-200 bg-rose-50 px-2 py-1 text-xs font-medium text-rose-600 hover:bg-rose-100"
-                >
-                  Remove
-                </button>
-              </div>
-              <textarea
-                placeholder="Value description"
-                className="w-full rounded-lg border border-slate-200 px-2 py-1 text-xs focus:outline-none focus:ring-2 focus:ring-[#1B3E2A] focus:border-transparent resize-none"
-                rows={2}
-                value={value.description}
-                onChange={(e) => {
-                  const updated = [...content.values]
-                  updated[index] = { ...updated[index], description: e.target.value }
-                  setContent(prev => ({ ...prev, values: updated }))
-                }}
-                onBlur={() => handleUpdateValue(index, 'description', value.description)}
-              />
+        
+        <div className="p-8">
+          {content.values.length === 0 ? (
+            <div className="text-center py-12 bg-[#FAFAFA] rounded-2xl border-2 border-dashed border-[#E8EAE8]">
+              <FiActivity className="h-12 w-12 text-[#9CA89F] mx-auto mb-4 opacity-50" />
+              <p className="text-sm text-[#5C6560] font-medium">No core values added yet.</p>
+              <button 
+                onClick={handleAddValue}
+                className="mt-4 text-[#F0C000] text-sm font-bold hover:underline"
+              >
+                Add your first value
+              </button>
             </div>
-          ))}
+          ) : (
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+              {content.values.map((value, index) => (
+                <div key={value.id || index} className="group rounded-2xl border border-[#E8EAE8] bg-[#FAFAFA] p-5 space-y-4 hover:bg-white hover:border-[#F0C000]/30 hover:shadow-md transition-all relative">
+                  <button
+                    onClick={() => handleRemoveValue(index)}
+                    className="absolute top-4 right-4 p-2 text-[#9CA89F] hover:text-[#D97070] hover:bg-[#D97070]/10 rounded-lg transition-all opacity-0 group-hover:opacity-100"
+                    title="Remove Value"
+                  >
+                    <FiTrash2 className="h-4 w-4" />
+                  </button>
+                  
+                  <div className="space-y-1.5">
+                    <label className="text-[10px] font-bold text-[#9CA89F] uppercase tracking-wider">Value Title</label>
+                    <input
+                      type="text"
+                      placeholder="e.g., Integrity, Compassion..."
+                      className="w-full rounded-xl border border-[#E8EAE8] bg-white px-4 py-2 text-sm font-bold text-[#1A1F1B] focus:outline-none focus:ring-2 focus:ring-[#F0C000] transition-all"
+                      value={value.title}
+                      onChange={(e) => {
+                        const updated = [...content.values]
+                        updated[index] = { ...updated[index], title: e.target.value }
+                        setContent(prev => ({ ...prev, values: updated }))
+                      }}
+                      onBlur={() => handleUpdateValue(index, 'title', value.title)}
+                    />
+                  </div>
+                  
+                  <div className="space-y-1.5">
+                    <label className="text-[10px] font-bold text-[#9CA89F] uppercase tracking-wider">Description</label>
+                    <textarea
+                      placeholder="Describe what this value means to the academy..."
+                      className="w-full rounded-xl border border-[#E8EAE8] bg-white px-4 py-3 text-sm font-medium text-[#5C6560] focus:outline-none focus:ring-2 focus:ring-[#F0C000] transition-all resize-none"
+                      rows={3}
+                      value={value.description}
+                      onChange={(e) => {
+                        const updated = [...content.values]
+                        updated[index] = { ...updated[index], description: e.target.value }
+                        setContent(prev => ({ ...prev, values: updated }))
+                      }}
+                      onBlur={() => handleUpdateValue(index, 'description', value.description)}
+                    />
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
         </div>
       </div>
     </div>
@@ -1836,7 +1673,7 @@ function MissionVisionValuesSection() {
 
 function MediaLibrarySection() {
   return (
-    <div className="bg-white rounded-3xl shadow-sm p-5 flex flex-col gap-4 flex-1 text-xs">
+    <div className="bg-white p-5 flex flex-col gap-4 flex-1 text-xs">
       <div>
         <h2 className="text-base font-semibold text-slate-900">Media Library</h2>
         <p className="text-xs text-slate-500">Manage images and files for the website</p>
@@ -1846,23 +1683,57 @@ function MediaLibrarySection() {
   )
 }
 
-function SummaryCard({ title, value, subtitle, tone, onClick }) {
-  const toneClasses = {
-    green: 'bg-[#1B3E2A] text-white',
-    amber: 'bg-[#F2C94C] text-[#1B3E2A]',
-    sky: 'bg-slate-200 text-slate-800',
-  }[tone]
+function SummaryCard({ title, value, subtitle, tone = 'default' }) {
+  const tones = {
+    yellow: {
+      bg: 'bg-white',
+      border: 'border-[#E8EAE8]',
+      text: 'text-[#1A1F1B]',
+      iconBg: 'bg-[#FFFAE8]',
+      iconText: 'text-[#F0C000]',
+      shadow: 'shadow-sm hover:shadow-md',
+    },
+    sage: {
+      bg: 'bg-white',
+      border: 'border-[#E8EAE8]',
+      text: 'text-[#1A1F1B]',
+      iconBg: 'bg-[#F0F8F1]',
+      iconText: 'text-[#7EB88A]',
+      shadow: 'shadow-sm hover:shadow-md',
+    },
+    default: {
+      bg: 'bg-white',
+      border: 'border-[#E8EAE8]',
+      text: 'text-[#1A1F1B]',
+      iconBg: 'bg-[#FAFAFA]',
+      iconText: 'text-[#5C6560]',
+      shadow: 'shadow-sm hover:shadow-md',
+    },
+  }
+
+  const t = tones[tone] || tones.default
+  const firstLetter = (title || '?').charAt(0).toUpperCase()
 
   return (
-    <div className="bg-white rounded-3xl shadow-sm p-4 flex items-center gap-3" onClick={onClick}>
-      <div className={`h-10 w-10 rounded-2xl flex items-center justify-center text-sm font-semibold ${toneClasses}`}>
-        {title[0]}
+    <div
+      className={`group flex flex-col p-5 rounded-3xl border ${t.border} ${t.bg} ${t.shadow} transition-all duration-300 hover:-translate-y-1`}
+    >
+      <div className="flex items-center gap-4 mb-3">
+        <div
+          className={`h-10 w-10 rounded-2xl ${t.iconBg} ${t.iconText} flex items-center justify-center font-bold text-lg shadow-inner`}
+        >
+          {firstLetter}
+        </div>
+        <div className="flex-1 min-w-0">
+          <p className="text-[11px] font-bold text-[#9CA89F] uppercase tracking-wider truncate">
+            {title}
+          </p>
+        </div>
       </div>
-      <div>
-        <div className="text-xs text-slate-500">{title}</div>
-        <div className="text-lg font-semibold text-slate-900">{value}</div>
-        <div className="text-[11px] text-slate-400">{subtitle}</div>
+      <div className="flex items-baseline gap-2">
+        <h3 className={`text-2xl font-bold ${t.text}`}>{value}</h3>
       </div>
+      <p className="text-xs text-[#5C6560] mt-1">{subtitle}</p>
     </div>
   )
 }
@@ -1879,10 +1750,10 @@ function LegendDot({ color, label }) {
 function ProfileRow({ icon: Icon, label, highlight = false, onClick }) {
   return (
     <button
-      className={`w-full flex items-center gap-3 rounded-2xl px-3 py-2 text-sm transition ${
+      className={`w-full flex items-center gap-3 rounded-2xl px-3 py-2.5 text-sm font-medium transition-colors ${
         highlight
-          ? 'text-rose-500 hover:bg-rose-50'
-          : 'text-slate-600 hover:bg-slate-50'
+          ? 'text-[#D97070] hover:bg-[#D97070]/5'
+          : 'text-[#5C6560] hover:bg-[#FAFAFA] hover:text-[#1A1F1B]'
       }`}
       onClick={onClick}
     >
@@ -1916,15 +1787,20 @@ function DonationsSection({ donations, selectedDonationId, onSelectDonation, bas
     : null
 
   return (
-    <div className="bg-white rounded-3xl shadow-sm p-5 flex flex-col gap-4 flex-1">
-      <div className="flex items-center justify-between">
-        <div>
-          <h2 className="text-base font-semibold text-slate-900">Donations</h2>
-          <p className="text-xs text-slate-500">Recent donations and payment status</p>
+    <div className="bg-white rounded-3xl border border-[#E8EAE8] shadow-sm p-6 flex flex-col gap-6 flex-1">
+      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
+        <div className="flex items-center gap-3">
+          <div className="w-10 h-10 bg-[#FAFAFA] rounded-lg flex items-center justify-center text-[#F0C000]">
+            <FiFileText className="h-5 w-5" />
+          </div>
+          <div>
+            <h2 className="text-lg font-bold text-[#1A1F1B]">Donations</h2>
+            <p className="text-xs text-[#5C6560]">Recent donations and payment status</p>
+          </div>
         </div>
-        <div className="flex items-center gap-2 text-[11px] text-slate-500">
+        <div className="flex items-center gap-2">
           <select
-            className="rounded-2xl border border-slate-200 px-2 py-1 text-[11px] focus:outline-none focus:ring-2 focus:ring-[#1B3E2A] focus:border-transparent"
+            className="rounded-xl border border-[#E8EAE8] bg-[#FAFAFA] px-3 py-2 text-xs font-semibold text-[#5C6560] outline-none focus:ring-2 focus:ring-[#F0C000] transition-all"
             value={statusFilter}
             onChange={(event) => setStatusFilter(event.target.value)}
           >
@@ -1934,7 +1810,7 @@ function DonationsSection({ donations, selectedDonationId, onSelectDonation, bas
             <option value="Failed">Failed</option>
           </select>
           <select
-            className="rounded-2xl border border-slate-200 px-2 py-1 text-[11px] focus:outline-none focus:ring-2 focus:ring-[#1B3E2A] focus:border-transparent"
+            className="rounded-xl border border-[#E8EAE8] bg-[#FAFAFA] px-3 py-2 text-xs font-semibold text-[#5C6560] outline-none focus:ring-2 focus:ring-[#F0C000] transition-all"
             value={methodFilter}
             onChange={(event) => setMethodFilter(event.target.value)}
           >
@@ -1946,25 +1822,25 @@ function DonationsSection({ donations, selectedDonationId, onSelectDonation, bas
         </div>
       </div>
 
-      <div className="rounded-2xl border border-slate-200 overflow-hidden">
+      <div className="bg-white rounded-2xl border border-[#E8EAE8] overflow-hidden">
         <div className="overflow-x-auto">
-          <table className="min-w-full text-sm">
+          <table className="w-full text-sm text-left">
             <thead>
-              <tr className="bg-white text-left text-slate-500 border-b border-slate-200">
-                <th className="py-3 px-4 font-medium whitespace-nowrap">Donation ID</th>
-                <th className="py-3 px-4 font-medium whitespace-nowrap">Donor Name</th>
-                <th className="py-3 px-4 font-medium whitespace-nowrap">Program</th>
-                <th className="py-3 px-4 font-medium whitespace-nowrap">Amount</th>
-                <th className="py-3 px-4 font-medium whitespace-nowrap">Payment Method</th>
-                <th className="py-3 px-4 font-medium whitespace-nowrap">Status</th>
-                <th className="py-3 px-4 font-medium whitespace-nowrap">Date</th>
-                <th className="py-3 px-4 font-medium whitespace-nowrap text-right">Action</th>
+              <tr className="bg-[#FAFAFA] text-[#5C6560] font-semibold border-b border-[#E8EAE8]">
+                <th className="py-4 px-6 uppercase tracking-wider text-[11px]">Donation ID</th>
+                <th className="py-4 px-6 uppercase tracking-wider text-[11px]">Donor Name</th>
+                <th className="py-4 px-6 uppercase tracking-wider text-[11px]">Program</th>
+                <th className="py-4 px-6 uppercase tracking-wider text-[11px]">Amount</th>
+                <th className="py-4 px-6 uppercase tracking-wider text-[11px]">Payment Method</th>
+                <th className="py-4 px-6 uppercase tracking-wider text-[11px]">Status</th>
+                <th className="py-4 px-6 uppercase tracking-wider text-[11px]">Date</th>
+                <th className="py-4 px-6 uppercase tracking-wider text-[11px] text-right">Action</th>
               </tr>
             </thead>
-            <tbody className="divide-y divide-slate-100">
+            <tbody className="divide-y divide-[#E8EAE8]">
             {filteredDonations.length === 0 && (
               <tr>
-                <td colSpan={8} className="py-10 px-4 text-center text-slate-500">
+                <td colSpan={8} className="py-12 text-center text-[#9CA89F] italic">
                   No donations found.
                 </td>
               </tr>
@@ -1972,36 +1848,39 @@ function DonationsSection({ donations, selectedDonationId, onSelectDonation, bas
             {filteredDonations.map((donation) => (
               <tr
                 key={donation.id}
-                className={selectedDonationId === donation.id ? 'bg-slate-50' : 'bg-white'}
+                className={`hover:bg-[#FAFAFA]/50 transition-colors group ${selectedDonationId === donation.id ? 'bg-[#FAFAFA]' : 'bg-white'}`}
               >
-                <td className="py-3 px-4 whitespace-nowrap text-slate-600">{donation.id}</td>
-                <td className="py-3 px-4 whitespace-nowrap text-slate-900">{donation.donorName}</td>
-                <td className="py-3 px-4 whitespace-nowrap text-slate-700">{donation.campaignName}</td>
-                <td className="py-3 px-4 whitespace-nowrap font-medium text-slate-900">
+                <td className="py-4 px-6 text-[#5C6560] font-medium">{donation.id}</td>
+                <td className="py-4 px-6 font-bold text-[#1A1F1B]">{donation.donorName}</td>
+                <td className="py-4 px-6 text-[#5C6560]">{donation.campaignName}</td>
+                <td className="py-4 px-6 font-bold text-[#1A1F1B]">
                   {formatCurrency(donation.amount, donation.currency || baseCurrency || 'PHP')}
                 </td>
-                <td className="py-3 px-4 whitespace-nowrap text-slate-700">{donation.method}</td>
-                <td className="py-3 px-4 whitespace-nowrap">
+                <td className="py-4 px-6 text-[#5C6560]">{donation.method}</td>
+                <td className="py-4 px-6">
                   <span
-                    className={`inline-flex items-center rounded-full px-2 py-0.5 text-xs font-medium ${
+                    className={`px-3 py-1 rounded-full text-[11px] font-bold border transition-colors ${
                       donation.status === 'Completed'
-                        ? 'bg-[#1B3E2A]/10 text-[#1B3E2A]'
+                        ? 'bg-[#F0F8F1] text-[#4A8058] border-[#D6EDD9]'
                         : donation.status === 'Pending'
-                        ? 'bg-[#F2C94C]/20 text-[#8A6A12]'
-                        : 'bg-rose-50 text-rose-600'
+                        ? 'bg-[#FFFAE8] text-[#B8920A] border-[#FEF3C0]'
+                        : 'bg-[#D97070]/5 text-[#D97070] border-[#D97070]/20'
                     }`}
                   >
                     {donation.status}
                   </span>
                 </td>
-                <td className="py-3 px-4 whitespace-nowrap text-slate-600">{donation.date}</td>
-                <td className="py-3 px-4 whitespace-nowrap text-right">
-                  <button
-                    className="rounded-md bg-emerald-500 px-3 py-1.5 text-xs font-semibold text-white hover:bg-emerald-600"
-                    onClick={() => onSelectDonation(donation.id)}
-                  >
-                    View Details
-                  </button>
+                <td className="py-4 px-6 text-[#5C6560]">{donation.date}</td>
+                <td className="py-4 px-6">
+                  <div className="flex items-center justify-end">
+                    <button
+                      className="p-2 text-[#9CA89F] hover:text-[#1A1F1B] hover:bg-[#FAFAFA] rounded-lg transition-all active:scale-95"
+                      onClick={() => onSelectDonation(donation.id)}
+                      title="View Details"
+                    >
+                      <FiEye className="h-4 w-4" />
+                    </button>
+                  </div>
                 </td>
               </tr>
             ))}
@@ -2012,74 +1891,86 @@ function DonationsSection({ donations, selectedDonationId, onSelectDonation, bas
 
       {selectedDonation && (
         <div
-          className="fixed inset-0 z-40 flex items-center justify-center bg-slate-900/40 px-4 text-xs"
+          className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-[#1A1F1B]/60 backdrop-blur-sm"
           onClick={() => onSelectDonation(null)}
         >
           <div
-            className="bg-white rounded-3xl shadow-sm p-5 w-full max-w-lg"
+            className="bg-white rounded-3xl shadow-2xl w-full max-w-lg overflow-hidden border border-[#E8EAE8] animate-in fade-in zoom-in-95 duration-200"
             onClick={(event) => event.stopPropagation()}
           >
-            <div className="flex items-center justify-between mb-3">
+            <div className="px-6 py-4 border-b border-[#E8EAE8] flex items-center justify-between bg-[#FAFAFA]">
               <div>
-                <div className="text-[11px] font-medium text-slate-500">Donation details</div>
-                <div className="text-sm font-semibold text-slate-900">{selectedDonation.id}</div>
+                <p className="text-[10px] font-bold text-[#9CA89F] uppercase tracking-wider mb-1">Donation details</p>
+                <h3 className="text-lg font-bold text-[#1A1F1B]">{selectedDonation.id}</h3>
               </div>
               <button
                 type="button"
-                className="text-[11px] font-medium text-slate-500 hover:text-slate-700"
+                className="p-2 text-[#9CA89F] hover:text-[#1A1F1B] rounded-full hover:bg-[#FAFAFA] transition-all"
                 onClick={() => onSelectDonation(null)}
               >
-                Close
+                <FiXCircle className="h-6 w-6" />
               </button>
             </div>
 
-            <div className="grid grid-cols-3 gap-2 mb-2">
-              <div>
-                <div className="text-[11px] text-slate-500">Donor</div>
-                <div className="text-xs font-medium text-slate-800">{selectedDonation.donorName}</div>
-              </div>
-              <div>
-                <div className="text-[11px] text-slate-500">Program</div>
-                <div className="text-xs font-medium text-slate-800">{selectedDonation.campaignName}</div>
-              </div>
-              <div>
-                <div className="text-[11px] text-slate-500">Amount</div>
-                <div className="text-xs font-medium text-slate-800">
-                  {formatCurrency(selectedDonation.amount, selectedDonation.currency || baseCurrency || 'PHP')}
+            <div className="p-6 space-y-6">
+              <div className="grid grid-cols-3 gap-4">
+                <div>
+                  <p className="text-[10px] font-bold text-[#9CA89F] uppercase tracking-wider mb-1">Donor</p>
+                  <p className="text-sm font-bold text-[#1A1F1B]">{selectedDonation.donorName}</p>
+                </div>
+                <div>
+                  <p className="text-[10px] font-bold text-[#9CA89F] uppercase tracking-wider mb-1">Program</p>
+                  <p className="text-sm font-bold text-[#1A1F1B]">{selectedDonation.campaignName}</p>
+                </div>
+                <div>
+                  <p className="text-[10px] font-bold text-[#9CA89F] uppercase tracking-wider mb-1">Amount</p>
+                  <p className="text-sm font-bold text-[#F0C000]">
+                    {formatCurrency(selectedDonation.amount, selectedDonation.currency || baseCurrency || 'PHP')}
+                  </p>
                 </div>
               </div>
-            </div>
 
-            <div className="grid grid-cols-3 gap-2 mb-2">
-              <div>
-                <div className="text-[11px] text-slate-500">Payment method</div>
-                <div className="text-xs text-slate-700">{selectedDonation.method}</div>
-              </div>
-              <div>
-                <div className="text-[11px] text-slate-500">Gateway</div>
-                <div className="text-xs text-slate-700">{selectedDonation.gateway}</div>
-              </div>
-              <div>
-                <div className="text-[11px] text-slate-500">Status</div>
-                <div className="text-xs text-slate-700">{selectedDonation.status}</div>
-              </div>
-            </div>
-
-            <div className="grid grid-cols-3 gap-2 mb-2">
-              <div>
-                <div className="text-[11px] text-slate-500">Transaction ref.</div>
-                <div className="text-xs text-slate-700">{selectedDonation.reference}</div>
-              </div>
-              <div>
-                <div className="text-[11px] text-slate-500">Timestamp</div>
-                <div className="text-xs text-slate-700">{selectedDonation.date}</div>
-              </div>
-              <div>
-                <div className="text-[11px] text-slate-500">Origin</div>
-                <div className="text-xs text-slate-700">
-                  {selectedDonationRegion}{' '}
-                  {selectedDonation.country ? `· ${selectedDonation.country}` : ''}
+              <div className="grid grid-cols-3 gap-4">
+                <div>
+                  <p className="text-[10px] font-bold text-[#9CA89F] uppercase tracking-wider mb-1">Payment method</p>
+                  <p className="text-sm text-[#5C6560] font-medium">{selectedDonation.method}</p>
                 </div>
+                <div>
+                  <p className="text-[10px] font-bold text-[#9CA89F] uppercase tracking-wider mb-1">Gateway</p>
+                  <p className="text-sm text-[#5C6560] font-medium">{selectedDonation.gateway}</p>
+                </div>
+                <div>
+                  <p className="text-[10px] font-bold text-[#9CA89F] uppercase tracking-wider mb-1">Status</p>
+                  <p className="text-sm text-[#5C6560] font-medium">{selectedDonation.status}</p>
+                </div>
+              </div>
+
+              <div className="grid grid-cols-3 gap-4">
+                <div>
+                  <p className="text-[10px] font-bold text-[#9CA89F] uppercase tracking-wider mb-1">Transaction ref.</p>
+                  <p className="text-sm text-[#5C6560] font-medium truncate">{selectedDonation.reference}</p>
+                </div>
+                <div>
+                  <p className="text-[10px] font-bold text-[#9CA89F] uppercase tracking-wider mb-1">Timestamp</p>
+                  <p className="text-sm text-[#5C6560] font-medium">{selectedDonation.date}</p>
+                </div>
+                <div>
+                  <p className="text-[10px] font-bold text-[#9CA89F] uppercase tracking-wider mb-1">Origin</p>
+                  <p className="text-sm text-[#5C6560] font-medium">
+                    {selectedDonationRegion}{' '}
+                    {selectedDonation.country ? `· ${selectedDonation.country}` : ''}
+                  </p>
+                </div>
+              </div>
+
+              <div className="pt-4 flex items-center gap-3">
+                <button
+                  type="button"
+                  onClick={() => onSelectDonation(null)}
+                  className="w-full px-6 py-2.5 rounded-xl border border-[#E8EAE8] text-sm font-bold text-[#5C6560] hover:bg-[#FAFAFA] transition-all"
+                >
+                  Close
+                </button>
               </div>
             </div>
           </div>
@@ -2095,77 +1986,94 @@ function CampaignsSection({ campaigns, selectedCampaignId, onSelectCampaign, onE
   const [editingTarget, setEditingTarget] = useState('')
 
   return (
-    <div className="bg-white rounded-3xl shadow-sm p-5 flex flex-col gap-4 flex-1">
+    <div className="bg-white rounded-3xl border border-[#E8EAE8] shadow-sm p-6 flex flex-col gap-6 flex-1">
       <div className="flex items-center justify-between">
-        <div>
-          <h2 className="text-base font-semibold text-slate-900">Programs</h2>
-          <p className="text-xs text-slate-500">Manage active and archived programs</p>
+        <div className="flex items-center gap-3">
+          <div className="w-10 h-10 bg-[#FAFAFA] rounded-lg flex items-center justify-center text-[#F0C000]">
+            <FiPlus className="h-5 w-5" />
+          </div>
+          <div>
+            <h2 className="text-lg font-bold text-[#1A1F1B]">Programs</h2>
+            <p className="text-xs text-[#5C6560]">Manage active and archived programs</p>
+          </div>
         </div>
       </div>
 
-      <div className="rounded-2xl border border-slate-200 overflow-hidden">
+      <div className="bg-white rounded-2xl border border-[#E8EAE8] overflow-hidden">
         <div className="overflow-x-auto">
-          <table className="min-w-full text-sm">
+          <table className="w-full text-sm text-left">
             <thead>
-              <tr className="bg-white text-left text-slate-500 border-b border-slate-200">
-                <th className="py-3 px-4 font-medium whitespace-nowrap">Program</th>
-                <th className="py-3 px-4 font-medium whitespace-nowrap">Target Amount</th>
-                <th className="py-3 px-4 font-medium whitespace-nowrap">Total Collected</th>
-                <th className="py-3 px-4 font-medium whitespace-nowrap">Progress</th>
-                <th className="py-3 px-4 font-medium whitespace-nowrap">Status</th>
-                <th className="py-3 px-4 font-medium whitespace-nowrap text-right">Actions</th>
+              <tr className="bg-[#FAFAFA] text-[#5C6560] font-semibold border-b border-[#E8EAE8]">
+                <th className="py-4 px-6 uppercase tracking-wider text-[11px]">Program</th>
+                <th className="py-4 px-6 uppercase tracking-wider text-[11px]">Target Amount</th>
+                <th className="py-4 px-6 uppercase tracking-wider text-[11px]">Total Collected</th>
+                <th className="py-4 px-6 uppercase tracking-wider text-[11px]">Progress</th>
+                <th className="py-4 px-6 uppercase tracking-wider text-[11px]">Status</th>
+                <th className="py-4 px-6 uppercase tracking-wider text-[11px] text-right">Actions</th>
               </tr>
             </thead>
-            <tbody className="divide-y divide-slate-100">
+            <tbody className="divide-y divide-[#E8EAE8]">
             {campaigns.map((campaign) => (
               <tr
                 key={campaign.id}
-                className={selectedCampaignId === campaign.id ? 'bg-slate-50' : 'bg-white'}
+                className={`hover:bg-[#FAFAFA]/50 transition-colors group ${selectedCampaignId === campaign.id ? 'bg-[#FAFAFA]' : 'bg-white'}`}
               >
                 <td
-                  className="py-3 px-4 whitespace-nowrap text-slate-900 cursor-pointer"
+                  className="py-4 px-6 font-bold text-[#1A1F1B] cursor-pointer"
                   onClick={() => onSelectCampaign(campaign.id)}
                 >
                   {campaign.name}
                 </td>
-                <td className="py-3 px-4 whitespace-nowrap text-slate-700">
+                <td className="py-4 px-6 text-[#5C6560]">
                   {formatCurrency(campaign.targetAmount)}
                 </td>
-                <td className="py-3 px-4 whitespace-nowrap font-medium text-slate-900">
+                <td className="py-4 px-6 font-bold text-[#1A1F1B]">
                   {formatCurrency(campaign.collected)}
                 </td>
-                <td className="py-3 px-4 whitespace-nowrap text-slate-700">
-                  {campaign.progressPercent}% funded
+                <td className="py-4 px-6 text-[#5C6560]">
+                  <div className="flex flex-col gap-1.5">
+                    <div className="w-full bg-[#FAFAFA] rounded-full h-1.5 border border-[#E8EAE8]">
+                      <div 
+                        className="bg-[#F0C000] h-1.5 rounded-full shadow-sm transition-all duration-500" 
+                        style={{ width: `${Math.min(100, campaign.progressPercent)}%` }}
+                      />
+                    </div>
+                    <span className="text-[10px] font-bold text-[#9CA89F] uppercase tracking-wider">{campaign.progressPercent}% funded</span>
+                  </div>
                 </td>
-                <td className="py-3 px-4 whitespace-nowrap">
+                <td className="py-4 px-6">
                   <span
-                    className={`inline-flex items-center rounded-full px-2 py-0.5 text-xs font-medium ${
+                    className={`px-3 py-1 rounded-full text-[11px] font-bold border transition-colors ${
                       campaign.status === 'Active'
-                        ? 'bg-[#1B3E2A]/10 text-[#1B3E2A]'
+                        ? 'bg-[#F0F8F1] text-[#4A8058] border-[#D6EDD9]'
                         : campaign.status === 'Completed'
-                        ? 'bg-[#F2C94C]/20 text-[#8A6A12]'
-                        : 'bg-slate-100 text-slate-500'
+                        ? 'bg-[#FFFAE8] text-[#B8920A] border-[#FEF3C0]'
+                        : 'bg-[#FAFAFA] text-[#9CA89F] border-[#E8EAE8]'
                     }`}
                   >
                     {campaign.status}
                   </span>
                 </td>
-                <td className="py-3 px-4 whitespace-nowrap text-right">
-                  <button
-                    className="rounded-md bg-emerald-500 px-3 py-1.5 text-xs font-semibold text-white hover:bg-emerald-600 mr-2"
-                    onClick={() => {
-                      setEditingCampaign(campaign)
-                      setEditingTarget(String(campaign.targetAmount || 0))
-                    }}
-                  >
-                    Edit
-                  </button>
-                  <button
-                    className="rounded-md bg-rose-500 px-3 py-1.5 text-xs font-semibold text-white hover:bg-rose-600"
-                    onClick={() => onArchiveCampaign(campaign.id)}
-                  >
-                    Archive
-                  </button>
+                <td className="py-4 px-6">
+                  <div className="flex items-center justify-end gap-2">
+                    <button
+                      className="p-2 text-[#9CA89F] hover:text-[#1A1F1B] hover:bg-[#FAFAFA] rounded-lg transition-all active:scale-95"
+                      onClick={() => {
+                        setEditingCampaign(campaign)
+                        setEditingTarget(String(campaign.targetAmount || 0))
+                      }}
+                      title="Edit"
+                    >
+                      <FiEdit2 className="h-4 w-4" />
+                    </button>
+                    <button
+                      className="p-2 text-[#9CA89F] hover:text-[#D97070] hover:bg-[#D97070]/10 rounded-lg transition-all active:scale-95"
+                      onClick={() => onArchiveCampaign(campaign.id)}
+                      title="Archive"
+                    >
+                      <FiTrash2 className="h-4 w-4" />
+                    </button>
+                  </div>
                 </td>
               </tr>
             ))}
@@ -2176,135 +2084,114 @@ function CampaignsSection({ campaigns, selectedCampaignId, onSelectCampaign, onE
 
       {selectedCampaign && (
         <div
-          className="fixed inset-0 z-40 flex items-center justify-center bg-slate-900/40 px-4 text-xs"
+          className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-[#1A1F1B]/60 backdrop-blur-sm"
           onClick={() => onSelectCampaign(null)}
         >
           <div
-            className="bg-white rounded-3xl shadow-sm p-5 w-full max-w-lg"
+            className="bg-white rounded-3xl shadow-2xl w-full max-w-lg overflow-hidden border border-[#E8EAE8] animate-in fade-in zoom-in-95 duration-200"
             onClick={(event) => event.stopPropagation()}
           >
-            <div className="flex items-center justify-between mb-2">
+            <div className="px-6 py-4 border-b border-[#E8EAE8] flex items-center justify-between bg-[#FAFAFA]">
               <div>
-                <div className="text-[11px] font-medium text-slate-500">Program details</div>
-                <div className="text-sm font-semibold text-slate-900">{selectedCampaign.name}</div>
+                <p className="text-[10px] font-bold text-[#9CA89F] uppercase tracking-wider mb-1">Program details</p>
+                <h3 className="text-lg font-bold text-[#1A1F1B]">{selectedCampaign.name}</h3>
               </div>
               <button
                 type="button"
-                className="text-[11px] font-medium text-slate-500 hover:text-slate-700"
+                className="p-2 text-[#9CA89F] hover:text-[#1A1F1B] rounded-full hover:bg-[#FAFAFA] transition-all"
                 onClick={() => onSelectCampaign(null)}
               >
-                Close
+                <FiXCircle className="h-6 w-6" />
               </button>
             </div>
-            <div className="grid grid-cols-3 gap-2 mb-1">
-              <div>
-                <div className="text-[11px] text-slate-500">Target amount</div>
-                <div className="text-xs font-medium text-slate-800">
-                  {formatCurrency(selectedCampaign.targetAmount)}
+
+            <div className="p-6 space-y-6">
+              <div className="grid grid-cols-2 gap-6">
+                <div>
+                  <p className="text-[10px] font-bold text-[#9CA89F] uppercase tracking-wider mb-1">Target Amount</p>
+                  <p className="text-sm font-bold text-[#1A1F1B]">{formatCurrency(selectedCampaign.targetAmount)}</p>
+                </div>
+                <div>
+                  <p className="text-[10px] font-bold text-[#9CA89F] uppercase tracking-wider mb-1">Total Collected</p>
+                  <p className="text-sm font-bold text-[#F0C000]">{formatCurrency(selectedCampaign.collected)}</p>
                 </div>
               </div>
+
               <div>
-                <div className="text-[11px] text-slate-500">Total collected</div>
-                <div className="text-xs font-medium text-slate-800">
-                  {formatCurrency(selectedCampaign.collected)}
+                <p className="text-[10px] font-bold text-[#9CA89F] uppercase tracking-wider mb-2">Funding Progress</p>
+                <div className="space-y-2">
+                  <div className="w-full bg-[#FAFAFA] rounded-full h-3 border border-[#E8EAE8]">
+                    <div 
+                      className="bg-[#F0C000] h-3 rounded-full shadow-sm transition-all duration-500" 
+                      style={{ width: `${Math.min(100, selectedCampaign.progressPercent)}%` }}
+                    />
+                  </div>
+                  <p className="text-xs font-bold text-[#5C6560] text-right">{selectedCampaign.progressPercent}% of goal reached</p>
                 </div>
               </div>
-              <div>
-                <div className="text-[11px] text-slate-500">Progress</div>
-                <div className="text-xs text-slate-700">{selectedCampaign.progressPercent}% funded</div>
+
+              <div className="pt-4 flex items-center gap-3">
+                <button
+                  type="button"
+                  onClick={() => onSelectCampaign(null)}
+                  className="w-full px-6 py-2.5 rounded-xl border border-[#E8EAE8] text-sm font-bold text-[#5C6560] hover:bg-[#FAFAFA] transition-all"
+                >
+                  Close
+                </button>
               </div>
-            </div>
-            <div className="mt-2">
-              <div className="text-[11px] font-medium text-slate-500 mb-1">Donations for this program</div>
-              {selectedCampaign.donations.length === 0 ? (
-                <div className="text-xs text-slate-400">No donations linked to this program yet.</div>
-              ) : (
-                <div className="overflow-x-auto -mx-1">
-                  <table className="min-w-full text-[11px] text-left text-slate-600">
-                    <thead className="uppercase text-slate-400">
-                      <tr>
-                        <th className="px-1 py-1 font-medium">Donation ID</th>
-                        <th className="px-1 py-1 font-medium">Donor</th>
-                        <th className="px-1 py-1 font-medium">Amount</th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {selectedCampaign.donations.map((donation) => (
-                        <tr key={donation.id} className="border-t border-slate-100">
-                          <td className="px-1 py-1 whitespace-nowrap text-slate-500">{donation.id}</td>
-                          <td className="px-1 py-1 whitespace-nowrap text-slate-700">{donation.donorName}</td>
-                          <td className="px-1 py-1 whitespace-nowrap font-medium text-slate-800">
-                            {formatCurrency(donation.amount, donation.currency || 'PHP')}
-                          </td>
-                        </tr>
-                      ))}
-                    </tbody>
-                  </table>
-                </div>
-              )}
             </div>
           </div>
         </div>
       )}
 
       {editingCampaign && (
-        <div
-          className="fixed inset-0 z-40 flex items-center justify-center bg-slate-900/40 px-4 text-xs"
-          onClick={() => setEditingCampaign(null)}
-        >
-          <div
-            className="bg-white rounded-3xl shadow-sm p-5 w-full max-w-sm"
-            onClick={(event) => event.stopPropagation()}
-          >
-            <div className="flex items-center justify-between mb-3">
-              <div>
-                <div className="text-[11px] font-medium text-slate-500">Edit program</div>
-                <div className="text-sm font-semibold text-slate-900">{editingCampaign.name}</div>
-              </div>
-              <button
-                type="button"
-                className="text-[11px] font-medium text-slate-500 hover:text-slate-700"
+        <div className="fixed inset-0 z-[110] flex items-center justify-center p-4 bg-[#1A1F1B]/60 backdrop-blur-sm"
+             onClick={() => setEditingCampaign(null)}>
+          <div className="bg-white rounded-3xl shadow-2xl w-full max-w-sm overflow-hidden border border-[#E8EAE8] animate-in fade-in zoom-in-95 duration-200"
+               onClick={(e) => e.stopPropagation()}>
+            <div className="px-6 py-4 border-b border-[#E8EAE8] bg-[#FAFAFA] flex items-center justify-between">
+              <h3 className="text-lg font-bold text-[#1A1F1B]">Edit Target</h3>
+              <button 
                 onClick={() => setEditingCampaign(null)}
+                className="p-2 text-[#9CA89F] hover:text-[#1A1F1B] rounded-full hover:bg-[#FAFAFA] transition-all"
               >
-                Close
+                <FiXCircle className="h-6 w-6" />
               </button>
             </div>
-
-            <div className="space-y-2">
-              <div>
-                <div className="text-[11px] text-slate-500 mb-0.5">Target amount</div>
+            <div className="p-6 space-y-4">
+              <div className="space-y-1">
+                <label className="text-[10px] font-bold text-[#9CA89F] uppercase tracking-wider">Target Amount for {editingCampaign.name}</label>
                 <input
-                  type="number"
-                  className="w-full rounded-2xl border border-slate-200 px-2 py-1 text-xs focus:outline-none focus:ring-2 focus:ring-[#1B3E2A] focus:border-transparent"
+                  type="text"
+                  className="w-full rounded-xl border border-[#E8EAE8] px-4 py-2.5 text-sm font-bold text-[#1A1F1B] focus:ring-2 focus:ring-[#F0C000] focus:border-transparent outline-none transition-all"
                   value={editingTarget}
-                  onChange={(event) => setEditingTarget(event.target.value)}
+                  onChange={(e) => setEditingTarget(e.target.value)}
+                  placeholder="e.g. 50000"
+                  autoFocus
                 />
               </div>
-            </div>
-
-            <div className="flex items-center justify-end gap-2 mt-4">
-              <button
-                type="button"
-                className="rounded-2xl border border-slate-200 px-3 py-1 text-slate-600 hover:bg-slate-50"
-                onClick={() => setEditingCampaign(null)}
-              >
-                Cancel
-              </button>
-              <button
-                type="button"
-                className="rounded-2xl border border-[#1B3E2A] bg-[#1B3E2A] px-3 py-1 text-white hover:bg-[#163021]"
-                onClick={() => {
-                  const parsed = Number(String(editingTarget).replace(/[^0-9.]/g, ''))
-                  if (Number.isNaN(parsed) || parsed <= 0) {
-                    window.alert('Please enter a valid amount.')
-                    return
-                  }
-                  onEditCampaign(editingCampaign.id, parsed)
-                  setEditingCampaign(null)
-                }}
-              >
-                Save changes
-              </button>
+              <div className="flex gap-3 pt-2">
+                <button
+                  className="flex-1 px-6 py-2.5 rounded-xl border border-[#E8EAE8] text-sm font-bold text-[#5C6560] hover:bg-[#FAFAFA] transition-all"
+                  onClick={() => setEditingCampaign(null)}
+                >
+                  Cancel
+                </button>
+                <button
+                  className="flex-1 px-6 py-2.5 rounded-xl bg-[#F0C000] text-white text-sm font-bold hover:bg-[#B8920A] transition-all shadow-md shadow-[#F0C000]/10"
+                  onClick={() => {
+                    const parsed = Number(String(editingTarget).replace(/[^0-9.]/g, ''))
+                    if (Number.isNaN(parsed) || parsed <= 0) {
+                      window.alert('Please enter a valid amount.')
+                      return
+                    }
+                    onEditCampaign(editingCampaign.id, parsed)
+                    setEditingCampaign(null)
+                  }}
+                >
+                  Save
+                </button>
+              </div>
             </div>
           </div>
         </div>
@@ -2324,30 +2211,35 @@ function DonorsSection({ donors, selectedDonorId, onSelectDonor }) {
   const selectedDonor = filteredDonors.find((donor) => donor.id === selectedDonorId) || null
 
   return (
-    <div className="bg-white rounded-3xl shadow-sm p-5 flex flex-col gap-4 flex-1">
+    <div className="bg-white rounded-3xl border border-[#E8EAE8] shadow-sm p-6 flex flex-col gap-6 flex-1">
       <div className="flex items-center justify-between">
-        <div>
-          <h2 className="text-base font-semibold text-slate-900">Donors</h2>
-          <p className="text-xs text-slate-500">Registered donors and giving history</p>
+        <div className="flex items-center gap-3">
+          <div className="w-10 h-10 bg-[#FAFAFA] rounded-lg flex items-center justify-center text-[#F0C000]">
+            <FiUser className="h-5 w-5" />
+          </div>
+          <div>
+            <h2 className="text-lg font-bold text-[#1A1F1B]">Donors</h2>
+            <p className="text-xs text-[#5C6560]">Managing {donors.length.toLocaleString()} total registered donors</p>
+          </div>
         </div>
       </div>
 
-      <div className="rounded-2xl border border-slate-200 overflow-hidden">
+      <div className="bg-white rounded-2xl border border-[#E8EAE8] overflow-hidden">
         <div className="overflow-x-auto">
-          <table className="min-w-full text-sm">
+          <table className="w-full text-sm text-left">
             <thead>
-              <tr className="bg-white text-left text-slate-500 border-b border-slate-200">
-                <th className="py-3 px-4 font-medium whitespace-nowrap">Donor</th>
-                <th className="py-3 px-4 font-medium whitespace-nowrap">Email</th>
-                <th className="py-3 px-4 font-medium whitespace-nowrap">Total Donations</th>
-                <th className="py-3 px-4 font-medium whitespace-nowrap">Last Donation</th>
-                <th className="py-3 px-4 font-medium whitespace-nowrap text-right">Action</th>
+              <tr className="bg-[#FAFAFA] text-[#5C6560] font-semibold border-b border-[#E8EAE8]">
+                <th className="py-4 px-6 uppercase tracking-wider text-[11px]">Donor</th>
+                <th className="py-4 px-6 uppercase tracking-wider text-[11px]">Email</th>
+                <th className="py-4 px-6 uppercase tracking-wider text-[11px]">Total Donations</th>
+                <th className="py-4 px-6 uppercase tracking-wider text-[11px]">Last Donation</th>
+                <th className="py-4 px-6 uppercase tracking-wider text-[11px] text-right">Action</th>
               </tr>
             </thead>
-            <tbody className="divide-y divide-slate-100">
+            <tbody className="divide-y divide-[#E8EAE8]">
             {filteredDonors.length === 0 && (
               <tr>
-                <td colSpan={5} className="py-10 px-4 text-center text-slate-500">
+                <td colSpan={5} className="py-12 text-center text-[#9CA89F] italic">
                   No donors found.
                 </td>
               </tr>
@@ -2355,21 +2247,24 @@ function DonorsSection({ donors, selectedDonorId, onSelectDonor }) {
             {filteredDonors.map((donor) => (
               <tr
                 key={donor.id}
-                className={selectedDonorId === donor.id ? 'bg-slate-50' : 'bg-white'}
+                className={`hover:bg-[#FAFAFA]/50 transition-colors group ${selectedDonorId === donor.id ? 'bg-[#FAFAFA]' : 'bg-white'}`}
               >
-                <td className="py-3 px-4 whitespace-nowrap text-slate-900">{donor.name}</td>
-                <td className="py-3 px-4 whitespace-nowrap text-slate-700">{donor.email}</td>
-                <td className="py-3 px-4 whitespace-nowrap font-medium text-slate-900">
+                <td className="py-4 px-6 font-bold text-[#1A1F1B]">{donor.name}</td>
+                <td className="py-4 px-6 text-[#5C6560] font-medium">{donor.email}</td>
+                <td className="py-4 px-6 font-bold text-[#1A1F1B]">
                   {formatCurrency(donor.total, donor.currency || 'PHP')}
                 </td>
-                <td className="py-3 px-4 whitespace-nowrap text-slate-600">{donor.lastDonation}</td>
-                <td className="py-3 px-4 whitespace-nowrap text-right">
-                  <button
-                    className="rounded-md bg-emerald-500 px-3 py-1.5 text-xs font-semibold text-white hover:bg-emerald-600"
-                    onClick={() => onSelectDonor(donor.id)}
-                  >
-                    View history
-                  </button>
+                <td className="py-4 px-6 text-[#5C6560]">{donor.lastDonation}</td>
+                <td className="py-4 px-6 text-right">
+                  <div className="flex items-center justify-end">
+                    <button
+                      className="p-2 text-[#9CA89F] hover:text-[#1A1F1B] hover:bg-[#FAFAFA] rounded-lg transition-all active:scale-95"
+                      onClick={() => onSelectDonor(donor.id)}
+                      title="View History"
+                    >
+                      <FiEye className="h-4 w-4" />
+                    </button>
+                  </div>
                 </td>
               </tr>
             ))}
@@ -2379,74 +2274,71 @@ function DonorsSection({ donors, selectedDonorId, onSelectDonor }) {
       </div>
 
       {selectedDonor && (
-        <div
-          className="fixed inset-0 z-40 flex items-center justify-center bg-slate-900/40 px-4 text-xs"
-          onClick={() => onSelectDonor(null)}
-        >
-          <div
-            className="bg-white rounded-3xl shadow-sm p-5 w-full max-w-lg"
-            onClick={(event) => event.stopPropagation()}
-          >
-            <div className="flex items-start justify-between mb-2">
-              <div>
-                <div className="text-[11px] font-medium text-slate-500">Donor profile</div>
-                <div className="text-sm font-semibold text-slate-900">{selectedDonor.name}</div>
+        <div className="bg-[#FAFAFA] rounded-2xl border border-[#E8EAE8] p-6 animate-in fade-in slide-in-from-top-2 duration-200">
+          <div className="flex items-center justify-between mb-6">
+            <div className="flex items-center gap-4">
+              <div className="h-12 w-12 rounded-2xl bg-[#F0F8F1] flex items-center justify-center text-lg font-bold text-[#7EB88A] shadow-sm">
+                {selectedDonor.name.charAt(0)}
               </div>
-              <div className="text-right">
-                <div className="text-[11px] text-slate-500">Total donated</div>
-                <div className="text-xs font-medium text-slate-800">{formatCurrency(selectedDonor.total)}</div>
-                <button
-                  type="button"
-                  className="mt-1 text-[11px] font-medium text-slate-500 hover:text-slate-700"
-                  onClick={() => onSelectDonor(null)}
-                >
-                  Close
-                </button>
+              <div>
+                <p className="text-[10px] font-bold text-[#9CA89F] uppercase tracking-wider mb-1">Donor profile</p>
+                <h3 className="text-xl font-bold text-[#1A1F1B]">{selectedDonor.name}</h3>
+                <p className="text-xs text-[#5C6560]">{selectedDonor.email}</p>
               </div>
             </div>
-            <div className="grid grid-cols-3 gap-2 mb-2">
-              <div>
-                <div className="text-[11px] text-slate-500">Email</div>
-                <div className="text-xs text-slate-700">{selectedDonor.email}</div>
-              </div>
-              <div>
-                <div className="text-[11px] text-slate-500">Last donation</div>
-                <div className="text-xs text-slate-700">{selectedDonor.lastDonation}</div>
-              </div>
-              <div>
-                <div className="text-[11px] text-slate-500">Programs supported</div>
-                <div className="text-xs text-slate-700">{selectedDonor.campaignsSupported}</div>
-              </div>
+            <div className="text-right">
+              <p className="text-[10px] font-bold text-[#9CA89F] uppercase tracking-wider mb-1">Total Donated</p>
+              <p className="text-lg font-bold text-[#F0C000]">{formatCurrency(selectedDonor.total)}</p>
+              <button
+                onClick={() => onSelectDonor(null)}
+                className="mt-2 p-2 text-[#9CA89F] hover:text-[#1A1F1B] rounded-full hover:bg-white transition-all border border-transparent hover:border-[#E8EAE8]"
+              >
+                <FiXCircle className="h-5 w-5" />
+              </button>
             </div>
-            <div>
-              <div className="text-[11px] font-medium text-slate-500 mb-1">Donation history</div>
-              {selectedDonor.donations.length === 0 ? (
-                <div className="text-xs text-slate-400">No donations recorded for this donor.</div>
-              ) : (
-                <div className="overflow-x-auto -mx-1">
-                  <table className="min-w-full text-[11px] text-left text-slate-600">
-                    <thead className="uppercase text-slate-400">
-                      <tr>
-                        <th className="px-1 py-1 font-medium">Donation ID</th>
-                        <th className="px-1 py-1 font-medium">Program</th>
-                        <th className="px-1 py-1 font-medium">Amount</th>
+          </div>
+
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
+            <div className="bg-white rounded-xl border border-[#E8EAE8] p-4">
+              <p className="text-[10px] font-bold text-[#9CA89F] uppercase tracking-wider mb-1">Last Donation</p>
+              <p className="text-sm font-semibold text-[#1A1F1B]">{selectedDonor.lastDonation}</p>
+            </div>
+            <div className="bg-white rounded-xl border border-[#E8EAE8] p-4">
+              <p className="text-[10px] font-bold text-[#9CA89F] uppercase tracking-wider mb-1">Programs Supported</p>
+              <p className="text-sm font-semibold text-[#1A1F1B]">{selectedDonor.campaignsSupported}</p>
+            </div>
+          </div>
+
+          <div className="pt-4 border-t border-[#E8EAE8]">
+            <p className="text-[10px] font-bold text-[#9CA89F] uppercase tracking-wider mb-3">Donation history</p>
+            {selectedDonor.donations.length === 0 ? (
+              <div className="text-sm text-[#9CA89F] italic bg-white rounded-xl border border-[#E8EAE8] p-4 text-center">
+                No donations recorded for this donor.
+              </div>
+            ) : (
+              <div className="bg-white rounded-xl border border-[#E8EAE8] overflow-hidden">
+                <table className="w-full text-xs text-left">
+                  <thead>
+                    <tr className="bg-[#FAFAFA] text-[#5C6560] font-semibold border-b border-[#E8EAE8]">
+                      <th className="py-3 px-4 uppercase tracking-wider text-[10px]">Donation ID</th>
+                      <th className="py-3 px-4 uppercase tracking-wider text-[10px]">Program</th>
+                      <th className="py-3 px-4 uppercase tracking-wider text-[10px] text-right">Amount</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-[#E8EAE8]">
+                    {selectedDonor.donations.map((donation) => (
+                      <tr key={donation.id} className="hover:bg-[#FAFAFA]/50 transition-colors">
+                        <td className="py-3 px-4 text-[#5C6560] font-medium">{donation.id}</td>
+                        <td className="py-3 px-4 text-[#1A1F1B] font-bold">{donation.campaignName}</td>
+                        <td className="py-3 px-4 text-right text-[#1A1F1B] font-bold">
+                          {formatCurrency(donation.amount, donation.currency || 'PHP')}
+                        </td>
                       </tr>
-                    </thead>
-                    <tbody>
-                      {selectedDonor.donations.map((donation) => (
-                        <tr key={donation.id} className="border-t border-slate-100">
-                          <td className="px-1 py-1 whitespace-nowrap text-slate-500">{donation.id}</td>
-                          <td className="px-1 py-1 whitespace-nowrap text-slate-700">{donation.campaignName}</td>
-                          <td className="px-1 py-1 whitespace-nowrap font-medium text-slate-800">
-                            {formatCurrency(donation.amount, donation.currency || 'PHP')}
-                          </td>
-                        </tr>
-                      ))}
-                    </tbody>
-                  </table>
-                </div>
-              )}
-            </div>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            )}
           </div>
         </div>
       )}
@@ -2672,30 +2564,35 @@ function ContactsSection({ messages, selectedMessageId, onSelectMessage, onToggl
   const selectedMessage = sortedMessages.find((message) => message.id === selectedMessageId) || null
 
   return (
-    <div className="bg-white rounded-3xl shadow-sm p-5 flex flex-col gap-2 flex-1">
-      <div className="flex items-center justify-between mb-2">
-        <div>
-          <h2 className="text-base font-semibold text-slate-900">Messages / Inquiries</h2>
-          <p className="text-xs text-slate-500">Messages from donors and website visitors</p>
+    <div className="bg-white rounded-3xl border border-[#E8EAE8] shadow-sm p-6 flex flex-col gap-6 flex-1">
+      <div className="flex items-center justify-between">
+        <div className="flex items-center gap-3">
+          <div className="w-10 h-10 bg-[#FAFAFA] rounded-lg flex items-center justify-center text-[#F0C000]">
+            <FiSearch className="h-5 w-5" />
+          </div>
+          <div>
+            <h2 className="text-lg font-bold text-[#1A1F1B]">Messages / Inquiries</h2>
+            <p className="text-xs text-[#5C6560]">Managing {messages.length.toLocaleString()} website inquiries</p>
+          </div>
         </div>
       </div>
 
-      <div className="rounded-2xl border border-slate-200 overflow-hidden mb-2">
+      <div className="bg-white rounded-2xl border border-[#E8EAE8] overflow-hidden">
         <div className="overflow-x-auto">
-          <table className="min-w-full text-sm">
+          <table className="w-full text-sm text-left">
             <thead>
-              <tr className="bg-white text-left text-slate-500 border-b border-slate-200">
-                <th className="py-3 px-4 font-medium whitespace-nowrap">From</th>
-                <th className="py-3 px-4 font-medium whitespace-nowrap">Subject</th>
-                <th className="py-3 px-4 font-medium whitespace-nowrap">Received</th>
-                <th className="py-3 px-4 font-medium whitespace-nowrap">Status</th>
-                <th className="py-3 px-4 font-medium whitespace-nowrap text-right">Action</th>
+              <tr className="bg-[#FAFAFA] text-[#5C6560] font-semibold border-b border-[#E8EAE8]">
+                <th className="py-4 px-6 uppercase tracking-wider text-[11px]">From</th>
+                <th className="py-4 px-6 uppercase tracking-wider text-[11px]">Subject</th>
+                <th className="py-4 px-6 uppercase tracking-wider text-[11px]">Received</th>
+                <th className="py-4 px-6 uppercase tracking-wider text-[11px]">Status</th>
+                <th className="py-4 px-6 uppercase tracking-wider text-[11px] text-right">Action</th>
               </tr>
             </thead>
-            <tbody className="divide-y divide-slate-100">
+            <tbody className="divide-y divide-[#E8EAE8]">
             {sortedMessages.length === 0 && (
               <tr>
-                <td colSpan={5} className="py-10 px-4 text-center text-slate-500">
+                <td colSpan={5} className="py-12 text-center text-[#9CA89F] italic">
                   No messages available.
                 </td>
               </tr>
@@ -2715,37 +2612,45 @@ function ContactsSection({ messages, selectedMessageId, onSelectMessage, onToggl
               return (
                 <tr
                   key={message.id}
-                  className={selectedMessageId === message.id ? 'bg-slate-50' : 'bg-white'}
+                  className={`hover:bg-[#FAFAFA]/50 transition-colors group ${selectedMessageId === message.id ? 'bg-[#FAFAFA]' : 'bg-white'}`}
                 >
-                  <td className="py-3 px-4 whitespace-nowrap text-slate-900">{message.fromName}</td>
-                  <td className="py-3 px-4 whitespace-nowrap text-slate-700 truncate max-w-[260px]">
+                  <td className="py-4 px-6 font-bold text-[#1A1F1B]">{message.fromName}</td>
+                  <td className="py-4 px-6 text-[#5C6560] truncate max-w-[260px]">
                     {message.subject}
                   </td>
-                  <td className="py-3 px-4 whitespace-nowrap text-slate-600">{formatted}</td>
-                  <td className="py-3 px-4 whitespace-nowrap">
+                  <td className="py-4 px-6 text-[#5C6560]">{formatted}</td>
+                  <td className="py-4 px-6">
                     <span
-                      className={`inline-flex items-center rounded-full px-2 py-0.5 text-xs font-medium ${
+                      className={`px-3 py-1 rounded-full text-[11px] font-bold border transition-colors ${
                         message.read
-                          ? 'bg-slate-100 text-slate-500'
-                          : 'bg-[#1B3E2A]/10 text-[#1B3E2A]'
+                          ? 'bg-[#FAFAFA] text-[#9CA89F] border-[#E8EAE8]'
+                          : 'bg-[#F0F8F1] text-[#4A8058] border-[#D6EDD9]'
                       }`}
                     >
                       {message.read ? 'Read' : 'Unread'}
                     </span>
                   </td>
-                  <td className="py-3 px-4 whitespace-nowrap text-right">
-                    <button
-                      className="rounded-md bg-emerald-500 px-3 py-1.5 text-xs font-semibold text-white hover:bg-emerald-600 mr-2"
-                      onClick={() => onSelectMessage(message.id)}
-                    >
-                      Open
-                    </button>
-                    <button
-                      className="rounded-md bg-slate-900 px-3 py-1.5 text-xs font-semibold text-white hover:bg-slate-800"
-                      onClick={() => onToggleMessageRead(message.id)}
-                    >
-                      {message.read ? 'Mark unread' : 'Mark read'}
-                    </button>
+                  <td className="py-4 px-6">
+                    <div className="flex items-center justify-end gap-2">
+                      <button
+                        className="p-2 text-[#9CA89F] hover:text-[#1A1F1B] hover:bg-[#FAFAFA] rounded-lg transition-all active:scale-95"
+                        onClick={() => onSelectMessage(message.id)}
+                        title="Open"
+                      >
+                        <FiEye className="h-4 w-4" />
+                      </button>
+                      <button
+                        className={`p-2 rounded-lg transition-all active:scale-95 border ${
+                          message.read
+                            ? 'bg-white border-[#E8EAE8] text-[#9CA89F] hover:text-[#1A1F1B] hover:bg-[#FAFAFA]'
+                            : 'bg-[#1A1F1B] border-[#1A1F1B] text-white hover:bg-black shadow-sm'
+                        }`}
+                        onClick={() => onToggleMessageRead(message.id)}
+                        title={message.read ? 'Mark unread' : 'Mark read'}
+                      >
+                        {message.read ? <FiAlertCircle className="h-4 w-4" /> : <FiCheckCircle className="h-4 w-4" />}
+                      </button>
+                    </div>
                   </td>
                 </tr>
               )
@@ -2756,21 +2661,29 @@ function ContactsSection({ messages, selectedMessageId, onSelectMessage, onToggl
       </div>
 
       {selectedMessage && (
-        <div className="rounded-2xl border border-slate-100 bg-slate-50/60 px-4 py-3 text-xs">
-          <div className="flex items-center justify-between mb-1">
+        <div className="bg-[#FAFAFA] rounded-2xl border border-[#E8EAE8] p-6 animate-in fade-in slide-in-from-top-2 duration-200">
+          <div className="flex items-center justify-between mb-4">
             <div>
-              <div className="text-[11px] font-medium text-slate-500">Message from</div>
-              <div className="text-sm font-semibold text-slate-900">{selectedMessage.fromName}</div>
-              <div className="text-[11px] text-slate-500">{selectedMessage.fromEmail}</div>
+              <p className="text-[10px] font-bold text-[#9CA89F] uppercase tracking-wider mb-1">Message from</p>
+              <h3 className="text-lg font-bold text-[#1A1F1B]">{selectedMessage.fromName}</h3>
+              <p className="text-xs text-[#5C6560]">{selectedMessage.fromEmail}</p>
             </div>
           </div>
-          <div className="mt-2 mb-1">
-            <div className="text-[11px] text-slate-500">Subject</div>
-            <div className="text-xs font-medium text-slate-800">{selectedMessage.subject}</div>
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
+            <div>
+              <p className="text-[10px] font-bold text-[#9CA89F] uppercase tracking-wider mb-1">Subject</p>
+              <p className="text-sm font-semibold text-[#1A1F1B]">{selectedMessage.subject}</p>
+            </div>
+            <div>
+              <p className="text-[10px] font-bold text-[#9CA89F] uppercase tracking-wider mb-1">Received At</p>
+              <p className="text-sm font-semibold text-[#1A1F1B]">{selectedMessage.receivedAt}</p>
+            </div>
           </div>
-          <div className="mt-1">
-            <div className="text-[11px] text-slate-500 mb-0.5">Message</div>
-            <div className="text-xs text-slate-700 whitespace-pre-wrap">{selectedMessage.body}</div>
+          <div className="pt-4 border-t border-[#E8EAE8]">
+            <p className="text-[10px] font-bold text-[#9CA89F] uppercase tracking-wider mb-2">Message Body</p>
+            <div className="text-sm text-[#1A1F1B] whitespace-pre-wrap leading-relaxed bg-white rounded-xl border border-[#E8EAE8] p-4">
+              {selectedMessage.body}
+            </div>
           </div>
         </div>
       )}
@@ -2784,43 +2697,52 @@ function PartnersSection({ partners, selectedPartnerId, onSelectPartner, onAddPa
   const selectedPartner = partners.find((partner) => partner.id === selectedPartnerId) || null
 
   return (
-    <div className="bg-white rounded-3xl shadow-sm p-5 flex flex-col gap-4 flex-1">
-      <div className="flex items-center justify-between">
-        <div>
-          <h2 className="text-base font-semibold text-slate-900">Partners & Sponsors</h2>
-          <p className="text-xs text-slate-500">Partner organizations and contribution type</p>
+    <div className="bg-white rounded-3xl border border-[#E8EAE8] shadow-sm p-6 flex flex-col gap-6 flex-1">
+      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
+        <div className="flex items-center gap-3">
+          <div className="w-10 h-10 bg-[#FAFAFA] rounded-lg flex items-center justify-center text-[#F0C000]">
+            <FiUser className="h-5 w-5" />
+          </div>
+          <div>
+            <h2 className="text-lg font-bold text-[#1A1F1B]">Partners & Sponsors</h2>
+            <p className="text-xs text-[#5C6560]">Managing {partners.length.toLocaleString()} partner organizations</p>
+          </div>
         </div>
-        <div className="flex items-center gap-2 text-xs">
+        <div className="flex items-center gap-3">
+          <div className="inline-flex items-center rounded-full bg-[#FAFAFA] border border-[#E8EAE8] p-0.5">
+            <button
+              className={`px-3 py-1 rounded-full text-xs font-semibold transition-all ${viewMode === 'list' ? 'bg-white text-[#1A1F1B] border border-[#E8EAE8] shadow-sm' : 'text-[#5C6560] hover:text-[#1A1F1B]'}`}
+              onClick={() => setViewMode('list')}
+            >
+              List
+            </button>
+          </div>
           <button
-            className="text-[11px] font-medium text-slate-500 hover:text-slate-700"
-            onClick={() => setViewMode('list')}
-          >
-            List
-          </button>
-          <button
-            className="rounded-md bg-emerald-500 px-3 py-1.5 text-xs font-semibold text-white hover:bg-emerald-600"
+            className="inline-flex items-center gap-2 rounded-xl bg-[#F0C000] text-white text-sm font-semibold px-6 py-2.5 hover:bg-[#B8920A] shadow-md shadow-[#F0C000]/10 transition-all active:scale-95"
             onClick={onAddPartner}
           >
-            Add partner
+            <FiPlus className="h-4 w-4" />
+            <span>Add Partner</span>
           </button>
         </div>
       </div>
 
-      <div className="rounded-2xl border border-slate-200 overflow-hidden">
+      <div className="bg-white rounded-2xl border border-[#E8EAE8] overflow-hidden">
         <div className="overflow-x-auto">
-          <table className="min-w-full text-sm">
+          <table className="w-full text-sm text-left">
             <thead>
-              <tr className="bg-white text-left text-slate-500 border-b border-slate-200">
-                <th className="py-3 px-4 font-medium whitespace-nowrap">Organization</th>
-                <th className="py-3 px-4 font-medium whitespace-nowrap">Contact Person</th>
-                <th className="py-3 px-4 font-medium whitespace-nowrap">Contribution Type</th>
-                <th className="py-3 px-4 font-medium whitespace-nowrap">Status</th>
+              <tr className="bg-[#FAFAFA] text-[#5C6560] font-semibold border-b border-[#E8EAE8]">
+                <th className="py-4 px-6 uppercase tracking-wider text-[11px]">Organization</th>
+                <th className="py-4 px-6 uppercase tracking-wider text-[11px]">Contact Person</th>
+                <th className="py-4 px-6 uppercase tracking-wider text-[11px]">Contribution Type</th>
+                <th className="py-4 px-6 uppercase tracking-wider text-[11px]">Status</th>
+                <th className="py-4 px-6 uppercase tracking-wider text-[11px] text-right">Action</th>
               </tr>
             </thead>
-            <tbody className="divide-y divide-slate-100">
+            <tbody className="divide-y divide-[#E8EAE8]">
             {partners.length === 0 && (
               <tr>
-                <td colSpan={4} className="py-10 px-4 text-center text-slate-500">
+                <td colSpan={5} className="py-12 text-center text-[#9CA89F] italic">
                   No partners added yet.
                 </td>
               </tr>
@@ -2828,22 +2750,36 @@ function PartnersSection({ partners, selectedPartnerId, onSelectPartner, onAddPa
             {partners.map((partner) => (
               <tr
                 key={partner.id}
-                className={selectedPartnerId === partner.id ? 'bg-slate-50 cursor-pointer' : 'bg-white cursor-pointer'}
+                className={`hover:bg-[#FAFAFA]/50 transition-colors group cursor-pointer ${selectedPartnerId === partner.id ? 'bg-[#FAFAFA]' : 'bg-white'}`}
                 onClick={() => onSelectPartner(partner.id)}
               >
-                <td className="py-3 px-4 whitespace-nowrap text-slate-900">{partner.name}</td>
-                <td className="py-3 px-4 whitespace-nowrap text-slate-700">{partner.contact}</td>
-                <td className="py-3 px-4 whitespace-nowrap text-slate-700">{partner.type}</td>
-                <td className="py-3 px-4 whitespace-nowrap">
+                <td className="py-4 px-6 font-bold text-[#1A1F1B]">{partner.name}</td>
+                <td className="py-4 px-6 text-[#5C6560] font-medium">{partner.contact}</td>
+                <td className="py-4 px-6 text-[#5C6560]">{partner.type}</td>
+                <td className="py-4 px-6">
                   <span
-                    className={`inline-flex items-center rounded-full px-2 py-0.5 text-xs font-medium ${
+                    className={`px-3 py-1 rounded-full text-[11px] font-bold border transition-colors ${
                       partner.status === 'Active'
-                        ? 'bg-[#1B3E2A]/10 text-[#1B3E2A]'
-                        : 'bg-slate-100 text-slate-500'
+                        ? 'bg-[#F0F8F1] text-[#4A8058] border-[#D6EDD9]'
+                        : 'bg-[#FAFAFA] text-[#9CA89F] border-[#E8EAE8]'
                     }`}
                   >
-                    {partner.status}
+                    {partner.status || 'Active'}
                   </span>
+                </td>
+                <td className="py-4 px-6">
+                  <div className="flex items-center justify-end">
+                    <button
+                      className="p-2 text-[#9CA89F] hover:text-[#1A1F1B] hover:bg-[#FAFAFA] rounded-lg transition-all active:scale-95"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        onSelectPartner(partner.id);
+                      }}
+                      title="View Details"
+                    >
+                      <FiEye className="h-4 w-4" />
+                    </button>
+                  </div>
                 </td>
               </tr>
             ))}
@@ -2853,30 +2789,42 @@ function PartnersSection({ partners, selectedPartnerId, onSelectPartner, onAddPa
       </div>
 
       {selectedPartner && (
-        <div className="rounded-2xl border border-slate-100 bg-slate-50/60 px-4 py-3 text-xs mt-1">
-          <div className="flex items-center justify-between mb-2">
+        <div className="bg-[#FAFAFA] rounded-2xl border border-[#E8EAE8] p-6 animate-in fade-in slide-in-from-top-2 duration-200">
+          <div className="flex items-center justify-between mb-4">
             <div>
-              <div className="text-[11px] font-medium text-slate-500">Partner details</div>
-              <div className="text-sm font-semibold text-slate-900">{selectedPartner.name}</div>
+              <p className="text-[10px] font-bold text-[#9CA89F] uppercase tracking-wider mb-1">Partner details</p>
+              <h3 className="text-lg font-bold text-[#1A1F1B]">{selectedPartner.name}</h3>
             </div>
+            <button
+              onClick={() => onSelectPartner(null)}
+              className="p-2 text-[#9CA89F] hover:text-[#1A1F1B] rounded-full hover:bg-white transition-all border border-transparent hover:border-[#E8EAE8]"
+            >
+              <FiXCircle className="h-5 w-5" />
+            </button>
           </div>
-          <div className="grid grid-cols-3 gap-2 mb-2">
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
             <div>
-              <div className="text-[11px] text-slate-500">Contact</div>
-              <div className="text-xs text-slate-700">{selectedPartner.contact}</div>
+              <p className="text-[10px] font-bold text-[#9CA89F] uppercase tracking-wider mb-1">Contact Person</p>
+              <p className="text-sm font-semibold text-[#1A1F1B]">{selectedPartner.contact || 'N/A'}</p>
             </div>
             <div>
-              <div className="text-[11px] text-slate-500">Contribution type</div>
-              <div className="text-xs text-slate-700">{selectedPartner.type}</div>
+              <p className="text-[10px] font-bold text-[#9CA89F] uppercase tracking-wider mb-1">Contribution Type</p>
+              <p className="text-sm font-semibold text-[#1A1F1B]">{selectedPartner.type || 'N/A'}</p>
             </div>
             <div>
-              <div className="text-[11px] text-slate-500">Status</div>
-              <div className="text-xs text-slate-700">{selectedPartner.status}</div>
+              <p className="text-[10px] font-bold text-[#9CA89F] uppercase tracking-wider mb-1">Status</p>
+              <div>
+                <span
+                  className={`inline-flex items-center rounded-full px-3 py-1 text-xs font-bold border ${
+                    selectedPartner.status === 'Active'
+                      ? 'bg-[#F0F8F1] text-[#4A8058] border-[#D6EDD9]'
+                      : 'bg-[#FAFAFA] text-[#9CA89F] border-[#E8EAE8]'
+                  }`}
+                >
+                  {selectedPartner.status || 'Active'}
+                </span>
+              </div>
             </div>
-          </div>
-          <div>
-            <div className="text-[11px] font-medium text-slate-500 mb-1">Contribution history</div>
-            <div className="text-xs text-slate-400">Link partner donations here when backend is available.</div>
           </div>
         </div>
       )}

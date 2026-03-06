@@ -1,5 +1,23 @@
 import React, { useMemo, useState } from 'react'
-import { FiFileText, FiDownload, FiPrinter, FiEdit2, FiTrash2, FiPlus, FiArrowLeft } from 'react-icons/fi'
+import { 
+  FiFileText, 
+  FiDownload, 
+  FiPrinter, 
+  FiEdit2, 
+  FiTrash2, 
+  FiPlus, 
+  FiArrowLeft, 
+  FiSearch, 
+  FiFilter, 
+  FiMoreVertical,
+  FiEye,
+  FiCheckCircle,
+  FiAlertCircle,
+  FiXCircle,
+  FiChevronLeft,
+  FiChevronRight,
+  FiChevronDown
+} from 'react-icons/fi'
 import { uiText } from '../../../core/constants/uiText'
 import { formatPersonName, includesQuery } from '../utils/sf10FeatureUtils'
 import sf10FormPng from '../../../shared/assets/sf10.png'
@@ -24,134 +42,592 @@ function buildStudentSearchKey(student) {
 
 export default function SF10Section({ students, sf10ByStudentId, onViewSf10, onRemoveStudent, onAddStudent, onEditSf10 }) {
   const [query, setQuery] = useState('')
+  const [currentPage, setCurrentPage] = useState(1)
+  const itemsPerPage = 7
+
+  // Filters state
+  const [showFilterMenu, setShowFilterMenu] = useState(false)
+  const [filterStatus, setFilterStatus] = useState('All')
+  const [filterGrade, setFilterGrade] = useState('All')
+
+  // Edit Student Modal State
+  const [showEditModal, setShowEditModal] = useState(false)
+  const [editingStudent, setEditingStudent] = useState(null)
+
+  const [showAddModal, setShowAddModal] = useState(false)
+  const [newStudent, setNewStudent] = useState({
+    firstName: '',
+    middleName: '',
+    lastName: '',
+    currentGradeLevel: '',
+    currentSection: '',
+    status: 'Active'
+  })
 
   const filtered = useMemo(() => {
-    return students.filter((s) => includesQuery(buildStudentSearchKey(s), query))
-  }, [students, query])
+    return students.filter((s) => {
+      const matchesQuery = includesQuery(buildStudentSearchKey(s), query)
+      const matchesStatus = filterStatus === 'All' || s.status === filterStatus
+      const matchesGrade = filterGrade === 'All' || s.currentGradeLevel === filterGrade
+      return matchesQuery && matchesStatus && matchesGrade
+    })
+  }, [students, query, filterStatus, filterGrade])
+
+  const totalPages = Math.ceil(filtered.length / itemsPerPage)
+  const paginatedData = filtered.slice((currentPage - 1) * itemsPerPage, currentPage * itemsPerPage)
+
+  const handleExportCSV = () => {
+    const headers = ['Student ID', 'First Name', 'Middle Name', 'Last Name', 'Grade Level', 'Section', 'Status']
+    const csvContent = [
+      headers.join(','),
+      ...students.map(s => [
+        `STU-${String(s.id).padStart(4, '0')}`,
+        s.firstName,
+        s.middleName || '',
+        s.lastName,
+        s.currentGradeLevel || '',
+        s.currentSection || '',
+        s.status || ''
+      ].join(','))
+    ].join('\n')
+
+    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' })
+    const url = URL.createObjectURL(blob)
+    const link = document.createElement('a')
+    link.setAttribute('href', url)
+    link.setAttribute('download', 'student_directory.csv')
+    document.body.appendChild(link)
+    link.click()
+    document.body.removeChild(link)
+  }
+
+  const handleEditClick = (student) => {
+    setEditingStudent(student)
+    setNewStudent({
+      firstName: student.firstName || '',
+      middleName: student.middleName || '',
+      lastName: student.lastName || '',
+      currentGradeLevel: student.currentGradeLevel || '',
+      currentSection: student.currentSection || '',
+      status: student.status || 'Active'
+    })
+    setShowEditModal(true)
+  }
+
+  const handleEditSubmit = (e) => {
+    e.preventDefault()
+    if (!newStudent.firstName || !newStudent.lastName) {
+      alert('First Name and Last Name are required.')
+      return
+    }
+    onEditSf10(editingStudent.id, newStudent)
+    setShowEditModal(false)
+    setEditingStudent(null)
+  }
+
+  const handlePrint = (studentId) => {
+    onViewSf10(studentId)
+    setTimeout(() => window.print(), 500)
+  }
+
+  const handleDownload = (studentId) => {
+    const record = sf10ByStudentId[String(studentId)]
+    if (!record) {
+      alert('No record found for this student.')
+      return
+    }
+    downloadMockPdf({ filename: `STU-${String(studentId).padStart(4, '0')}-SF10.pdf`, payload: record })
+  }
+
+  const handleAddSubmit = (e) => {
+    e.preventDefault()
+    if (!newStudent.firstName || !newStudent.lastName) {
+      alert('First Name and Last Name are required.')
+      return
+    }
+    // Call the parent's onAddStudent with the new student data
+    onAddStudent(newStudent)
+    // Reset form and close modal
+    setNewStudent({
+      firstName: '',
+      middleName: '',
+      lastName: '',
+      currentGradeLevel: '',
+      currentSection: '',
+      status: 'Active'
+    })
+    setShowAddModal(false)
+  }
+
+  const getStatusStyle = (status) => {
+    switch (status?.toLowerCase()) {
+      case 'active':
+        return 'bg-[#F0F8F1] text-[#4A8058] border-[#D6EDD9]'
+      case 'alumni':
+        return 'bg-[#FFFAE8] text-[#B8920A] border-[#FEF3C0]'
+      case 'transferred':
+        return 'bg-[#FEF3C0] text-[#B8920A] border-[#F7D84A]'
+      case 'inactive':
+        return 'bg-[#FAFAFA] text-[#9CA89F] border-[#E8EAE8]'
+      default:
+        return 'bg-[#FAFAFA] text-[#9CA89F] border-[#E8EAE8]'
+    }
+  }
+
+  const getFileStatus = (studentId) => {
+    const record = sf10ByStudentId[String(studentId)]
+    if (!record) return { label: 'Missing Docs', icon: <FiXCircle />, color: 'text-[#D97070]' }
+    // Simple mock logic for demonstration
+    if (record.isComplete === false) return { label: 'Incomplete', icon: <FiAlertCircle />, color: 'text-[#F0C000]' }
+    return { label: 'OK', icon: <FiCheckCircle />, color: 'text-[#7EB88A]' }
+  }
 
   return (
-    <div className="bg-white rounded-3xl shadow-sm p-5 flex flex-col gap-4">
-      <div className="flex items-center justify-between gap-3">
-        <div className="flex-1">
-          <div className="relative">
-            <input
-              type="text"
-              value={query}
-              onChange={(e) => setQuery(e.target.value)}
-              placeholder={uiText.sf10.searchPlaceholder}
-              className="w-full rounded-2xl border border-slate-200 px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-[#1B3E2A] focus:border-transparent"
-            />
+    <div className="bg-[#F5F6F5] min-h-screen p-6">
+      <div className="max-w-[1400px] mx-auto space-y-6">
+        {/* Top Actions Bar */}
+        <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
+          <div className="flex items-center gap-3 flex-1 max-w-2xl">
+            <div className="relative flex-1">
+              <span className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none text-[#9CA89F]">
+                <FiSearch className="h-4 w-4" />
+              </span>
+              <input
+                type="text"
+                value={query}
+                onChange={(e) => {
+                  setQuery(e.target.value)
+                  setCurrentPage(1)
+                }}
+                placeholder="Search by student name, ID, or section..."
+                className="w-full rounded-xl border border-[#E8EAE8] bg-white pl-10 pr-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-[#F0C000] focus:border-transparent shadow-sm transition-all"
+              />
+            </div>
+            <div className="relative">
+              <button 
+                onClick={() => setShowFilterMenu(!showFilterMenu)}
+                className="inline-flex items-center gap-2 rounded-xl border border-[#E8EAE8] bg-white px-4 py-2.5 text-sm font-medium text-[#5C6560] hover:bg-[#FAFAFA] shadow-sm transition-all"
+              >
+                <FiFilter className="h-4 w-4" />
+                <span>Filters</span>
+                <FiChevronDown className={`h-4 w-4 transition-transform ${showFilterMenu ? 'rotate-180' : ''}`} />
+              </button>
+
+              {showFilterMenu && (
+                <div className="absolute right-0 mt-2 w-64 bg-white rounded-2xl shadow-xl border border-[#E8EAE8] z-[110] p-4 space-y-4 animate-in fade-in slide-in-from-top-2 duration-200">
+                  <div className="space-y-2">
+                    <label className="text-[10px] font-bold text-[#9CA89F] uppercase tracking-wider">Status</label>
+                    <div className="grid grid-cols-2 gap-2">
+                      {['All', 'Active', 'Alumni', 'Transferred', 'Inactive'].map((status) => (
+                        <button
+                          key={status}
+                          onClick={() => {
+                            setFilterStatus(status)
+                            setCurrentPage(1)
+                          }}
+                          className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition-all ${
+                            filterStatus === status
+                              ? 'bg-[#F0C000] text-white'
+                              : 'bg-[#FAFAFA] text-[#5C6560] hover:bg-[#E8EAE8]'
+                          }`}
+                        >
+                          {status}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+
+                  <div className="space-y-2">
+                    <label className="text-[10px] font-bold text-[#9CA89F] uppercase tracking-wider">Grade Level</label>
+                    <select
+                      value={filterGrade}
+                      onChange={(e) => {
+                        setFilterGrade(e.target.value)
+                        setCurrentPage(1)
+                      }}
+                      className="w-full rounded-lg border border-[#E8EAE8] bg-[#FAFAFA] px-3 py-2 text-xs font-semibold text-[#5C6560] outline-none focus:ring-2 focus:ring-[#F0C000]"
+                    >
+                      <option value="All">All Grades</option>
+                      {[...Array(12)].map((_, i) => (
+                        <option key={i + 1} value={`Grade ${i + 1}`}>Grade {i + 1}</option>
+                      ))}
+                    </select>
+                  </div>
+
+                  <div className="pt-2 border-t border-[#E8EAE8]">
+                    <button
+                      onClick={() => {
+                        setFilterStatus('All')
+                        setFilterGrade('All')
+                        setQuery('')
+                        setShowFilterMenu(false)
+                      }}
+                      className="w-full py-2 text-xs font-bold text-[#D97070] hover:bg-[#D97070]/10 rounded-lg transition-all"
+                    >
+                      Reset All Filters
+                    </button>
+                  </div>
+                </div>
+              )}
+            </div>
+          </div>
+          <button
+            onClick={() => setShowAddModal(true)}
+            className="inline-flex items-center gap-2 rounded-xl bg-[#F0C000] text-white text-sm font-semibold px-6 py-2.5 hover:bg-[#B8920A] shadow-md shadow-[#F0C000]/10 transition-all active:scale-95"
+          >
+            <FiPlus className="h-4 w-4" />
+            <span>Add Student Record</span>
+          </button>
+        </div>
+
+        {/* Master Directory Card */}
+        <div className="bg-white rounded-2xl shadow-sm border border-[#E8EAE8] overflow-hidden">
+          <div className="p-6 border-b border-[#E8EAE8] flex items-center justify-between">
+            <div className="flex items-center gap-3">
+              <div className="w-10 h-10 bg-[#FAFAFA] rounded-lg flex items-center justify-center text-[#F0C000]">
+                <FiFileText className="h-5 w-5" />
+              </div>
+              <div>
+                <h2 className="text-base font-bold text-[#1A1F1B]">Master Student Directory</h2>
+                <p className="text-xs text-[#5C6560]">Managing {students.length.toLocaleString()} total permanent records</p>
+              </div>
+            </div>
+            <div className="flex items-center gap-4">
+              <button 
+                onClick={handleExportCSV}
+                className="text-xs font-semibold text-[#5C6560] hover:text-[#1A1F1B] transition-colors"
+              >
+                Export CSV
+              </button>
+              <div className="w-px h-4 bg-[#E8EAE8]"></div>
+              <button className="text-[#9CA89F] hover:text-[#1A1F1B] transition-colors">
+                <FiMoreVertical className="h-5 w-5" />
+              </button>
+            </div>
+          </div>
+
+          <div className="overflow-x-auto">
+            <table className="w-full text-sm text-left">
+              <thead>
+                <tr className="bg-[#FAFAFA] text-[#5C6560] font-semibold border-b border-[#E8EAE8]">
+                  <th className="py-4 px-6 uppercase tracking-wider text-[11px]">Student ID</th>
+                  <th className="py-4 px-6 uppercase tracking-wider text-[11px]">Student Name</th>
+                  <th className="py-4 px-6 uppercase tracking-wider text-[11px]">Grade Level</th>
+                  <th className="py-4 px-6 uppercase tracking-wider text-[11px]">Section</th>
+                  <th className="py-4 px-6 uppercase tracking-wider text-[11px]">Status</th>
+                  <th className="py-4 px-6 uppercase tracking-wider text-[11px]">SF10 File</th>
+                  <th className="py-4 px-6 uppercase tracking-wider text-[11px] text-right">Actions</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-[#E8EAE8]">
+                {paginatedData.length === 0 ? (
+                  <tr>
+                    <td colSpan={7} className="py-12 text-center text-[#9CA89F] italic">
+                      No matching student records found.
+                    </td>
+                  </tr>
+                ) : (
+                  paginatedData.map((student) => {
+                    const fileStatus = getFileStatus(student.id)
+                    return (
+                      <tr key={student.id} className="hover:bg-[#FAFAFA]/50 transition-colors group">
+                        <td className="py-4 px-6 text-[#5C6560] font-medium">STU-{String(student.id).padStart(4, '0')}</td>
+                        <td className="py-4 px-6 font-bold text-[#1A1F1B]">{formatPersonName(student)}</td>
+                        <td className="py-4 px-6 text-[#5C6560]">{student.currentGradeLevel || 'N/A'}</td>
+                        <td className="py-4 px-6 text-[#5C6560]">{student.currentSection || 'N/A'}</td>
+                        <td className="py-4 px-6">
+                          <span className={`px-3 py-1 rounded-full text-[11px] font-bold border ${getStatusStyle(student.status)}`}>
+                            {student.status || 'Unknown'}
+                          </span>
+                        </td>
+                        <td className="py-4 px-6">
+                          <div className={`flex items-center gap-1.5 text-[11px] font-semibold ${fileStatus.color}`}>
+                            {fileStatus.icon}
+                            <span>{fileStatus.label}</span>
+                          </div>
+                        </td>
+                        <td className="py-4 px-6">
+                          <div className="flex items-center justify-end gap-2">
+                            <button
+                              onClick={() => onViewSf10(student.id)}
+                              className="p-2 text-[#9CA89F] hover:text-[#1A1F1B] hover:bg-[#FAFAFA] rounded-lg transition-all active:scale-95"
+                              title="View SF10"
+                            >
+                              <FiEye className="h-4 w-4" />
+                            </button>
+                            <button 
+                              onClick={() => handleDownload(student.id)}
+                              className="p-2 text-[#9CA89F] hover:text-[#1A1F1B] hover:bg-[#FAFAFA] rounded-lg transition-all active:scale-95" 
+                              title="Download"
+                            >
+                              <FiDownload className="h-4 w-4" />
+                            </button>
+                            <button 
+                              onClick={() => handlePrint(student.id)}
+                              className="p-2 text-[#9CA89F] hover:text-[#1A1F1B] hover:bg-[#FAFAFA] rounded-lg transition-all active:scale-95" 
+                              title="Print"
+                            >
+                              <FiPrinter className="h-4 w-4" />
+                            </button>
+                            <button 
+                              onClick={() => handleEditClick(student)}
+                              className="p-2 text-[#9CA89F] hover:text-[#1A1F1B] hover:bg-[#FAFAFA] rounded-lg transition-all active:scale-95" 
+                              title="Edit"
+                            >
+                              <FiEdit2 className="h-4 w-4" />
+                            </button>
+                            <button 
+                              onClick={() => onRemoveStudent(student.id)}
+                              className="p-2 text-[#9CA89F] hover:text-[#D97070] hover:bg-[#D97070]/10 rounded-lg transition-all active:scale-95" title="Delete"
+                            >
+                              <FiTrash2 className="h-4 w-4" />
+                            </button>
+                          </div>
+                        </td>
+                      </tr>
+                    )
+                  })
+                )}
+              </tbody>
+            </table>
+          </div>
+
+          {/* Pagination */}
+          <div className="px-6 py-4 bg-[#FAFAFA] border-t border-[#E8EAE8] flex items-center justify-between">
+            <p className="text-xs text-[#5C6560]">
+              Showing {(currentPage - 1) * itemsPerPage + 1}-{Math.min(currentPage * itemsPerPage, filtered.length)} of {filtered.length} student records
+            </p>
+            <div className="flex items-center gap-2">
+              <button
+                disabled={currentPage === 1}
+                onClick={() => setCurrentPage(p => p - 1)}
+                className="px-3 py-1.5 rounded-lg border border-[#E8EAE8] bg-white text-xs font-semibold text-[#5C6560] hover:bg-[#FAFAFA] disabled:opacity-50 disabled:cursor-not-allowed transition-all"
+              >
+                Previous
+              </button>
+              {[...Array(totalPages)].map((_, i) => (
+                <button
+                  key={i + 1}
+                  onClick={() => setCurrentPage(i + 1)}
+                  className={`w-8 h-8 rounded-lg text-xs font-bold transition-all ${
+                    currentPage === i + 1
+                      ? 'bg-[#5C6560] text-white shadow-md'
+                      : 'bg-white border border-[#E8EAE8] text-[#5C6560] hover:bg-[#FAFAFA]'
+                  }`}
+                >
+                  {i + 1}
+                </button>
+              ))}
+              <button
+                disabled={currentPage === totalPages}
+                onClick={() => setCurrentPage(p => p + 1)}
+                className="px-3 py-1.5 rounded-lg border border-[#E8EAE8] bg-white text-xs font-semibold text-[#5C6560] hover:bg-[#FAFAFA] disabled:opacity-50 disabled:cursor-not-allowed transition-all"
+              >
+                Next
+              </button>
+            </div>
           </div>
         </div>
-        <button
-          className="inline-flex items-center gap-2 rounded-2xl bg-[#1B3E2A] text-white text-sm font-medium px-4 py-2.5 hover:bg-[#23513A]"
-          onClick={onAddStudent}
-          type="button"
-        >
-          <FiPlus className="h-4 w-4" />
-          <span>{uiText.sf10.actions.addStudent}</span>
-        </button>
-      </div>
 
-      <div className="rounded-2xl border border-slate-200 overflow-hidden">
-        <div className="overflow-x-auto">
-          <table className="w-full text-sm">
-            <thead>
-              <tr className="bg-white text-left text-slate-500 border-b border-slate-200">
-                <th className="py-3 px-4 font-medium whitespace-nowrap">{uiText.sf10.table.id}</th>
-                <th className="py-3 px-4 font-medium whitespace-nowrap">{uiText.sf10.table.name}</th>
-                <th className="py-3 px-4 font-medium whitespace-nowrap">{uiText.sf10.table.gradeLevel}</th>
-                <th className="py-3 px-4 font-medium whitespace-nowrap">{uiText.sf10.table.section}</th>
-                <th className="py-3 px-4 font-medium whitespace-nowrap">{uiText.sf10.table.status}</th>
-                <th className="py-3 px-4 font-medium whitespace-nowrap">{uiText.sf10.table.sf10}</th>
-                <th className="py-3 px-4 font-medium whitespace-nowrap">{uiText.sf10.table.controls}</th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-slate-100">
-            {filtered.length === 0 && (
-              <tr>
-                <td colSpan={7} className="py-10 px-4 text-center text-slate-500">
-                  {uiText.sf10.table.noResults}
-                </td>
-              </tr>
-            )}
+        {/* Edit Student Modal */}
+        {showEditModal && (
+          <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-[#1A1F1B]/60 backdrop-blur-sm">
+            <div className="bg-white rounded-3xl shadow-2xl w-full max-w-lg overflow-hidden border border-[#E8EAE8]">
+              <div className="px-6 py-4 border-b border-[#E8EAE8] flex items-center justify-between bg-[#FAFAFA]">
+                <h3 className="text-lg font-bold text-[#1A1F1B]">Edit Student Record</h3>
+                <button 
+                  onClick={() => setShowEditModal(false)}
+                  className="p-2 text-[#9CA89F] hover:text-[#1A1F1B] rounded-full hover:bg-[#FAFAFA] transition-all"
+                >
+                  <FiXCircle className="h-6 w-6" />
+                </button>
+              </div>
+              <form onSubmit={handleEditSubmit} className="p-6 space-y-4">
+                <div className="grid grid-cols-2 gap-4">
+                  <div className="space-y-1">
+                    <label className="text-xs font-bold text-[#5C6560] uppercase">First Name</label>
+                    <input
+                      required
+                      type="text"
+                      value={newStudent.firstName}
+                      onChange={(e) => setNewStudent({...newStudent, firstName: e.target.value})}
+                      className="w-full rounded-xl border border-[#E8EAE8] px-4 py-2 text-sm focus:ring-2 focus:ring-[#F0C000] focus:border-transparent outline-none"
+                    />
+                  </div>
+                  <div className="space-y-1">
+                    <label className="text-xs font-bold text-[#5C6560] uppercase">Last Name</label>
+                    <input
+                      required
+                      type="text"
+                      value={newStudent.lastName}
+                      onChange={(e) => setNewStudent({...newStudent, lastName: e.target.value})}
+                      className="w-full rounded-xl border border-[#E8EAE8] px-4 py-2 text-sm focus:ring-2 focus:ring-[#F0C000] focus:border-transparent outline-none"
+                    />
+                  </div>
+                </div>
+                <div className="space-y-1">
+                  <label className="text-xs font-bold text-[#5C6560] uppercase">Middle Name (Optional)</label>
+                  <input
+                    type="text"
+                    value={newStudent.middleName}
+                    onChange={(e) => setNewStudent({...newStudent, middleName: e.target.value})}
+                    className="w-full rounded-xl border border-[#E8EAE8] px-4 py-2 text-sm focus:ring-2 focus:ring-[#F0C000] focus:border-transparent outline-none"
+                  />
+                </div>
+                <div className="grid grid-cols-2 gap-4">
+                  <div className="space-y-1">
+                    <label className="text-xs font-bold text-[#5C6560] uppercase">Grade Level</label>
+                    <input
+                      type="text"
+                      value={newStudent.currentGradeLevel}
+                      onChange={(e) => setNewStudent({...newStudent, currentGradeLevel: e.target.value})}
+                      placeholder="e.g. Grade 10"
+                      className="w-full rounded-xl border border-[#E8EAE8] px-4 py-2 text-sm focus:ring-2 focus:ring-[#F0C000] focus:border-transparent outline-none"
+                    />
+                  </div>
+                  <div className="space-y-1">
+                    <label className="text-xs font-bold text-[#5C6560] uppercase">Section</label>
+                    <input
+                      type="text"
+                      value={newStudent.currentSection}
+                      onChange={(e) => setNewStudent({...newStudent, currentSection: e.target.value})}
+                      placeholder="e.g. Narra"
+                      className="w-full rounded-xl border border-[#E8EAE8] px-4 py-2 text-sm focus:ring-2 focus:ring-[#F0C000] focus:border-transparent outline-none"
+                    />
+                  </div>
+                </div>
+                <div className="space-y-1">
+                  <label className="text-xs font-bold text-[#5C6560] uppercase">Status</label>
+                  <select
+                    value={newStudent.status}
+                    onChange={(e) => setNewStudent({...newStudent, status: e.target.value})}
+                    className="w-full rounded-xl border border-[#E8EAE8] px-4 py-2 text-sm focus:ring-2 focus:ring-[#F0C000] focus:border-transparent outline-none appearance-none bg-white"
+                  >
+                    <option value="Active">Active</option>
+                    <option value="Alumni">Alumni</option>
+                    <option value="Transferred">Transferred</option>
+                    <option value="Inactive">Inactive</option>
+                  </select>
+                </div>
+                <div className="pt-4 flex items-center gap-3">
+                  <button
+                    type="button"
+                    onClick={() => setShowEditModal(false)}
+                    className="flex-1 px-6 py-2.5 rounded-xl border border-[#E8EAE8] text-sm font-bold text-[#5C6560] hover:bg-[#FAFAFA] transition-all"
+                  >
+                    Cancel
+                  </button>
+                  <button
+                    type="submit"
+                    className="flex-1 px-6 py-2.5 rounded-xl bg-[#F0C000] text-white text-sm font-bold hover:bg-[#B8920A] transition-all shadow-md shadow-[#F0C000]/10"
+                  >
+                    Update Student
+                  </button>
+                </div>
+              </form>
+            </div>
+          </div>
+        )}
 
-            {filtered.map((student) => {
-              const hasSf10 = Boolean(sf10ByStudentId[String(student.id)])
-              return (
-                <tr key={student.id} className="bg-white">
-                  <td className="py-3 px-4 font-medium text-slate-900 whitespace-nowrap">{student.id}</td>
-                  <td className="py-3 px-4 text-slate-900 whitespace-nowrap">{formatPersonName(student)}</td>
-                  <td className="py-3 px-4 text-slate-700 whitespace-nowrap">{student.currentGradeLevel || ''}</td>
-                  <td className="py-3 px-4 text-slate-700 whitespace-nowrap">{student.currentSection || ''}</td>
-                  <td className="py-3 px-4">
-                    <span className="inline-flex items-center rounded-full bg-slate-50 border border-slate-200 px-2 py-0.5 text-xs text-slate-600">
-                      {student.status || ''}
-                    </span>
-                  </td>
-                  <td className="py-3 px-4 whitespace-nowrap">
-                    <span className={`inline-flex items-center gap-2 text-xs ${hasSf10 ? 'text-emerald-700' : 'text-slate-400'}`}>
-                      <FiFileText className="h-4 w-4" />
-                      <span>{hasSf10 ? uiText.sf10.table.hasRecord : ''}</span>
-                    </span>
-                  </td>
-                  <td className="py-3 px-4 whitespace-nowrap">
-                    <div className="flex items-center gap-2 flex-wrap">
-                      <button
-                        type="button"
-                        className="rounded-md bg-emerald-500 px-3 py-1.5 text-xs font-semibold text-white hover:bg-emerald-600"
-                        onClick={() => onViewSf10(student.id)}
-                      >
-                        <span>{uiText.sf10.actions.view}</span>
-                      </button>
-                      <button
-                        type="button"
-                        className="rounded-md bg-slate-900 px-3 py-1.5 text-xs font-semibold text-white hover:bg-slate-800"
-                        onClick={() => {
-                          const record = sf10ByStudentId[String(student.id)]
-                          if (!record) {
-                            window.alert(uiText.sf10.placeholders.download)
-                            return
-                          }
-                          downloadMockPdf({ filename: `${student.id}-SF10.pdf`, payload: record })
-                        }}
-                      >
-                        <FiDownload className="h-4 w-4" />
-                        <span>{uiText.sf10.actions.download}</span>
-                      </button>
-                      <button
-                        type="button"
-                        className="rounded-md bg-slate-900 px-3 py-1.5 text-xs font-semibold text-white hover:bg-slate-800"
-                        onClick={() => {
-                          onViewSf10(student.id)
-                          setTimeout(() => window.print(), 50)
-                        }}
-                      >
-                        <span>{uiText.sf10.actions.print}</span>
-                      </button>
-
-                      <button
-                        type="button"
-                        className="rounded-md bg-slate-900 px-3 py-1.5 text-xs font-semibold text-white hover:bg-slate-800"
-                        onClick={() => onEditSf10(student.id)}
-                      >
-                        <span>{uiText.sf10.actions.editSf10}</span>
-                      </button>
-                      <button
-                        type="button"
-                        className="rounded-md bg-rose-500 px-3 py-1.5 text-xs font-semibold text-white hover:bg-rose-600"
-                        onClick={() => onRemoveStudent(student.id)}
-                      >
-                        <span>{uiText.sf10.actions.removeStudent}</span>
-                      </button>
-                    </div>
-                  </td>
-                </tr>
-              )
-            })}
-            </tbody>
-          </table>
-        </div>
+        {/* Add Student Modal */}
+        {showAddModal && (
+          <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-[#1A1F1B]/60 backdrop-blur-sm">
+            <div className="bg-white rounded-3xl shadow-2xl w-full max-w-lg overflow-hidden border border-[#E8EAE8]">
+              <div className="px-6 py-4 border-b border-[#E8EAE8] flex items-center justify-between bg-[#FAFAFA]">
+                <h3 className="text-lg font-bold text-[#1A1F1B]">Add New Student Record</h3>
+                <button 
+                  onClick={() => setShowAddModal(false)}
+                  className="p-2 text-[#9CA89F] hover:text-[#1A1F1B] rounded-full hover:bg-[#FAFAFA] transition-all"
+                >
+                  <FiXCircle className="h-6 w-6" />
+                </button>
+              </div>
+              <form onSubmit={handleAddSubmit} className="p-6 space-y-4">
+                <div className="grid grid-cols-2 gap-4">
+                  <div className="space-y-1">
+                    <label className="text-xs font-bold text-[#5C6560] uppercase">First Name</label>
+                    <input
+                      required
+                      type="text"
+                      value={newStudent.firstName}
+                      onChange={(e) => setNewStudent({...newStudent, firstName: e.target.value})}
+                      className="w-full rounded-xl border border-[#E8EAE8] px-4 py-2 text-sm focus:ring-2 focus:ring-[#F0C000] focus:border-transparent outline-none"
+                    />
+                  </div>
+                  <div className="space-y-1">
+                    <label className="text-xs font-bold text-[#5C6560] uppercase">Last Name</label>
+                    <input
+                      required
+                      type="text"
+                      value={newStudent.lastName}
+                      onChange={(e) => setNewStudent({...newStudent, lastName: e.target.value})}
+                      className="w-full rounded-xl border border-[#E8EAE8] px-4 py-2 text-sm focus:ring-2 focus:ring-[#F0C000] focus:border-transparent outline-none"
+                    />
+                  </div>
+                </div>
+                <div className="space-y-1">
+                  <label className="text-xs font-bold text-[#5C6560] uppercase">Middle Name (Optional)</label>
+                  <input
+                    type="text"
+                    value={newStudent.middleName}
+                    onChange={(e) => setNewStudent({...newStudent, middleName: e.target.value})}
+                    className="w-full rounded-xl border border-[#E8EAE8] px-4 py-2 text-sm focus:ring-2 focus:ring-[#F0C000] focus:border-transparent outline-none"
+                  />
+                </div>
+                <div className="grid grid-cols-2 gap-4">
+                  <div className="space-y-1">
+                    <label className="text-xs font-bold text-[#5C6560] uppercase">Grade Level</label>
+                    <input
+                      type="text"
+                      value={newStudent.currentGradeLevel}
+                      onChange={(e) => setNewStudent({...newStudent, currentGradeLevel: e.target.value})}
+                      placeholder="e.g. Grade 10"
+                      className="w-full rounded-xl border border-[#E8EAE8] px-4 py-2 text-sm focus:ring-2 focus:ring-[#F0C000] focus:border-transparent outline-none"
+                    />
+                  </div>
+                  <div className="space-y-1">
+                    <label className="text-xs font-bold text-[#5C6560] uppercase">Section</label>
+                    <input
+                      type="text"
+                      value={newStudent.currentSection}
+                      onChange={(e) => setNewStudent({...newStudent, currentSection: e.target.value})}
+                      placeholder="e.g. Narra"
+                      className="w-full rounded-xl border border-[#E8EAE8] px-4 py-2 text-sm focus:ring-2 focus:ring-[#F0C000] focus:border-transparent outline-none"
+                    />
+                  </div>
+                </div>
+                <div className="space-y-1">
+                  <label className="text-xs font-bold text-[#5C6560] uppercase">Status</label>
+                  <select
+                    value={newStudent.status}
+                    onChange={(e) => setNewStudent({...newStudent, status: e.target.value})}
+                    className="w-full rounded-xl border border-[#E8EAE8] px-4 py-2 text-sm focus:ring-2 focus:ring-[#F0C000] focus:border-transparent outline-none appearance-none bg-white"
+                  >
+                    <option value="Active">Active</option>
+                    <option value="Alumni">Alumni</option>
+                    <option value="Transferred">Transferred</option>
+                    <option value="Inactive">Inactive</option>
+                  </select>
+                </div>
+                <div className="pt-4 flex items-center gap-3">
+                  <button
+                    type="button"
+                    onClick={() => setShowAddModal(false)}
+                    className="flex-1 px-6 py-2.5 rounded-xl border border-[#E8EAE8] text-sm font-bold text-[#5C6560] hover:bg-[#FAFAFA] transition-all"
+                  >
+                    Cancel
+                  </button>
+                  <button
+                    type="submit"
+                    className="flex-1 px-6 py-2.5 rounded-xl bg-[#F0C000] text-white text-sm font-bold hover:bg-[#B8920A] transition-all shadow-md shadow-[#F0C000]/10"
+                  >
+                    Save Student
+                  </button>
+                </div>
+              </form>
+            </div>
+          </div>
+        )}
       </div>
     </div>
   )
