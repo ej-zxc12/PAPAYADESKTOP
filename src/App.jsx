@@ -52,6 +52,8 @@ import { sf10StudentsMock, sf10RecordsMock } from './features/sf10/models/sf10Co
 import { alumniMock } from './features/alumni/models/alumniContent'
 import SF10Section, { SF10View } from './features/sf10/pages/SF10Section.jsx'
 import AlumniSection from './features/alumni/pages/AlumniSection.jsx'
+import AppleScholarshipManager from './features/programs/pages/AppleScholarshipManager.jsx'
+import PineappleProjectManager from './features/programs/pages/PineappleProjectManager.jsx'
 import { onAuthStateChanged, signInWithEmailAndPassword, signOut as firebaseSignOut } from 'firebase/auth'
 import { getFirebaseAuth } from './core/services/firebase'
 import { deleteObject, getDownloadURL, ref as storageRef, uploadBytes } from 'firebase/storage'
@@ -1269,8 +1271,8 @@ function App() {
                 {activePage === 'website_about_story' && <StaticContentSection title="Our Story" />}
                 {activePage === 'website_about_mission' && <MissionVisionValuesSection />}
                 {activePage === 'media' && <MediaLibrarySection />}
-                {activePage === 'programs_apple_scholarship' && <ProgramOverviewSection title="Apple Scholarship" />}
-                {activePage === 'programs_pineapple_project' && <ProgramOverviewSection title="Pineapple Project" />}
+                {activePage === 'programs_apple_scholarship' && <AppleScholarshipManager />}
+                {activePage === 'programs_pineapple_project' && <PineappleProjectManager />}
               </section>
 
               {activePage === 'dashboard' && (
@@ -2539,9 +2541,9 @@ function ReportsSection({ donations, campaigns }) {
   }
 
   const summaries = [
-    { id: 'daily', label: 'Daily summary', amount: dailyTotal },
-    { id: 'monthly', label: 'Monthly summary', amount: monthlyTotal },
-    { id: 'yearly', label: 'Yearly summary', amount: yearlyTotal },
+    { id: 'daily', label: 'Daily Summary', amount: dailyTotal, icon: FiActivity, color: '#7EB88A', bgColor: '#F0F8F1' },
+    { id: 'monthly', label: 'Monthly Summary', amount: monthlyTotal, icon: FiClock, color: '#F0C000', bgColor: '#FFFAE8' },
+    { id: 'yearly', label: 'Yearly Summary', amount: yearlyTotal, icon: FiGlobe, color: '#1A1F1B', bgColor: '#F5F6F5' },
   ]
 
   const exportReport = (type) => {
@@ -2584,96 +2586,139 @@ function ReportsSection({ donations, campaigns }) {
   }
 
   return (
-    <div className="bg-white rounded-3xl shadow-sm p-5 flex flex-col gap-4 flex-1">
-      <div className="flex items-center justify-between">
-        <div>
-          <h2 className="text-base font-semibold text-slate-900">Reports</h2>
-          <p className="text-xs text-slate-500">Filter and export donation summaries</p>
-        </div>
-      </div>
-
-      <div className="grid grid-cols-3 gap-4 text-xs">
-        <div className="space-y-1">
-          <div className="text-[11px] font-medium text-slate-500">Date range</div>
-          <div className="flex items-center gap-2">
-            <input
-              type="date"
-              value={fromDate}
-              onChange={(event) => setFromDate(event.target.value)}
-            />
-            <span className="text-[11px] text-slate-400">to</span>
-            <input
-              type="date"
-              className="w-full rounded-2xl border border-slate-200 px-2 py-1 text-xs focus:outline-none focus:ring-2 focus:ring-[#1B3E2A] focus:border-transparent"
-              value={toDate}
-              onChange={(event) => setToDate(event.target.value)}
-            />
+    <div className="flex flex-col gap-6 w-full">
+      {/* Filters Section */}
+      <div className="bg-white rounded-3xl border border-[#E8EAE8] shadow-sm overflow-hidden">
+        <div className="bg-[#FAFAFA] px-8 py-6 border-b border-[#E8EAE8] flex items-center gap-3">
+          <div className="w-10 h-10 rounded-2xl bg-[#F5F6F5] flex items-center justify-center text-[#1A1F1B]">
+            <FiSearch className="h-5 w-5" />
+          </div>
+          <div>
+            <h2 className="text-lg font-bold text-[#1A1F1B]">Filter Reports</h2>
+            <p className="text-xs text-[#5C6560]">Customize your donation data view</p>
           </div>
         </div>
-        <div className="space-y-1">
-          <div className="text-[11px] font-medium text-slate-500">Program</div>
-          <select
-            className="w-full rounded-2xl border border-slate-200 px-2 py-1 text-xs focus:outline-none focus:ring-2 focus:ring-[#1B3E2A] focus:border-transparent"
-            value={campaignFilter}
-            onChange={(event) => setCampaignFilter(event.target.value)}
-          >
-            <option value="all">All programs</option>
-            {campaigns.map((campaign) => (
-              <option key={campaign.id} value={campaign.id}>
-                {campaign.name}
-              </option>
-            ))}
-          </select>
-        </div>
-        <div className="space-y-1">
-          <div className="text-[11px] font-medium text-slate-500">Payment method</div>
-          <select
-            className="w-full rounded-2xl border border-slate-200 px-2 py-1 text-xs focus:outline-none focus:ring-2 focus:ring-[#1B3E2A] focus:border-transparent"
-            value={methodFilter}
-            onChange={(event) => setMethodFilter(event.target.value)}
-          >
-            <option value="all">All methods</option>
-            <option value="Credit Card">Credit Card</option>
-            <option value="GCash">GCash</option>
-            <option value="Bank Transfer">Bank Transfer</option>
-          </select>
+
+        <div className="p-8">
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
+            {/* Date Range */}
+            <div className="space-y-3">
+              <label className="text-[10px] font-bold text-[#9CA89F] uppercase tracking-wider ml-1">Date Range</label>
+              <div className="flex items-center gap-3">
+                <div className="relative flex-1">
+                  <input
+                    type="date"
+                    value={fromDate}
+                    onChange={(event) => setFromDate(event.target.value)}
+                    className="w-full rounded-xl border border-[#E8EAE8] bg-[#FAFAFA] px-4 py-2.5 text-sm font-semibold text-[#1A1F1B] focus:outline-none focus:ring-2 focus:ring-[#F0C000] focus:bg-white transition-all"
+                  />
+                </div>
+                <span className="text-[#9CA89F] font-bold">to</span>
+                <div className="relative flex-1">
+                  <input
+                    type="date"
+                    value={toDate}
+                    onChange={(event) => setToDate(event.target.value)}
+                    className="w-full rounded-xl border border-[#E8EAE8] bg-[#FAFAFA] px-4 py-2.5 text-sm font-semibold text-[#1A1F1B] focus:outline-none focus:ring-2 focus:ring-[#F0C000] focus:bg-white transition-all"
+                  />
+                </div>
+              </div>
+            </div>
+
+            {/* Program Filter */}
+            <div className="space-y-3">
+              <label className="text-[10px] font-bold text-[#9CA89F] uppercase tracking-wider ml-1">Program</label>
+              <select
+                className="w-full rounded-xl border border-[#E8EAE8] bg-[#FAFAFA] px-4 py-2.5 text-sm font-semibold text-[#1A1F1B] focus:outline-none focus:ring-2 focus:ring-[#F0C000] focus:bg-white transition-all appearance-none cursor-pointer"
+                value={campaignFilter}
+                onChange={(event) => setCampaignFilter(event.target.value)}
+              >
+                <option value="all">All programs</option>
+                {campaigns.map((campaign) => (
+                  <option key={campaign.id} value={campaign.id}>
+                    {campaign.name}
+                  </option>
+                ))}
+              </select>
+            </div>
+
+            {/* Payment Method Filter */}
+            <div className="space-y-3">
+              <label className="text-[10px] font-bold text-[#9CA89F] uppercase tracking-wider ml-1">Payment Method</label>
+              <select
+                className="w-full rounded-xl border border-[#E8EAE8] bg-[#FAFAFA] px-4 py-2.5 text-sm font-semibold text-[#1A1F1B] focus:outline-none focus:ring-2 focus:ring-[#F0C000] focus:bg-white transition-all appearance-none cursor-pointer"
+                value={methodFilter}
+                onChange={(event) => setMethodFilter(event.target.value)}
+              >
+                <option value="all">All methods</option>
+                <option value="Credit Card">Credit Card</option>
+                <option value="GCash">GCash</option>
+                <option value="Bank Transfer">Bank Transfer</option>
+              </select>
+            </div>
+          </div>
         </div>
       </div>
 
-      <div className="grid grid-cols-3 gap-4 text-xs">
+      {/* Summaries Section */}
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
         {summaries.map((summary) => (
-          <div key={summary.id} className="rounded-2xl border border-slate-100 px-4 py-3 bg-slate-50/60">
-            <div className="text-[11px] text-slate-500 mb-1">{summary.label}</div>
-            <div className="text-sm font-semibold text-slate-900">
-              {formatCurrency(summary.amount)}
+          <div key={summary.id} className="bg-white rounded-3xl border border-[#E8EAE8] shadow-sm p-8 group hover:shadow-md transition-all">
+            <div className="flex items-center gap-4 mb-4">
+              <div className="w-12 h-12 rounded-2xl flex items-center justify-center transition-transform group-hover:scale-110" style={{ backgroundColor: summary.bgColor, color: summary.color }}>
+                <summary.icon className="h-6 w-6" />
+              </div>
+              <div>
+                <div className="text-[10px] font-bold text-[#9CA89F] uppercase tracking-wider">{summary.label}</div>
+                <div className="text-2xl font-bold text-[#1A1F1B] mt-1">
+                  {formatCurrency(summary.amount)}
+                </div>
+              </div>
             </div>
           </div>
         ))}
       </div>
 
-      {filteredDonations.length === 0 && (
-        <div className="text-[11px] text-slate-400 mt-1">No donations match the selected filters.</div>
-      )}
+      {/* Export Actions Section */}
+      <div className="bg-white rounded-3xl border border-[#E8EAE8] shadow-sm p-8">
+        <div className="flex flex-col md:flex-row items-center justify-between gap-6">
+          <div className="flex items-center gap-4">
+            <div className={`px-4 py-2 rounded-2xl text-sm font-bold border transition-all ${
+              filteredDonations.length > 0 
+                ? 'bg-[#F0F8F1] text-[#4A8058] border-[#D6EDD9]' 
+                : 'bg-[#FFFAE8] text-[#B8920A] border-[#F0C000]/20'
+            }`}>
+              {filteredDonations.length.toLocaleString()} Donations Found
+            </div>
+            {filteredDonations.length === 0 && (
+              <p className="text-xs text-[#9CA89F] font-medium">No donations match the selected filters.</p>
+            )}
+          </div>
 
-      <div className="flex items-center justify-end gap-2 text-xs mt-2">
-        <button
-          className="rounded-2xl border border-slate-200 px-3 py-1 text-slate-600 hover:bg-slate-50"
-          onClick={() => exportReport('csv')}
-        >
-          Export CSV
-        </button>
-        <button
-          className="rounded-2xl border border-slate-200 px-3 py-1 text-slate-600 hover:bg-slate-50"
-          onClick={() => exportReport('excel')}
-        >
-          Export Excel
-        </button>
-        <button
-          className="rounded-2xl border border-[#1B3E2A] bg-[#1B3E2A] px-3 py-1 text-white hover:bg-[#163021]"
-          onClick={() => exportReport('pdf')}
-        >
-          Export PDF
-        </button>
+          <div className="flex items-center gap-3">
+            <button
+              className="inline-flex items-center gap-2 rounded-xl border border-[#E8EAE8] bg-white px-6 py-2.5 text-sm font-bold text-[#5C6560] hover:bg-[#FAFAFA] transition-all active:scale-95 disabled:opacity-50"
+              onClick={() => exportReport('csv')}
+              disabled={filteredDonations.length === 0}
+            >
+              Export CSV
+            </button>
+            <button
+              className="inline-flex items-center gap-2 rounded-xl border border-[#E8EAE8] bg-white px-6 py-2.5 text-sm font-bold text-[#5C6560] hover:bg-[#FAFAFA] transition-all active:scale-95 disabled:opacity-50"
+              onClick={() => exportReport('excel')}
+              disabled={filteredDonations.length === 0}
+            >
+              Export Excel
+            </button>
+            <button
+              className="inline-flex items-center gap-2 rounded-xl bg-[#1A1F1B] px-8 py-2.5 text-sm font-bold text-white hover:bg-black shadow-lg shadow-black/10 transition-all active:scale-95 disabled:opacity-50"
+              onClick={() => exportReport('pdf')}
+              disabled={filteredDonations.length === 0}
+            >
+              Export PDF
+            </button>
+          </div>
+        </div>
       </div>
     </div>
   )
