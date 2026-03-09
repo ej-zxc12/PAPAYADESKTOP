@@ -334,7 +334,7 @@ const AutoExpandingSidebar = ({ activePage, setActivePage, openGroups, setOpenGr
       </div>
 
       {/* Add custom styles */}
-      <style jsx>{`
+      <style>{`
         @keyframes slideIn {
           from {
             opacity: 0;

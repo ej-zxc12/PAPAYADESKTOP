@@ -86,6 +86,12 @@ function NewsManager() {
   }
 
   const handleSelectItem = (id) => {
+    // If clicking the already selected item, deselect it
+    if (String(selectedId) === String(id)) {
+      resetForm()
+      return
+    }
+    
     const item = items.find((entry) => String(entry.id) === String(id))
     if (!item) return
     setSelectedId(item.id)
@@ -273,39 +279,53 @@ function NewsManager() {
                 key={item.id}
                 type="button"
                 onClick={() => handleSelectItem(item.id)}
-                className={`w-full flex flex-col items-start text-left rounded-[24px] p-4 transition-all border
+                className={`w-full flex items-start gap-3 text-left rounded-[24px] p-4 transition-all border
                   ${
                     isActive
                       ? 'bg-[#FFFAE8] border-[#F0C000] shadow-md ring-4 ring-[#F0C000]/10'
                       : 'bg-white border-[#E8EAE8] hover:border-[#F0C000]/40 hover:bg-[#FAFAFA] text-[#5C6560]'
                   }`}
               >
-                <div className="flex items-center justify-between w-full mb-2">
-                  <span className={`px-2.5 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wider border ${
-                    isActive ? 'bg-[#F0C000] text-white border-[#F0C000]' : 'bg-[#FAFAFA] text-[#9CA89F] border-[#E8EAE8]'
-                  }`}>
-                    {item.category || 'General'}
-                  </span>
-                  <div className="text-[10px] font-bold text-[#9CA89F]">
-                    {formatNewsDate(item.date)}
+                {/* Image Thumbnail */}
+                {item.imageUrl ? (
+                  <div className="w-16 h-16 rounded-2xl overflow-hidden flex-shrink-0 bg-[#FAFAFA] border border-[#E8EAE8]">
+                    <img
+                      src={item.imageUrl}
+                      alt={item.title}
+                      className="w-full h-full object-cover"
+                    />
                   </div>
-                </div>
-                <div className={`font-bold text-sm mb-1 line-clamp-1 ${isActive ? 'text-[#1A1F1B]' : 'text-[#1A1F1B]'}`}>
-                  {item.title || '(Untitled)'}
-                </div>
-                {item.content && (
-                  <div className={`text-[11px] line-clamp-2 leading-relaxed ${isActive ? 'text-[#5C6560]' : 'text-[#9CA89F]'}`}>
-                    {String(item.content)}
+                ) : (
+                  <div className="w-16 h-16 rounded-2xl bg-[#F0F8F1] flex items-center justify-center flex-shrink-0">
+                    <FiFileText className="w-6 h-6 text-[#7EB88A]" />
                   </div>
                 )}
-                {item.author && (
-                  <div className="mt-3 flex items-center gap-2">
-                    <div className="w-5 h-5 rounded-full bg-[#E8EAE8] flex items-center justify-center text-[10px] font-bold text-[#5C6560]">
-                      {item.author[0]}
+                
+                <div className="flex-1 min-w-0">
+                  <div className="flex items-center justify-between w-full mb-2">
+                    <span className={`px-2.5 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wider border ${
+                      isActive ? 'bg-[#F0C000] text-white border-[#F0C000]' : 'bg-[#FAFAFA] text-[#9CA89F] border-[#E8EAE8]'
+                    }`}>
+                      {item.category || 'General'}
+                    </span>
+                    <div className="text-[10px] font-bold text-[#9CA89F]">
+                      {formatNewsDate(item.date)}
                     </div>
-                    <span className="text-[10px] font-bold text-[#5C6560] opacity-70">By {item.author}</span>
                   </div>
-                )}
+                  <div className={`font-bold text-sm mb-1 line-clamp-1 ${isActive ? 'text-[#1A1F1B]' : 'text-[#1A1F1B]'}`}>
+                    {item.title || '(Untitled)'}
+                  </div>
+                  {item.content && (
+                    <div className={`text-[11px] line-clamp-2 leading-relaxed ${isActive ? 'text-[#5C6560]' : 'text-[#9CA89F]'}`}>
+                      {String(item.content)}
+                    </div>
+                  )}
+                  {item.author && (
+                    <div className="mt-2 flex items-center gap-2">
+                      <span className="text-[10px] font-bold text-[#5C6560] opacity-70">By {item.author}</span>
+                    </div>
+                  )}
+                </div>
               </button>
             )
           })}
@@ -325,7 +345,7 @@ function NewsManager() {
               className="px-4 py-2 bg-white border border-[#E8EAE8] text-[#1A1F1B] rounded-xl text-xs font-bold hover:bg-[#FAFAFA] transition-all shadow-sm active:scale-95 flex items-center gap-2"
             >
               <FiPlus className="w-4 h-4" />
-              New Post
+              {isNewMode ? 'New Post' : 'Deselect'}
             </button>
           )}
         </div>

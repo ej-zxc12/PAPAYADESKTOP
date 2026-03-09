@@ -1,6 +1,6 @@
 import React, { useEffect, useMemo, useState } from 'react'
 import { addDays, addMonths, endOfMonth, endOfWeek, format, isSameDay, startOfMonth, startOfWeek, subMonths, isSameMonth, isToday } from 'date-fns'
-import { FiChevronLeft, FiChevronRight, FiPlus, FiTrash2, FiX, FiCalendar, FiClock, FiUser, FiMapPin } from 'react-icons/fi'
+import { FiChevronLeft, FiChevronRight, FiPlus, FiTrash2, FiX, FiCalendar, FiClock, FiEdit2 } from 'react-icons/fi'
 import { calendarEventService } from '../../../core/services/calendarEventService'
 import { parseQuickAdd } from '../utils/quickAdd'
 
@@ -24,6 +24,7 @@ export default function CalendarSection() {
   const [isAdding, setIsAdding] = useState(false)
   const [error, setError] = useState('')
   const [showModal, setShowModal] = useState(false)
+  const [editingEvent, setEditingEvent] = useState(null)
 
   const [events, setEvents] = useState([])
   const [isLoading, setIsLoading] = useState(true)
@@ -201,26 +202,7 @@ export default function CalendarSection() {
     }
   }
 
-  const openModal = () => {
-    // Pre-fill with selected day
-    const today = new Date()
-    const dayToUse = selectedDay || today
-    setModalStartDate(format(dayToUse, 'yyyy-MM-dd'))
-    setModalStartTime('09:00')
-    setModalEndDate(format(dayToUse, 'yyyy-MM-dd'))
-    setModalEndTime('10:00')
-    setModalTitle('')
-    setModalDescription('')
-    setModalTimezone('Asia/Manila')
-    setShowModal(true)
-  }
-
-  const closeModal = () => {
-    setShowModal(false)
-    setError('')
-  }
-
-  const handleModalSubmit = async (e) => {
+  const handleAdd = async (e) => {
     e.preventDefault()
     if (!modalTitle.trim()) {
       setError('Event title is required')
@@ -253,6 +235,87 @@ export default function CalendarSection() {
       setIsAdding(false)
     }
   }
+
+  const handleUpdate = async (e) => {
+    e.preventDefault()
+    if (!modalTitle.trim()) {
+      setError('Event title is required')
+      return
+    }
+
+    const startDateTime = new Date(`${modalStartDate}T${modalStartTime}`)
+    const endDateTime = new Date(`${modalEndDate}T${modalEndTime}`)
+
+    if (isNaN(startDateTime.getTime()) || isNaN(endDateTime.getTime())) {
+      setError('Invalid date or time')
+      return
+    }
+
+    setIsAdding(true)
+    setError('')
+
+    try {
+      await calendarEventService.updateEvent({
+        id: editingEvent.id,
+        patch: {
+          title: modalTitle.trim(),
+          description: modalDescription.trim(),
+          startAt: startDateTime.toISOString(),
+          endAt: endDateTime.toISOString(),
+          timezone: modalTimezone,
+          nextRunAt: startDateTime.toISOString(),
+        }
+      })
+      closeModal()
+    } catch (e) {
+      setError(e?.message || 'Failed to update event.')
+    } finally {
+      setIsAdding(false)
+    }
+  }
+
+  const openModal = () => {
+    setEditingEvent(null)
+    // Pre-fill with selected day
+    const today = new Date()
+    const dayToUse = selectedDay || today
+    setModalStartDate(format(dayToUse, 'yyyy-MM-dd'))
+    setModalStartTime('09:00')
+    setModalEndDate(format(dayToUse, 'yyyy-MM-dd'))
+    setModalEndTime('10:00')
+    setModalTitle('')
+    setModalDescription('')
+    setModalTimezone('Asia/Manila')
+    setShowModal(true)
+  }
+
+  const openEditModal = (event) => {
+    setEditingEvent(event)
+    const startDate = toDate(event.startAt)
+    const endDate = toDate(event.endAt)
+    
+    if (startDate) {
+      setModalStartDate(format(startDate, 'yyyy-MM-dd'))
+      setModalStartTime(format(startDate, 'HH:mm'))
+    }
+    if (endDate) {
+      setModalEndDate(format(endDate, 'yyyy-MM-dd'))
+      setModalEndTime(format(endDate, 'HH:mm'))
+    }
+    
+    setModalTitle(event.title || '')
+    setModalDescription(event.description || '')
+    setModalTimezone(event.timezone || 'Asia/Manila')
+    setShowModal(true)
+  }
+
+  const closeModal = () => {
+    setShowModal(false)
+    setEditingEvent(null)
+    setError('')
+  }
+
+  const handleModalSubmit = editingEvent ? handleUpdate : handleAdd
 
   const EventModal = () => {
     if (!showModal) return null
@@ -298,9 +361,11 @@ export default function CalendarSection() {
               <div>
                 <h3 className="text-lg font-semibold flex items-center gap-2">
                   <FiCalendar className="h-5 w-5 text-[#F0C000]" />
-                  Add New Event
+                  {editingEvent ? 'Edit Event' : 'Add New Event'}
                 </h3>
-                <p className="text-xs text-[#5C6560] mt-1">Schedule your event with details</p>
+                <p className="text-xs text-[#5C6560] mt-1">
+                  {editingEvent ? 'Update your event details' : 'Schedule your event with details'}
+                </p>
               </div>
               <button
                 type="button"
@@ -467,10 +532,10 @@ export default function CalendarSection() {
                       <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" fill="none"/>
                       <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"/>
                     </svg>
-                    Adding Event…
+                    {editingEvent ? 'Updating…' : 'Adding Event…'}
                   </span>
                 ) : (
-                  'Add Event'
+                  editingEvent ? 'Update Event' : 'Add Event'
                 )}
               </button>
             </div>
@@ -582,9 +647,19 @@ export default function CalendarSection() {
                       {dayEvents.map((event) => {
                         const cat = CATEGORIES[Math.floor(Math.random() * CATEGORIES.length)]
                         return (
-                          <div key={event.id} className={`event-badge ${cat.color}`}>
-                            <FiClock className="w-2.5 h-2.5" />
-                            {event.title}
+                          <div 
+                            key={event.id} 
+                            className={`event-badge ${cat.color} group flex items-center justify-between gap-1 cursor-pointer hover:opacity-90`}
+                            onClick={(e) => {
+                              e.stopPropagation()
+                              openEditModal(event)
+                            }}
+                          >
+                            <div className="flex items-center gap-1 truncate">
+                              <FiClock className="w-2.5 h-2.5 flex-shrink-0" />
+                              <span className="truncate">{event.title}</span>
+                            </div>
+                            <FiEdit2 className="w-3 h-3 opacity-0 group-hover:opacity-100 flex-shrink-0" />
                           </div>
                         )
                       })}
@@ -597,39 +672,6 @@ export default function CalendarSection() {
         </div>
       </div>
 
-      {/* Bottom Info Cards */}
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-        <div className="bg-white p-4 rounded-2xl border border-[#E8EAE8] shadow-sm flex items-center gap-4">
-          <div className="w-12 h-12 bg-[#F0F8F1] rounded-full flex items-center justify-center text-[#7EB88A]">
-            <FiClock className="w-6 h-6" />
-          </div>
-          <div>
-            <p className="text-[10px] font-bold text-[#9CA89F] uppercase tracking-wider">Next Event</p>
-            <p className="text-sm font-bold text-[#1A1F1B]">{nextEvent.title} ({nextEvent.time})</p>
-          </div>
-        </div>
-
-        <div className="bg-white p-4 rounded-2xl border border-[#E8EAE8] shadow-sm flex items-center gap-4">
-          <div className="w-12 h-12 bg-[#FFFAE8] rounded-full flex items-center justify-center text-[#F0C000]">
-            <FiUser className="w-6 h-6" />
-          </div>
-          <div>
-            <p className="text-[10px] font-bold text-[#9CA89F] uppercase tracking-wider">Coordinator</p>
-            <p className="text-sm font-bold text-[#1A1F1B]">{coordinator.name} ({coordinator.role})</p>
-          </div>
-        </div>
-
-        <div className="bg-white p-4 rounded-2xl border border-[#E8EAE8] shadow-sm flex items-center gap-4">
-          <div className="w-12 h-12 bg-[#FAFAFA] rounded-full flex items-center justify-center text-[#5C6560]">
-            <FiMapPin className="w-6 h-6" />
-          </div>
-          <div>
-            <p className="text-[10px] font-bold text-[#9CA89F] uppercase tracking-wider">Primary Venue</p>
-            <p className="text-sm font-bold text-[#1A1F1B]">{venue.name}</p>
-          </div>
-        </div>
-      </div>
-      
       <EventModal />
       </div>
     </div>

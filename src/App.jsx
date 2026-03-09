@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react'
+import { createPortal } from 'react-dom'
 import {
   AreaChart,
   Area,
@@ -32,6 +33,7 @@ import {
   FiClock,
   FiSearch,
   FiEye,
+  FiX,
   FiXCircle,
   FiAlertCircle,
   FiCheckCircle,
@@ -44,6 +46,7 @@ import siteContent from './core/config/siteContent.json'
 import NewsManager from './features/news/pages/NewsManager.jsx'
 import CalendarSection from './features/calendar/pages/CalendarSection.jsx'
 import { missionVisionService } from './core/services/missionVisionService'
+import { calendarEventService } from './core/services/calendarEventService'
 import { uiText } from './core/constants/uiText'
 import { sf10StudentsMock, sf10RecordsMock } from './features/sf10/models/sf10Content'
 import { alumniMock } from './features/alumni/models/alumniContent'
@@ -342,14 +345,6 @@ const partners = [
   { name: 'Autodesk', label: 'Software company' },
 ]
 
-const events = [
-  { id: 1, title: 'Faculty Orientation', time: 'In 2 hrs', location: 'Conference Center A' },
-  { id: 2, title: 'Board Meeting', time: '10:00 AM', location: 'Main Office' },
-  { id: 3, title: 'Student Council', time: '2:00 PM', location: 'Auditorium' },
-  { id: 4, title: 'P.T.A. Meeting', time: '4:00 PM', location: 'Library' },
-  { id: 5, title: 'Sports Festival', time: 'Tomorrow', location: 'School Grounds' },
-]
-
 const conversations = [
   { name: 'Albert Flores', message: 'Fringilla sit morbi tincidunt augue.', time: '2 m ago' },
   { name: 'Ronald Richards', message: 'Curabitur in tempus imperdiet nulla.', time: '16 m ago' },
@@ -359,6 +354,23 @@ const conversations = [
 ]
 
 // Sidebar structure is now rendered inline within the component with nested groups
+
+function toSafeDate(value) {
+  if (!value) return null
+  try {
+    if (value instanceof Date) {
+      return Number.isNaN(value.getTime()) ? null : value
+    }
+    if (typeof value === 'object' && typeof value.toDate === 'function') {
+      const d = value.toDate()
+      return d instanceof Date && !Number.isNaN(d.getTime()) ? d : null
+    }
+    const d = new Date(value)
+    return Number.isNaN(d.getTime()) ? null : d
+  } catch {
+    return null
+  }
+}
 
 function App() {
   const [isLoggedIn, setIsLoggedIn] = useState(false)
@@ -433,6 +445,60 @@ function App() {
   const [selectedMessageId, setSelectedMessageId] = useState(null)
   const [sf10Students, setSf10Students] = useState(sf10StudentsMock)
   const [sf10Records, setSf10Records] = useState(sf10RecordsMock)
+  const [events, setEvents] = useState([])
+  const [selectedEvent, setSelectedEvent] = useState(null)
+  const [showEventModal, setShowEventModal] = useState(false)
+
+  // Fetch events from Firebase
+  useEffect(() => {
+    // Only fetch events when logged in
+    if (!isLoggedIn) {
+      setEvents([])
+      return
+    }
+    
+    let unsubscribe
+    
+    const fetchEvents = async () => {
+      try {
+        // Try to subscribe to real-time events
+        unsubscribe = calendarEventService.subscribeUpcoming({
+          onData: (rows) => {
+            // Sort events: upcoming first (sorted by date), then past events at bottom
+            const now = new Date()
+            const sorted = (rows || []).sort((a, b) => {
+              const aDate = a.nextRunAt ? new Date(a.nextRunAt) : new Date(0)
+              const bDate = b.nextRunAt ? new Date(b.nextRunAt) : new Date(0)
+              const aIsPast = aDate < now
+              const bIsPast = bDate < now
+              
+              // If both are upcoming or both are past, sort by date
+              if (aIsPast === bIsPast) {
+                return aDate - bDate
+              }
+              // Upcoming events come first
+              return aIsPast ? 1 : -1
+            })
+            setEvents(sorted)
+          },
+          onError: (err) => {
+            console.error('Failed to load events:', err)
+            setEvents([])
+          },
+          max: 50,
+        })
+      } catch (e) {
+        console.error('Error subscribing to events:', e)
+        setEvents([])
+      }
+    }
+    
+    fetchEvents()
+    
+    return () => {
+      if (typeof unsubscribe === 'function') unsubscribe()
+    }
+  }, [isLoggedIn])
 
   useEffect(() => {
     try {
@@ -449,33 +515,35 @@ function App() {
     let unsubscribe
     try {
       const auth = getFirebaseAuth()
-      unsubscribe = onAuthStateChanged(auth, async (user) => {
-        if (!user) {
-          setIsLoggedIn(false)
-          setError('')
-          return
-        }
-
-        try {
-          const tokenResult = await user.getIdTokenResult()
-          const isAdmin = Boolean(tokenResult?.claims?.admin)
-          if (!isAdmin) {
-            await firebaseSignOut(auth)
-            setIsLoggedIn(false)
-            setError('This desktop app is for admin accounts only.')
-            return
-          }
-
-          setIsLoggedIn(true)
-          setError('')
-        } catch (e) {
+      unsubscribe = onAuthStateChanged(auth, (user) => {
+        ;(async () => {
           try {
-            await firebaseSignOut(auth)
-          } catch {
+            if (!user) {
+              setIsLoggedIn(false)
+              setError('')
+              return
+            }
+
+            const tokenResult = await user.getIdTokenResult()
+            const isAdmin = Boolean(tokenResult?.claims?.admin)
+            if (!isAdmin) {
+              await firebaseSignOut(auth)
+              setIsLoggedIn(false)
+              setError('This desktop app is for admin accounts only.')
+              return
+            }
+
+            setIsLoggedIn(true)
+            setError('')
+          } catch (e) {
+            try {
+              await firebaseSignOut(auth)
+            } catch {
+            }
+            setIsLoggedIn(false)
+            setError(e?.message || 'Unable to verify admin access.')
           }
-          setIsLoggedIn(false)
-          setError(e?.message || 'Unable to verify admin access.')
-        }
+        })()
       })
     } catch (e) {
       setError(e?.message || 'Firebase is not configured.')
@@ -1213,49 +1281,56 @@ function App() {
                       <span className="text-xs font-medium text-[#9CA89F]">Today</span>
                     </div>
                     <div className="space-y-3 overflow-y-auto pr-1 flex-1 max-h-[400px]">
-                      {events.map((event) => (
-                        <div
-                          key={event.id}
-                          className="flex items-start gap-3 rounded-2xl px-3 py-3 hover:bg-[#FAFAFA] transition-colors cursor-pointer group"
-                        >
-                          <div className="h-10 w-10 rounded-2xl bg-[#F0F8F1] flex items-center justify-center text-xs font-bold text-[#7EB88A] group-hover:scale-105 transition-transform">
-                            <FiCalendar className="h-4 w-4" />
-                          </div>
-                          <div className="flex-1 min-w-0">
-                            <div className="flex items-center justify-between mb-0.5">
-                              <div className="text-sm font-bold text-[#1A1F1B] truncate">{event.title}</div>
-                              <div className="text-[10px] font-medium text-[#9CA89F] whitespace-nowrap ml-2">{event.time}</div>
-                            </div>
-                            <div className="text-xs text-[#5C6560] truncate">{event.location}</div>
-                          </div>
+                      {events.length === 0 && (
+                        <div className="text-center py-8 text-[#9CA89F]">
+                          <FiCalendar className="w-8 h-8 mx-auto mb-2 opacity-50" />
+                          <p className="text-sm">No events found</p>
                         </div>
-                      ))}
-                    </div>
-                  </div>
-
-                  <div className="bg-white rounded-3xl border border-[#E8EAE8] shadow-sm p-6 flex-1 flex flex-col min-h-0">
-                    <div className="flex items-center justify-between mb-6">
-                      <h2 className="text-lg font-bold text-[#1A1F1B]">Upcoming Events</h2>
-                      <span className="text-xs font-medium text-[#9CA89F]">Today</span>
-                    </div>
-                    <div className="space-y-3 overflow-y-auto pr-1 flex-1 max-h-[400px]">
-                      {events.map((event) => (
-                        <div
-                          key={event.id}
-                          className="flex items-start gap-3 rounded-2xl px-3 py-3 hover:bg-[#FAFAFA] transition-colors cursor-pointer group"
-                        >
-                          <div className="h-10 w-10 rounded-2xl bg-[#F0F8F1] flex items-center justify-center text-xs font-bold text-[#7EB88A] group-hover:scale-105 transition-transform">
-                            <FiCalendar className="h-4 w-4" />
-                          </div>
-                          <div className="flex-1 min-w-0">
-                            <div className="flex items-center justify-between mb-0.5">
-                              <div className="text-sm font-bold text-[#1A1F1B] truncate">{event.title}</div>
-                              <div className="text-[10px] font-medium text-[#9CA89F] whitespace-nowrap ml-2">{event.time}</div>
+                      )}
+                      {events.map((event) => {
+                        const eventDate = toSafeDate(event?.nextRunAt)
+                        const isPast = eventDate && eventDate < new Date()
+                        const timeText = eventDate
+                          ? eventDate.toLocaleString('en-PH', {
+                              month: 'short',
+                              day: 'numeric',
+                              hour: 'numeric',
+                              minute: '2-digit',
+                            })
+                          : 'No date'
+                        
+                        return (
+                          <div
+                            key={event.id}
+                            onClick={() => {
+                              setSelectedEvent(event)
+                              setShowEventModal(true)
+                            }}
+                            className={`flex items-start gap-3 rounded-2xl px-3 py-3 hover:bg-[#FAFAFA] transition-colors cursor-pointer group ${
+                              isPast ? 'opacity-60' : ''
+                            }`}
+                          >
+                            <div className={`h-10 w-10 rounded-2xl flex items-center justify-center text-xs font-bold transition-transform group-hover:scale-105 ${
+                              isPast ? 'bg-[#E8EAE8] text-[#9CA89F]' : 'bg-[#F0F8F1] text-[#7EB88A]'
+                            }`}>
+                              <FiCalendar className="h-4 w-4" />
                             </div>
-                            <div className="text-xs text-[#5C6560] truncate">{event.location}</div>
+                            <div className="flex-1 min-w-0">
+                              <div className="flex items-center justify-between mb-0.5">
+                                <div className="text-sm font-bold text-[#1A1F1B] truncate">{event.title}</div>
+                                <div className={`text-[10px] font-medium whitespace-nowrap ml-2 ${
+                                  isPast ? 'text-[#D97070]' : 'text-[#9CA89F]'
+                                }`}>
+                                  {isPast ? 'Done' : timeText}
+                                </div>
+                              </div>
+                              <div className="text-xs text-[#5C6560] truncate">
+                                {event.description || 'No description'}
+                              </div>
+                            </div>
                           </div>
-                        </div>
-                      ))}
+                        )
+                      })}
                     </div>
                   </div>
                 </aside>
@@ -1352,6 +1427,59 @@ function App() {
             </div>
           </aside>
         </div>
+
+        {/* Event Detail Modal - At root level for proper overlay */}
+        {showEventModal && selectedEvent && (
+          (typeof document !== 'undefined' && document.body
+            ? createPortal(
+                <div
+                  className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-[9999] p-4"
+                  onClick={() => setShowEventModal(false)}
+                >
+                  <div
+                    className="bg-white rounded-3xl shadow-2xl max-w-md w-full p-6 relative"
+                    onClick={(e) => e.stopPropagation()}
+                  >
+                    <div className="flex items-center justify-between mb-4">
+                      <h3 className="text-xl font-bold text-[#1A1F1B]">Event Details</h3>
+                      <button
+                        onClick={() => setShowEventModal(false)}
+                        className="p-2 hover:bg-[#FAFAFA] rounded-xl transition-colors"
+                      >
+                        <FiX className="h-5 w-5 text-[#5C6560]" />
+                      </button>
+                    </div>
+
+                    <div className="space-y-4">
+                      <p className="text-lg font-bold">{selectedEvent?.title || 'Untitled event'}</p>
+                      <p className="text-sm text-gray-600">{selectedEvent?.description || 'No description'}</p>
+                      <p className="text-sm text-gray-600">
+                        {(() => {
+                          const d = toSafeDate(selectedEvent?.nextRunAt)
+                          if (!d) return 'No date set'
+                          return d.toLocaleString('en-PH', {
+                            month: 'long',
+                            day: 'numeric',
+                            year: 'numeric',
+                            hour: 'numeric',
+                            minute: '2-digit',
+                          })
+                        })()}
+                      </p>
+                    </div>
+
+                    <button
+                      onClick={() => setShowEventModal(false)}
+                      className="w-full mt-6 rounded-xl bg-[#F0C000] px-6 py-3 text-sm font-bold text-white hover:bg-[#B8920A] transition-all"
+                    >
+                      Close
+                    </button>
+                  </div>
+                </div>,
+                document.body,
+              )
+            : null)
+        )}
       </div>
     </ErrorBoundary>
   )
