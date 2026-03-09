@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useState } from 'react'
+import React, { useEffect, useMemo, useState, useCallback } from 'react'
 import { addDays, addMonths, endOfMonth, endOfWeek, format, isSameDay, startOfMonth, startOfWeek, subMonths, isSameMonth, isToday } from 'date-fns'
 import { FiChevronLeft, FiChevronRight, FiPlus, FiTrash2, FiX, FiCalendar, FiClock, FiEdit2 } from 'react-icons/fi'
 import { calendarEventService } from '../../../core/services/calendarEventService'
@@ -84,11 +84,11 @@ export default function CalendarSection() {
         color: white;
         margin-bottom: 2px;
         display: flex;
-        align-items: center;
+        align-items: flex-start;
         gap: 4px;
-        white-space: nowrap;
+        white-space: normal;
         overflow: hidden;
-        text-overflow: ellipsis;
+        height: 28px;
       }
     `
     document.head.appendChild(style)
@@ -317,233 +317,9 @@ export default function CalendarSection() {
 
   const handleModalSubmit = editingEvent ? handleUpdate : handleAdd
 
-  const EventModal = () => {
-    if (!showModal) return null
-
-    // Auto-focus the title input when modal opens
-    React.useEffect(() => {
-      const timer = setTimeout(() => {
-        const titleInput = document.getElementById('event-title-input')
-        if (titleInput) {
-          titleInput.focus()
-        }
-      }, 100)
-      return () => clearTimeout(timer)
-    }, [showModal])
-
-    // Handle Escape key to close modal
-    React.useEffect(() => {
-      const handleEscape = (e) => {
-        if (e.key === 'Escape' && showModal) {
-          closeModal()
-        }
-      }
-      document.addEventListener('keydown', handleEscape)
-      return () => document.removeEventListener('keydown', handleEscape)
-    }, [showModal])
-
-    return (
-      <div 
-        className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-[9999] p-4"
-        onClick={(e) => {
-          if (e.target === e.currentTarget) {
-            closeModal()
-          }
-        }}
-      >
-        <div 
-          className="bg-white rounded-3xl shadow-2xl max-w-2xl w-full max-h-[85vh] overflow-y-auto border border-slate-200/50"
-          onClick={(e) => e.stopPropagation()}
-        >
-          {/* Header */}
-          <div className="bg-[#FAFAFA] border-b border-[#E8EAE8] p-5 text-[#1A1F1B] sticky top-0 z-10">
-            <div className="flex items-center justify-between">
-              <div>
-                <h3 className="text-lg font-semibold flex items-center gap-2">
-                  <FiCalendar className="h-5 w-5 text-[#F0C000]" />
-                  {editingEvent ? 'Edit Event' : 'Add New Event'}
-                </h3>
-                <p className="text-xs text-[#5C6560] mt-1">
-                  {editingEvent ? 'Update your event details' : 'Schedule your event with details'}
-                </p>
-              </div>
-              <button
-                type="button"
-                onClick={closeModal}
-                className="rounded-xl p-2 text-[#5C6560] hover:text-[#1A1F1B] hover:bg-[#FAFAFA] transition-colors"
-                aria-label="Close modal"
-              >
-                <FiX className="h-5 w-5" />
-              </button>
-            </div>
-          </div>
-
-          {/* Form */}
-          <form onSubmit={handleModalSubmit} className="p-6 space-y-5">
-            {/* Event Title */}
-            <div>
-              <label className="block text-sm font-semibold text-[#1A1F1B] mb-2 flex items-center gap-1">
-                Event Title <span className="text-[#D97070]">*</span>
-              </label>
-              <input
-                id="event-title-input"
-                type="text"
-                value={modalTitle}
-                onChange={(e) => setModalTitle(e.target.value)}
-                className="w-full rounded-xl border border-[#E8EAE8] bg-[#FAFAFA] px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-[#F0C000]/20 focus:border-[#F0C000] transition-all"
-                placeholder="Enter event title"
-                required
-                autoFocus
-              />
-            </div>
-
-            {/* Description */}
-            <div>
-              <label className="block text-sm font-semibold text-[#1A1F1B] mb-2">
-                Description
-              </label>
-              <textarea
-                value={modalDescription}
-                onChange={(e) => setModalDescription(e.target.value)}
-                className="w-full rounded-xl border border-[#E8EAE8] bg-[#FAFAFA] px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-[#F0C000]/20 focus:border-[#F0C000] transition-all resize-none"
-                placeholder="Add event description (optional)"
-                rows={3}
-              />
-            </div>
-
-            {/* Date & Time Section */}
-            <div className="space-y-4">
-              <h4 className="text-sm font-semibold text-[#1A1F1B] flex items-center gap-2 pb-2 border-b border-[#E8EAE8]">
-                <FiCalendar className="h-4 w-4 text-[#F0C000]" />
-                Date & Time
-              </h4>
-              
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                {/* Start Date & Time */}
-                <div className="space-y-3">
-                  <div>
-                    <label className="block text-xs font-medium text-[#5C6560] mb-1">
-                      Start Date <span className="text-[#D97070]">*</span>
-                    </label>
-                    <input
-                      type="date"
-                      value={modalStartDate}
-                      onChange={(e) => setModalStartDate(e.target.value)}
-                      className="w-full rounded-lg border border-[#E8EAE8] bg-[#FAFAFA] px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#F0C000]/20 focus:border-[#F0C000] transition-all"
-                      required
-                    />
-                  </div>
-                  <div>
-                    <label className="block text-xs font-medium text-[#5C6560] mb-1">
-                      Start Time <span className="text-[#D97070]">*</span>
-                    </label>
-                    <input
-                      type="time"
-                      value={modalStartTime}
-                      onChange={(e) => setModalStartTime(e.target.value)}
-                      className="w-full rounded-lg border border-[#E8EAE8] bg-[#FAFAFA] px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#F0C000]/20 focus:border-[#F0C000] transition-all"
-                      required
-                    />
-                  </div>
-                </div>
-
-                {/* End Date & Time */}
-                <div className="space-y-3">
-                  <div>
-                    <label className="block text-xs font-medium text-[#5C6560] mb-1">
-                      End Date <span className="text-[#D97070]">*</span>
-                    </label>
-                    <input
-                      type="date"
-                      value={modalEndDate}
-                      onChange={(e) => setModalEndDate(e.target.value)}
-                      className="w-full rounded-lg border border-[#E8EAE8] bg-[#FAFAFA] px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#F0C000]/20 focus:border-[#F0C000] transition-all"
-                      required
-                    />
-                  </div>
-                  <div>
-                    <label className="block text-xs font-medium text-[#5C6560] mb-1">
-                      End Time <span className="text-[#D97070]">*</span>
-                    </label>
-                    <input
-                      type="time"
-                      value={modalEndTime}
-                      onChange={(e) => setModalEndTime(e.target.value)}
-                      className="w-full rounded-lg border border-[#E8EAE8] bg-[#FAFAFA] px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#F0C000]/20 focus:border-[#F0C000] transition-all"
-                      required
-                    />
-                  </div>
-                </div>
-              </div>
-            </div>
-
-            {/* Timezone */}
-            <div>
-              <label className="block text-sm font-semibold text-[#1A1F1B] mb-2">
-                Timezone
-              </label>
-              <select
-                value={modalTimezone}
-                onChange={(e) => setModalTimezone(e.target.value)}
-                className="w-full rounded-xl border border-[#E8EAE8] bg-[#FAFAFA] px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-[#F0C000]/20 focus:border-[#F0C000] transition-all"
-              >
-                <option value="Asia/Manila">🇵🇭 Philippines (Asia/Manila)</option>
-                <option value="UTC">🌍 UTC</option>
-                <option value="America/New_York">🇺🇸 Eastern Time</option>
-                <option value="America/Chicago">🇺🇸 Central Time</option>
-                <option value="America/Denver">🇺🇸 Mountain Time</option>
-                <option value="America/Los_Angeles">🇺🇸 Pacific Time</option>
-                <option value="Europe/London">🇬🇧 London</option>
-                <option value="Europe/Paris">🇫🇷 Paris</option>
-                <option value="Asia/Tokyo">🇯🇵 Tokyo</option>
-                <option value="Asia/Shanghai">🇨🇳 Shanghai</option>
-              </select>
-            </div>
-
-            {/* Error Message */}
-            {error && (
-              <div className="bg-[#D97070]/5 border border-[#D97070]/10 rounded-xl p-3">
-                <div className="flex items-start gap-2">
-                  <div className="text-[#D97070] mt-0.5">
-                    <FiX className="h-4 w-4" />
-                  </div>
-                  <div className="text-sm text-[#D97070]">{error}</div>
-                </div>
-              </div>
-            )}
-
-            {/* Action Buttons */}
-            <div className="flex gap-3 pt-4 border-t border-[#E8EAE8]">
-              <button
-                type="button"
-                onClick={closeModal}
-                className="flex-1 rounded-xl border border-[#E8EAE8] bg-white px-6 py-3 text-sm font-bold text-[#5C6560] hover:bg-[#FAFAFA] transition-all active:scale-95"
-              >
-                Cancel
-              </button>
-              <button
-                type="submit"
-                disabled={isAdding}
-                className="flex-1 rounded-xl bg-[#F0C000] px-6 py-3 text-sm font-bold text-white hover:bg-[#B8920A] transition-all disabled:opacity-60 disabled:cursor-not-allowed shadow-md shadow-[#F0C000]/10 active:scale-95"
-              >
-                {isAdding ? (
-                  <span className="flex items-center justify-center gap-2">
-                    <svg className="animate-spin h-4 w-4" viewBox="0 0 24 24">
-                      <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" fill="none"/>
-                      <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"/>
-                    </svg>
-                    {editingEvent ? 'Updating…' : 'Adding Event…'}
-                  </span>
-                ) : (
-                  editingEvent ? 'Update Event' : 'Add Event'
-                )}
-              </button>
-            </div>
-          </form>
-        </div>
-      </div>
-    )
-  }
+  const handleDescriptionChange = useCallback((e) => {
+    setModalDescription(e.target.value)
+  }, [])
 
   return (
     <div className="calendar-container p-6 bg-[#F5F6F5] min-h-screen max-w-full">
@@ -655,9 +431,12 @@ export default function CalendarSection() {
                               openEditModal(event)
                             }}
                           >
-                            <div className="flex items-center gap-1 truncate">
-                              <FiClock className="w-2.5 h-2.5 flex-shrink-0" />
-                              <span className="truncate">{event.title}</span>
+                            <div className="flex items-start gap-1 flex-1 min-w-0">
+                              <FiClock className="w-2.5 h-2.5 flex-shrink-0 mt-0.5" />
+                              <div className="flex flex-col min-w-0 flex-1 leading-[12px]">
+                                <span className="truncate text-xs font-medium h-[12px]">{event.title}</span>
+                                <span className="truncate text-xs opacity-80 h-[12px]">{event.description || ''}</span>
+                              </div>
                             </div>
                             <FiEdit2 className="w-3 h-3 opacity-0 group-hover:opacity-100 flex-shrink-0" />
                           </div>
@@ -672,7 +451,222 @@ export default function CalendarSection() {
         </div>
       </div>
 
-      <EventModal />
+      <EventModal 
+        key={showModal ? 'modal-open' : 'modal-closed'}
+        showModal={showModal}
+        editingEvent={editingEvent}
+        modalTitle={modalTitle}
+        modalDescription={modalDescription}
+        modalStartDate={modalStartDate}
+        modalStartTime={modalStartTime}
+        modalEndDate={modalEndDate}
+        modalEndTime={modalEndTime}
+        modalTimezone={modalTimezone}
+        error={error}
+        isAdding={isAdding}
+        onTitleChange={setModalTitle}
+        onDescriptionChange={handleDescriptionChange}
+        onStartDateChange={setModalStartDate}
+        onStartTimeChange={setModalStartTime}
+        onEndDateChange={setModalEndDate}
+        onEndTimeChange={setModalEndTime}
+        onTimezoneChange={setModalTimezone}
+        onSubmit={handleModalSubmit}
+        onClose={closeModal}
+      />
+      </div>
+    </div>
+  )
+}
+
+function EventModal({ 
+  showModal, 
+  editingEvent, 
+  modalTitle, 
+  modalDescription, 
+  modalStartDate, 
+  modalStartTime, 
+  modalEndDate, 
+  modalEndTime, 
+  modalTimezone, 
+  error, 
+  isAdding, 
+  onTitleChange, 
+  onDescriptionChange, 
+  onStartDateChange, 
+  onStartTimeChange, 
+  onEndDateChange, 
+  onEndTimeChange, 
+  onTimezoneChange, 
+  onSubmit, 
+  onClose 
+}) {
+  if (!showModal) return null
+
+  return (
+    <div 
+      className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-[9999] p-4"
+      onClick={(e) => {
+        if (e.target === e.currentTarget) {
+          onClose()
+        }
+      }}
+    >
+      <div 
+        className="bg-white rounded-3xl shadow-2xl max-w-2xl w-full max-h-[85vh] overflow-y-auto border border-slate-200/50"
+        onClick={(e) => e.stopPropagation()}
+      >
+        <div className="bg-[#FAFAFA] border-b border-[#E8EAE8] p-5 text-[#1A1F1B] sticky top-0 z-10">
+          <div className="flex items-center justify-between">
+            <div>
+              <h3 className="text-lg font-semibold flex items-center gap-2">
+                <FiCalendar className="h-5 w-5 text-[#F0C000]" />
+                {editingEvent ? 'Edit Event' : 'Add New Event'}
+              </h3>
+              <p className="text-xs text-[#5C6560] mt-1">
+                {editingEvent ? 'Update your event details' : 'Schedule your event with details'}
+              </p>
+            </div>
+            <button
+              type="button"
+              onClick={onClose}
+              className="rounded-xl p-2 text-[#5C6560] hover:text-[#1A1F1B] hover:bg-[#FAFAFA] transition-colors"
+            >
+              <FiX className="h-5 w-5" />
+            </button>
+          </div>
+        </div>
+
+        <form onSubmit={onSubmit} className="p-6 space-y-5">
+          <div>
+            <label className="block text-sm font-semibold text-[#1A1F1B] mb-2">
+              Event Title <span className="text-[#D97070]">*</span>
+            </label>
+            <input
+              type="text"
+              value={modalTitle}
+              onChange={(e) => onTitleChange(e.target.value)}
+              className="w-full rounded-xl border border-[#E8EAE8] bg-[#FAFAFA] px-4 py-3 text-sm"
+              placeholder="Enter event title"
+              required
+            />
+          </div>
+
+          <div>
+            <label className="block text-sm font-semibold text-[#1A1F1B] mb-2">
+              Description
+            </label>
+            <textarea
+              value={modalDescription}
+              onChange={onDescriptionChange}
+              className="w-full rounded-xl border border-[#E8EAE8] bg-white px-4 py-3 text-sm"
+              placeholder="Add event description (optional)"
+              rows={3}
+            />
+          </div>
+
+          <div className="space-y-4">
+            <h4 className="text-sm font-semibold text-[#1A1F1B] flex items-center gap-2 pb-2 border-b border-[#E8EAE8]">
+              <FiCalendar className="h-4 w-4 text-[#F0C000]" />
+              Date & Time
+            </h4>
+            
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div className="space-y-3">
+                <div>
+                  <label className="block text-xs font-medium text-[#5C6560] mb-1">
+                    Start Date <span className="text-[#D97070]">*</span>
+                  </label>
+                  <input
+                    type="date"
+                    value={modalStartDate}
+                    onChange={(e) => onStartDateChange(e.target.value)}
+                    className="w-full rounded-lg border border-[#E8EAE8] bg-[#FAFAFA] px-3 py-2 text-sm"
+                    required
+                  />
+                </div>
+                <div>
+                  <label className="block text-xs font-medium text-[#5C6560] mb-1">
+                    Start Time <span className="text-[#D97070]">*</span>
+                  </label>
+                  <input
+                    type="time"
+                    value={modalStartTime}
+                    onChange={(e) => onStartTimeChange(e.target.value)}
+                    className="w-full rounded-lg border border-[#E8EAE8] bg-[#FAFAFA] px-3 py-2 text-sm"
+                    required
+                  />
+                </div>
+              </div>
+
+              <div className="space-y-3">
+                <div>
+                  <label className="block text-xs font-medium text-[#5C6560] mb-1">
+                    End Date <span className="text-[#D97070]">*</span>
+                  </label>
+                  <input
+                    type="date"
+                    value={modalEndDate}
+                    onChange={(e) => onEndDateChange(e.target.value)}
+                    className="w-full rounded-lg border border-[#E8EAE8] bg-[#FAFAFA] px-3 py-2 text-sm"
+                    required
+                  />
+                </div>
+                <div>
+                  <label className="block text-xs font-medium text-[#5C6560] mb-1">
+                    End Time <span className="text-[#D97070]">*</span>
+                  </label>
+                  <input
+                    type="time"
+                    value={modalEndTime}
+                    onChange={(e) => onEndTimeChange(e.target.value)}
+                    className="w-full rounded-lg border border-[#E8EAE8] bg-[#FAFAFA] px-3 py-2 text-sm"
+                    required
+                  />
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <div>
+            <label className="block text-sm font-semibold text-[#1A1F1B] mb-2">
+              Timezone
+            </label>
+            <select
+              value={modalTimezone}
+              onChange={(e) => onTimezoneChange(e.target.value)}
+              className="w-full rounded-xl border border-[#E8EAE8] bg-[#FAFAFA] px-4 py-3 text-sm"
+            >
+              <option value="Asia/Manila">🇵🇭 Philippines (Asia/Manila)</option>
+              <option value="UTC">🌍 UTC</option>
+              <option value="America/New_York">🇺🇸 Eastern Time</option>
+              <option value="America/Chicago">🇺🇸 Central Time</option>
+              <option value="America/Denver">🇺🇸 Mountain Time</option>
+              <option value="America/Los_Angeles">🇺🇸 Pacific Time</option>
+              <option value="Europe/London">🇬🇧 London</option>
+              <option value="Europe/Paris">🇫🇷 Paris</option>
+              <option value="Asia/Tokyo">🇯🇵 Tokyo</option>
+              <option value="Asia/Shanghai">🇨🇳 Shanghai</option>
+            </select>
+          </div>
+
+          <div className="flex gap-3 pt-4 border-t border-[#E8EAE8]">
+            <button
+              type="button"
+              onClick={onClose}
+              className="flex-1 rounded-xl border border-[#E8EAE8] bg-white px-6 py-3 text-sm font-bold text-[#5C6560]"
+            >
+              Cancel
+            </button>
+            <button
+              type="submit"
+              disabled={isAdding}
+              className="flex-1 rounded-xl bg-[#F0C000] px-6 py-3 text-sm font-bold text-white"
+            >
+              {editingEvent ? 'Update Event' : 'Add Event'}
+            </button>
+          </div>
+        </form>
       </div>
     </div>
   )
