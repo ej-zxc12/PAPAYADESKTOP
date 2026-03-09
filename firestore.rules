@@ -14,6 +14,39 @@ service cloud.firestore {
       return isSignedIn() && request.auth.token.admin == true;
     }
 
+    // Allow read/write access for development (remove this in production)
+    match /{document=**} {
+      allow read, write: if true;
+    }
+    
+    // Specific rules for collections
+    match /grades/{gradeId} {
+      allow read, write: if true;
+    }
+    
+    match /students/{studentId} {
+      allow read, write: if true;
+    }
+    
+    match /subjects/{subjectId} {
+      allow read, write: if true;
+    }
+    
+    match /teachers/{teacherId} {
+      allow read, write: if true;
+    }
+    
+    // Website can read, only admin can write
+    match /orgChartMembers/{docId} {
+      allow read: if true;
+      allow write: if isAdmin();
+    }
+ 
+    match /orgChartMeta/{docId} {
+      allow read: if true;
+      allow write: if isAdmin();
+    }
+    
     // Calendar events: users manage their own events.
     match /users/{uid}/events/{eventId} {
       allow read: if isOwner(uid) || isAdmin();
@@ -21,18 +54,7 @@ service cloud.firestore {
       allow update: if isOwner(uid) || isAdmin();
       allow delete: if isOwner(uid) || isAdmin();
     }
-
-    // Existing collections used by your app
-    match /orgChartMembers/{docId} {
-      allow read: if true;
-      allow write: if isAdmin();
-    }
-
-    match /orgChartMeta/{docId} {
-      allow read: if true;
-      allow write: if isAdmin();
-    }
-
+    
     match /news/{docId} {
       allow read: if true;
       allow write: if isAdmin();
@@ -46,6 +68,16 @@ service cloud.firestore {
     match /missionVision/{docId} {
       allow read: if true;
       allow write: if isAdmin();
+    }
+
+    match /appleScholarship/{docId} {
+      allow read: if true;
+      allow write: if true;
+    }
+
+    match /pineappleProject/{docId} {
+      allow read: if true;
+      allow write: if true;
     }
   }
 }

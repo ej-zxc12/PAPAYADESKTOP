@@ -1,5 +1,6 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { FiSave, FiPlus, FiTrash2, FiType, FiUsers, FiTrendingUp, FiCheckCircle, FiImage, FiTarget, FiInfo } from 'react-icons/fi';
+import { pineappleProjectService } from '../../../core/services/pineappleProjectService';
 
 const PineappleProjectManager = () => {
   const [content, setContent] = useState({
@@ -9,9 +10,9 @@ const PineappleProjectManager = () => {
       imageUrl: ''
     },
     launch: {
-      title: 'Launch of the Pineapple Livelihood Initiative',
-      description: 'The launch of the Pineapple Livelihood Initiative marks a meaningful milestone in our commitment to empowering families within our community. Formed by proud parents of Papaya Academy scholars, this initiative creates sustainable income opportunities through handcrafted products made from recycled paper, magazines, beads, and crochet materials.',
-      secondaryDescription: 'Made possible through the generous support of our partners and donors, this program transforms creativity into livelihood while promoting environmental responsibility. Each product reflects resilience, gratitude, and the shared vision of building brighter futures for our children.\n\nPineapple Livelihood is more than a project — it is a symbol of opportunity, unity, and our unwavering commitment to empowering parents and supporting scholars through purposeful enterprise.'
+      title: 'Pineapple Initiative Launch Events',
+      description: 'Documenting the journey and milestones of the Pineapple Livelihood Initiative launch events and activities.',
+      events: []
     },
     about: {
       title: 'About the Project',
@@ -49,14 +50,42 @@ const PineappleProjectManager = () => {
   });
 
   const [isSaving, setIsSaving] = useState(false);
+  const [isLoading, setIsLoading] = useState(true);
+  const [error, setError] = useState('');
   const [activeTab, setActiveTab] = useState('hero');
 
+  // Load content from Firebase on component mount
+  useEffect(() => {
+    loadContent();
+  }, []);
+
+  const loadContent = async () => {
+    try {
+      setIsLoading(true);
+      setError('');
+      const data = await pineappleProjectService.getContent();
+      setContent(data);
+    } catch (err) {
+      console.error('Error loading content:', err);
+      setError(err.message || 'Failed to load Pineapple Project content');
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
   const handleSave = async () => {
-    setIsSaving(true);
-    setTimeout(() => {
-      setIsSaving(false);
+    try {
+      setIsSaving(true);
+      setError('');
+      await pineappleProjectService.updateContent(content);
       alert('Pineapple Project content updated successfully!');
-    }, 1000);
+    } catch (err) {
+      console.error('Error saving content:', err);
+      setError(err.message || 'Failed to save Pineapple Project content');
+      alert('Error: Failed to save content. Please try again.');
+    } finally {
+      setIsSaving(false);
+    }
   };
 
   const updateHero = (field, value) => {
@@ -71,6 +100,215 @@ const PineappleProjectManager = () => {
       ...prev,
       launch: { ...prev.launch, [field]: value }
     }));
+  };
+
+  // Launch Events handlers
+  const addEvent = async () => {
+    const newEvent = {
+      id: Date.now(),
+      date: new Date().toISOString().split('T')[0],
+      title: '',
+      description: '',
+      images: [],
+      createdAt: new Date().toISOString()
+    };
+    
+    try {
+      const updatedContent = {
+        ...content,
+        launch: {
+          title: content.launch?.title || 'Pineapple Initiative Launch Events',
+          description: content.launch?.description || 'Documenting the journey and milestones of the Pineapple Livelihood Initiative launch events and activities.',
+          events: [...(content.launch?.events || []), newEvent]
+        }
+      };
+      
+      setContent(updatedContent);
+      
+      // Show success message
+      const successMsg = document.createElement('div');
+      successMsg.className = 'fixed top-4 right-4 bg-green-500 text-white px-6 py-3 rounded-lg shadow-lg z-50';
+      successMsg.textContent = '✓ New launch event added successfully';
+      document.body.appendChild(successMsg);
+      
+      setTimeout(() => {
+        if (document.body.contains(successMsg)) {
+          document.body.removeChild(successMsg);
+        }
+      }, 3000);
+      
+    } catch (error) {
+      console.error('Error adding event:', error);
+      alert('Failed to add event. Please try again.');
+    }
+  };
+
+  const updateEvent = (index, field, value) => {
+    const newEvents = [...(content.launch?.events || [])];
+    newEvents[index] = { ...newEvents[index], [field]: value };
+    setContent(prev => ({
+      ...prev,
+      launch: {
+        title: prev.launch?.title || 'Pineapple Initiative Launch Events',
+        description: prev.launch?.description || 'Documenting the journey and milestones of the Pineapple Livelihood Initiative launch events and activities.',
+        events: newEvents
+      }
+    }));
+  };
+
+  const removeEvent = async (index) => {
+    const event = content.launch?.events?.[index];
+    if (window.confirm(`Are you sure you want to delete the "${event?.title || 'Launch Event'}"? This action cannot be undone.`)) {
+      try {
+        const newEvents = (content.launch?.events || []).filter((_, i) => i !== index);
+        const updatedContent = {
+          ...content,
+          launch: {
+            title: content.launch?.title || 'Pineapple Initiative Launch Events',
+            description: content.launch?.description || 'Documenting the journey and milestones of the Pineapple Livelihood Initiative launch events and activities.',
+            events: newEvents
+          }
+        };
+        
+        setContent(updatedContent);
+        
+        // Show success message
+        const successMsg = document.createElement('div');
+        successMsg.className = 'fixed top-4 right-4 bg-green-500 text-white px-6 py-3 rounded-lg shadow-lg z-50';
+        successMsg.textContent = '✓ Launch event deleted successfully';
+        document.body.appendChild(successMsg);
+        
+        setTimeout(() => {
+          if (document.body.contains(successMsg)) {
+            document.body.removeChild(successMsg);
+          }
+        }, 3000);
+        
+      } catch (error) {
+        console.error('Error deleting event:', error);
+        alert('Failed to delete event. Please try again.');
+      }
+    }
+  };
+
+  const handleEventImageUpload = async (eventIndex, imageIndex, file) => {
+    if (!file) return;
+
+    if (!file.type.startsWith('image/')) {
+      alert('Please select an image file');
+      return;
+    }
+
+    if (file.size > 10 * 1024 * 1024) {
+      alert('Image size should be less than 10MB');
+      return;
+    }
+
+    try {
+      const reader = new FileReader();
+      reader.onload = (e) => {
+        const img = new Image();
+        img.onload = () => {
+          const canvas = document.createElement('canvas');
+          const ctx = canvas.getContext('2d');
+          
+          let width = img.width;
+          let height = img.height;
+          const maxSize = 1200;
+          
+          if (width > height && width > maxSize) {
+            height = (height * maxSize) / width;
+            width = maxSize;
+          } else if (height > maxSize) {
+            width = (width * maxSize) / height;
+            height = maxSize;
+          }
+          
+          canvas.width = width;
+          canvas.height = height;
+          
+          ctx.drawImage(img, 0, 0, width, height);
+          
+          const compressedBase64 = canvas.toDataURL('image/jpeg', 0.85);
+          
+          if (compressedBase64.length > 10000000) {
+            alert('Compressed image is still too large. Please use a smaller image.');
+            return;
+          }
+          
+          // Update event images
+          const newEvents = [...(content.launch?.events || [])];
+          const eventImages = [...newEvents[eventIndex].images];
+          
+          if (imageIndex === -1) {
+            // Add new image
+            eventImages.push({
+              id: Date.now(),
+              url: compressedBase64,
+              uploadedAt: new Date().toISOString()
+            });
+          } else {
+            // Replace existing image
+            eventImages[imageIndex] = {
+              ...eventImages[imageIndex],
+              url: compressedBase64,
+              uploadedAt: new Date().toISOString()
+            };
+          }
+          
+          newEvents[eventIndex] = { ...newEvents[eventIndex], images: eventImages };
+          
+          setContent(prev => ({
+            ...prev,
+            launch: {
+              title: prev.launch?.title || 'Pineapple Initiative Launch Events',
+              description: prev.launch?.description || 'Documenting the journey and milestones of the Pineapple Livelihood Initiative launch events and activities.',
+              events: newEvents
+            }
+          }));
+          
+          // Show success message
+          const successMsg = document.createElement('div');
+          successMsg.className = 'fixed top-4 right-4 bg-green-500 text-white px-6 py-3 rounded-lg shadow-lg z-50';
+          successMsg.textContent = '✓ Photo uploaded successfully';
+          document.body.appendChild(successMsg);
+          
+          setTimeout(() => {
+            if (document.body.contains(successMsg)) {
+              document.body.removeChild(successMsg);
+            }
+          }, 3000);
+        };
+        img.onerror = () => {
+          alert('Failed to process image');
+        };
+        img.src = e.target.result;
+      };
+      reader.onerror = () => {
+        alert('Failed to read image file');
+      };
+      reader.readAsDataURL(file);
+    } catch (error) {
+      console.error('Image upload error:', error);
+      alert('Failed to upload image');
+    }
+  };
+
+  const removeEventImage = (eventIndex, imageIndex) => {
+    if (window.confirm('Are you sure you want to remove this image?')) {
+      const newEvents = [...(content.launch?.events || [])];
+      const eventImages = newEvents[eventIndex].images.filter((_, i) => i !== imageIndex);
+      newEvents[eventIndex] = { ...newEvents[eventIndex], images: eventImages };
+      
+      setContent(prev => ({
+        ...prev,
+        launch: {
+          title: prev.launch?.title || 'Pineapple Initiative Launch Events',
+          description: prev.launch?.description || 'Documenting the journey and milestones of the Pineapple Livelihood Initiative launch events and activities.',
+          events: newEvents
+        }
+      }));
+    }
   };
 
   const updateAbout = (field, value) => {
@@ -155,6 +393,27 @@ const PineappleProjectManager = () => {
         </button>
       </div>
 
+      {error && (
+        <div className="bg-[#D97070]/5 border border-[#D97070]/10 rounded-xl p-4">
+          <div className="flex items-start gap-2">
+            <div className="text-[#D97070] mt-0.5">
+              <FiTrash2 className="h-4 w-4" />
+            </div>
+            <div className="text-sm text-[#D97070]">{error}</div>
+          </div>
+        </div>
+      )}
+
+      {isLoading ? (
+        <div className="bg-white rounded-3xl border border-[#E8EAE8] shadow-sm p-12">
+          <div className="flex items-center justify-center">
+            <div className="animate-spin rounded-full h-8 w-8 border-2 border-[#F0C000] border-t-transparent"></div>
+            <span className="ml-3 text-sm text-[#5C6560]">Loading Pineapple Project content...</span>
+          </div>
+        </div>
+      ) : (
+        <>
+
       <div className="flex bg-white rounded-2xl border border-[#E8EAE8] p-1 w-fit shadow-sm overflow-x-auto">
         <button onClick={() => setActiveTab('hero')} className={`px-6 py-2 rounded-xl text-xs font-bold transition-all whitespace-nowrap ${activeTab === 'hero' ? 'bg-[#F0C000] text-white shadow-sm' : 'text-[#5C6560] hover:bg-[#FAFAFA]'}`}>Hero Section</button>
         <button onClick={() => setActiveTab('launch')} className={`px-6 py-2 rounded-xl text-xs font-bold transition-all whitespace-nowrap ${activeTab === 'launch' ? 'bg-[#F0C000] text-white shadow-sm' : 'text-[#5C6560] hover:bg-[#FAFAFA]'}`}>Initiative Launch</button>
@@ -191,21 +450,169 @@ const PineappleProjectManager = () => {
           )}
 
           {activeTab === 'launch' && (
-            <div className="space-y-6">
-              <div className="space-y-1.5">
-                <label className="text-[10px] font-bold text-[#9CA89F] uppercase tracking-wider ml-1">Section Title</label>
-                <input type="text" value={content.launch.title} onChange={(e) => updateLaunch('title', e.target.value)} className="w-full rounded-2xl border border-[#E8EAE8] bg-[#FAFAFA] px-5 py-3 text-sm font-bold text-[#1A1F1B] focus:outline-none focus:ring-2 focus:ring-[#F0C000] focus:bg-white transition-all" />
-              </div>
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
-                <div className="space-y-1.5">
-                  <label className="text-[10px] font-bold text-[#9CA89F] uppercase tracking-wider ml-1">Main Narrative</label>
-                  <textarea rows={8} value={content.launch.description} onChange={(e) => updateLaunch('description', e.target.value)} className="w-full rounded-2xl border border-[#E8EAE8] bg-[#FAFAFA] px-5 py-3 text-sm font-medium text-[#5C6560] focus:outline-none focus:ring-2 focus:ring-[#F0C000] focus:bg-white transition-all resize-none" />
+            <div className="space-y-8">
+              <div className="space-y-4">
+                <div className="flex items-center justify-between">
+                  <div className="space-y-1.5">
+                    <label className="text-[10px] font-bold text-[#9CA89F] uppercase tracking-wider ml-1">Section Title</label>
+                    <input
+                      type="text"
+                      value={content.launch?.title || ''}
+                      onChange={(e) => updateLaunch('title', e.target.value)}
+                      className="w-full rounded-2xl border border-[#E8EAE8] bg-[#FAFAFA] px-5 py-3 text-sm font-bold text-[#1A1F1B] focus:outline-none focus:ring-2 focus:ring-[#F0C000] focus:bg-white transition-all"
+                    />
+                  </div>
+                  <button
+                    onClick={addEvent}
+                    className="inline-flex items-center gap-2 rounded-xl bg-[#F0C000] text-white text-sm font-bold px-6 py-3 hover:bg-[#B8920A] shadow-md transition-all active:scale-95"
+                  >
+                    <FiPlus className="h-4 w-4" />
+                    <span>Add Launch Event</span>
+                  </button>
                 </div>
                 <div className="space-y-1.5">
-                  <label className="text-[10px] font-bold text-[#9CA89F] uppercase tracking-wider ml-1">Impact & Vision Statement</label>
-                  <textarea rows={8} value={content.launch.secondaryDescription} onChange={(e) => updateLaunch('secondaryDescription', e.target.value)} className="w-full rounded-2xl border border-[#E8EAE8] bg-[#FAFAFA] px-5 py-3 text-sm font-medium text-[#5C6560] focus:outline-none focus:ring-2 focus:ring-[#F0C000] focus:bg-white transition-all resize-none" />
+                  <label className="text-[10px] font-bold text-[#9CA89F] uppercase tracking-wider ml-1">Section Description</label>
+                  <textarea
+                    rows={2}
+                    value={content.launch?.description || ''}
+                    onChange={(e) => updateLaunch('description', e.target.value)}
+                    className="w-full rounded-2xl border border-[#E8EAE8] bg-[#FAFAFA] px-5 py-3 text-sm font-medium text-[#5C6560] focus:outline-none focus:ring-2 focus:ring-[#F0C000] focus:bg-white transition-all resize-none"
+                  />
                 </div>
               </div>
+
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                {(content.launch?.events || []).map((event, index) => (
+                  <div key={event.id} className="bg-[#FAFAFA] rounded-3xl border border-[#E8EAE8] p-6 space-y-4">
+                    <div className="flex items-start justify-between">
+                      <div className="flex-1">
+                        <div className="mb-3">
+                          <span className="text-xs font-bold text-[#F0C000] uppercase tracking-wider">✏️ Editable Event</span>
+                        </div>
+                        <div className="space-y-3">
+                          <div className="space-y-1">
+                            <label className="text-[10px] font-bold text-[#9CA89F] uppercase tracking-wider">Event Date</label>
+                            <input
+                              type="date"
+                              value={event.date}
+                              onChange={(e) => updateEvent(index, 'date', e.target.value)}
+                              className="w-full rounded-xl border border-[#E8EAE8] bg-white px-4 py-2 text-sm font-bold text-[#1A1F1B] focus:outline-none focus:ring-2 focus:ring-[#F0C000]"
+                            />
+                          </div>
+                          <div className="space-y-1">
+                            <label className="text-[10px] font-bold text-[#9CA89F] uppercase tracking-wider">Event Title</label>
+                            <input
+                              type="text"
+                              value={event.title}
+                              onChange={(e) => updateEvent(index, 'title', e.target.value)}
+                              className="w-full rounded-xl border border-[#E8EAE8] bg-white px-4 py-2 text-sm font-bold text-[#1A1F1B] focus:outline-none focus:ring-2 focus:ring-[#F0C000]"
+                              placeholder="e.g., Launch Ceremony, Workshop Event"
+                            />
+                          </div>
+                          <div className="space-y-1">
+                            <label className="text-[10px] font-bold text-[#9CA89F] uppercase tracking-wider">Event Description</label>
+                            <textarea
+                              rows={3}
+                              value={event.description}
+                              onChange={(e) => updateEvent(index, 'description', e.target.value)}
+                              className="w-full rounded-xl border border-[#E8EAE8] bg-white px-4 py-2 text-sm font-medium text-[#5C6560] focus:outline-none focus:ring-2 focus:ring-[#F0C000] resize-none"
+                              placeholder="Describe the event details and activities..."
+                            />
+                          </div>
+                        </div>
+                      </div>
+                      <button
+                        onClick={() => removeEvent(index)}
+                        className="p-3 bg-red-50 text-red-600 hover:bg-red-100 hover:text-red-700 rounded-xl transition-all border border-red-200 hover:border-red-300 group"
+                        title="Delete this launch event"
+                      >
+                        <FiTrash2 className="h-5 w-5 group-hover:scale-110 transition-transform" />
+                      </button>
+                    </div>
+                    
+                    <div className="space-y-3">
+                      <div className="flex items-center justify-between">
+                        <label className="text-[10px] font-bold text-[#9CA89F] uppercase tracking-wider">Event Photos</label>
+                        <button
+                          onClick={() => document.getElementById(`event-image-${index}-new`).click()}
+                          className="inline-flex items-center gap-1 text-xs font-bold text-[#F0C000] hover:underline"
+                        >
+                          <FiPlus className="h-3 w-3" />
+                          <span>Add Photo</span>
+                        </button>
+                      </div>
+                      
+                      {event.images && event.images.length > 0 ? (
+                        <div className="grid grid-cols-2 gap-3">
+                          {event.images.map((image, imgIndex) => (
+                            <div key={image.id} className="relative group">
+                              <img
+                                src={image.url}
+                                alt={`Event photo ${imgIndex + 1}`}
+                                className="w-full h-24 object-cover rounded-xl"
+                              />
+                              <button
+                                onClick={() => removeEventImage(index, imgIndex)}
+                                className="absolute top-1 right-1 p-1 bg-red-500 text-white rounded-full opacity-0 group-hover:opacity-100 transition-all hover:bg-red-600"
+                                title="Remove photo"
+                              >
+                                <FiTrash2 className="h-3 w-3" />
+                              </button>
+                            </div>
+                          ))}
+                          {event.images.length < 6 && (
+                            <div
+                              onClick={() => document.getElementById(`event-image-${index}-new`).click()}
+                              className="w-full h-24 rounded-xl border-2 border-dashed border-[#E8EAE8] bg-white flex flex-col items-center justify-center cursor-pointer hover:bg-[#FAFAFA] hover:border-[#F0C000]/40 transition-all group"
+                            >
+                              <FiImage className="h-6 w-6 text-[#9CA89F] group-hover:text-[#F0C000]" />
+                              <p className="text-xs font-bold text-[#5C6560] mt-1">Add Photo</p>
+                            </div>
+                          )}
+                        </div>
+                      ) : (
+                        <div
+                          onClick={() => document.getElementById(`event-image-${index}-new`).click()}
+                          className="w-full h-32 rounded-2xl border-2 border-dashed border-[#E8EAE8] bg-white flex flex-col items-center justify-center cursor-pointer hover:bg-[#FAFAFA] hover:border-[#F0C000]/40 transition-all group"
+                        >
+                          <FiImage className="h-8 w-8 text-[#9CA89F] mb-2 group-hover:text-[#F0C000]" />
+                          <p className="text-xs font-bold text-[#5C6560]">Click to upload event photos</p>
+                          <p className="text-[10px] text-[#9CA89F] mt-1">Up to 6 photos per event</p>
+                        </div>
+                      )}
+                      
+                      <input
+                        id={`event-image-${index}-new`}
+                        type="file"
+                        accept="image/*"
+                        multiple
+                        onChange={(e) => {
+                          const files = Array.from(e.target.files);
+                          files.forEach((file, fileIndex) => {
+                            handleEventImageUpload(index, -1, file);
+                          });
+                        }}
+                        className="hidden"
+                      />
+                    </div>
+                  </div>
+                ))}
+              </div>
+
+              {(content.launch?.events || []).length === 0 && (
+                <div className="text-center py-12">
+                  <FiImage className="h-16 w-16 text-[#9CA89F] mx-auto mb-4" />
+                  <p className="text-lg font-bold text-[#1A1F1B] mb-2">No Launch Events Yet</p>
+                  <p className="text-sm text-[#5C6560] mb-6">Start documenting your Pineapple Initiative launch events and activities</p>
+                  <button
+                    onClick={addEvent}
+                    className="inline-flex items-center gap-2 rounded-xl bg-[#F0C000] text-white text-sm font-bold px-6 py-3 hover:bg-[#B8920A] shadow-md transition-all active:scale-95"
+                  >
+                    <FiPlus className="h-4 w-4" />
+                    <span>Add First Launch Event</span>
+                  </button>
+                </div>
+              )}
             </div>
           )}
 
@@ -304,6 +711,8 @@ const PineappleProjectManager = () => {
           )}
         </div>
       </div>
+        </>
+      )}
     </div>
   );
 };
