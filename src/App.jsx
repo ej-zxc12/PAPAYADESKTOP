@@ -53,6 +53,7 @@ import { alumniMock } from './features/alumni/models/alumniContent'
 import SF10Section, { SF10View } from './features/sf10/pages/SF10Section.jsx'
 import AlumniSection from './features/alumni/pages/AlumniSection.jsx'
 import AppleScholarshipManager from './features/programs/pages/AppleScholarshipManager.jsx'
+import PineappleProjectManager from './features/programs/pages/PineappleProjectManager.jsx'
 import { onAuthStateChanged, signInWithEmailAndPassword, signOut as firebaseSignOut } from 'firebase/auth'
 import { getFirebaseAuth } from './core/services/firebase'
 import { deleteObject, getDownloadURL, ref as storageRef, uploadBytes } from 'firebase/storage'
@@ -1271,7 +1272,7 @@ function App() {
                 {activePage === 'website_about_mission' && <MissionVisionValuesSection />}
                 {activePage === 'media' && <MediaLibrarySection />}
                 {activePage === 'programs_apple_scholarship' && <AppleScholarshipManager />}
-                {activePage === 'programs_pineapple_project' && <ProgramOverviewSection title="Pineapple Project" />}
+                {activePage === 'programs_pineapple_project' && <PineappleProjectManager />}
               </section>
 
               {activePage === 'dashboard' && (
