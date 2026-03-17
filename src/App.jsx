@@ -1,4 +1,5 @@
-import React, { useState, useEffect } from 'react'
+import React, { useState, useEffect, useRef } from 'react'
+import { gsap } from 'gsap'
 import { createPortal } from 'react-dom'
 import {
   AreaChart,
@@ -52,6 +53,7 @@ import { sf10StudentsMock, sf10RecordsMock } from './features/sf10/models/sf10Co
 import { alumniMock } from './features/alumni/models/alumniContent'
 import SF10Section, { SF10View } from './features/sf10/pages/SF10Section.jsx'
 import AlumniSection from './features/alumni/pages/AlumniSection.jsx'
+import AddAccountForm from './features/accounts/pages/AddAccountForm.jsx'
 import AppleScholarshipManager from './features/programs/pages/AppleScholarshipManager.jsx'
 import PineappleProjectManager from './features/programs/pages/PineappleProjectManager.jsx'
 import { onAuthStateChanged, signInWithEmailAndPassword, signOut as firebaseSignOut } from 'firebase/auth'
@@ -374,7 +376,12 @@ function toSafeDate(value) {
   }
 }
 
+import { ParticleBackground } from './shared/utils/threeParticles'
+
+import Splash from './components/Splash'
+
 function App() {
+  const [showSplash, setShowSplash] = useState(true)
   const [isLoggedIn, setIsLoggedIn] = useState(false)
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
@@ -384,6 +391,21 @@ function App() {
   const [activePage, setActivePage] = useState('dashboard')
   const [selectedSf10StudentId, setSelectedSf10StudentId] = useState(null)
   const [selectedStatTab, setSelectedStatTab] = useState('donations')
+  
+  const loginBgRef = useRef(null)
+  const particleInstance = useRef(null)
+
+  useEffect(() => {
+    if (!isLoggedIn && loginBgRef.current) {
+      particleInstance.current = new ParticleBackground(loginBgRef.current)
+    }
+    return () => {
+      if (particleInstance.current) {
+        particleInstance.current.destroy()
+        particleInstance.current = null
+      }
+    }
+  }, [isLoggedIn])
 
   // Sidebar dropdown state.
   // Important UX: keep all groups collapsed by default, and only toggle on the parent group button click.
@@ -714,7 +736,7 @@ function App() {
     reports: 'Donation Reports',
     partners: 'About Us — Partners & Sponsors',
     news: 'News & Updates',
-    messages: 'Messages / Website Inquiries',
+    messages: 'Add Accounts',
     orgchart: 'About Us — Organizational Chart',
     sf10: uiText.sf10.title,
     alumni: uiText.alumni.title,
@@ -736,7 +758,7 @@ function App() {
     reports: 'View summaries and export donation reports',
     partners: 'Manage partner organizations displayed on the website',
     news: 'Create and manage website news articles',
-    messages: 'Display messages submitted via website contact forms',
+    messages: 'Manage user accounts and access levels',
     orgchart: 'Organization structure (real-time sync if configured)',
     sf10: uiText.sf10.subtitle,
     alumni: uiText.alumni.subtitle,
@@ -805,6 +827,91 @@ function App() {
   const [isNotificationsOpen, setIsNotificationsOpen] = useState(false)
   const closeNotifications = () => setIsNotificationsOpen(false)
 
+  const cardsContainerRef = useRef(null)
+  const eventsRef = useRef(null)
+  const mainContentRef = useRef(null)
+  const prevPageRef = useRef(activePage)
+  const [transitioning, setTransitioning] = useState(false)
+  const progressRef = useRef(null)
+
+  useEffect(() => {
+    if (mainContentRef.current && prevPageRef.current !== activePage) {
+      setTransitioning(true)
+      const tl = gsap.timeline({
+        onComplete: () => {
+          setTransitioning(false)
+          gsap.set(progressRef.current, { scaleX: 0 })
+        }
+      })
+
+      // Progress bar animation
+      tl.fromTo(progressRef.current, 
+        { scaleX: 0 }, 
+        { scaleX: 1, duration: 0.4, ease: 'power2.inOut' }
+      )
+
+      // Content transition
+      tl.fromTo(mainContentRef.current,
+        { opacity: 0, x: 30 },
+        { 
+          opacity: 1, 
+          x: 0, 
+          duration: 0.5, 
+          ease: 'power3.out',
+          clearProps: 'all'
+        },
+        '-=0.2'
+      )
+    }
+    
+    // Dashboard specific entry animations
+    if (activePage === 'dashboard') {
+      const masterTl = gsap.timeline()
+      
+      if (cardsContainerRef.current) {
+        const cards = cardsContainerRef.current.querySelectorAll('.summary-card-anim')
+        masterTl.fromTo(cards, 
+          { opacity: 0, y: 30 },
+          { 
+            opacity: 1, 
+            y: 0, 
+            duration: 0.6, 
+            stagger: 0.1, 
+            ease: 'power3.out',
+            clearProps: 'all'
+          }
+        )
+      }
+
+      const chart = document.querySelector('.chart-anim')
+      if (chart) {
+        masterTl.fromTo(chart,
+          { opacity: 0, y: 30 },
+          { opacity: 1, y: 0, duration: 0.6, ease: 'power3.out', clearProps: 'all' },
+          '-=0.4'
+        )
+      }
+
+      if (eventsRef.current) {
+        const eventItems = eventsRef.current.querySelectorAll('.event-item-anim')
+        masterTl.fromTo(eventItems,
+          { opacity: 0, x: 30 },
+          {
+            opacity: 1,
+            x: 0,
+            duration: 0.5,
+            stagger: 0.08,
+            ease: 'power2.out',
+            clearProps: 'all'
+          },
+          '-=0.4'
+        )
+      }
+    }
+
+    prevPageRef.current = activePage
+  }, [activePage])
+
   useEffect(() => {
     if (!isNotificationsOpen) return
 
@@ -818,25 +925,45 @@ function App() {
     }
   }, [isNotificationsOpen])
 
+  useEffect(() => {
+    if (!showSplash && (isLoggedIn || !isLoggedIn)) {
+      const tl = gsap.timeline();
+      
+      tl.fromTo(isLoggedIn ? ".main-app-container" : ".login-card-container",
+        { opacity: 0, y: 20 },
+        { opacity: 1, y: 0, duration: 0.8, ease: "power2.out" }
+      );
+    }
+  }, [showSplash, isLoggedIn])
+
+  if (showSplash) {
+    return <Splash onComplete={() => setShowSplash(false)} />
+  }
+
   if (!isLoggedIn) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-slate-100 text-slate-900">
-        <div className="w-full max-w-md bg-white rounded-3xl shadow-xl p-8 space-y-6">
+      <div className="min-h-screen flex items-center justify-center bg-white text-slate-900 relative overflow-hidden">
+        <div ref={loginBgRef} className="absolute inset-0 z-0 opacity-40" />
+        <div className="login-card-container w-full max-w-md bg-white/80 backdrop-blur-xl rounded-3xl shadow-2xl p-8 space-y-6 relative z-10 border border-white/20 opacity-0">
           <div className="flex flex-col items-center gap-3 mb-4">
-            <img
-              src={papayaLogo}
-              alt="Papaya Academy logo"
-              className="h-[120px] w-[120px] rounded-full object-cover bg-white p-1 shadow-[0_10px_30px_rgba(0,0,0,0.18)]"
-            />
+            <div className="relative group">
+              <div className="absolute inset-0 bg-[#F0C000]/20 rounded-full blur-2xl group-hover:blur-3xl transition-all duration-500" />
+              <img
+                src={papayaLogo}
+                alt="Papaya Academy logo"
+                className="h-[120px] w-[120px] rounded-full object-cover bg-white p-1 shadow-[0_10px_30px_rgba(0,0,0,0.18)] relative z-10"
+              />
+            </div>
             <div className="text-center">
-              <div className="text-xl font-semibold tracking-tight text-slate-900">Papaya Academy</div>
+              <div className="text-2xl font-bold tracking-tight text-slate-900">Papaya Academy</div>
+              <div className="text-sm text-slate-500 font-medium">Administrative Portal</div>
             </div>
           </div>
 
           <form className="space-y-4" onSubmit={handleLogin}>
-            <div>
-              <label className="block text-sm font-medium text-slate-700 mb-1" htmlFor="email">
-                Email
+            <div className="space-y-1.5">
+              <label className="block text-[11px] font-bold text-slate-500 uppercase tracking-wider ml-1" htmlFor="email">
+                Email Address
               </label>
               <input
                 id="email"
@@ -844,12 +971,12 @@ function App() {
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
                 placeholder="you@example.com"
-                className="w-full rounded-2xl border border-slate-200 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#1B3E2A] focus:border-transparent"
+                className="w-full rounded-2xl border border-slate-200 bg-white/50 px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-[#F0C000] focus:border-transparent transition-all"
               />
             </div>
-            <div>
-              <label className="block text-sm font-medium text-slate-700 mb-1" htmlFor="password">
-                Password
+            <div className="space-y-1.5">
+              <label className="block text-[11px] font-bold text-slate-500 uppercase tracking-wider ml-1" htmlFor="password">
+                Security Password
               </label>
               <input
                 id="password"
@@ -857,21 +984,22 @@ function App() {
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
                 placeholder="••••••••"
-                className="w-full rounded-2xl border border-slate-200 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#1B3E2A] focus:border-transparent"
+                className="w-full rounded-2xl border border-slate-200 bg-white/50 px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-[#F0C000] focus:border-transparent transition-all"
               />
             </div>
             <button
               type="submit"
-              className="w-full mt-2 rounded-2xl bg-[#1B3E2A] text-white text-sm font-medium py-2.5 hover:bg-[#23513A] transition shadow-sm disabled:opacity-60 disabled:cursor-not-allowed flex items-center justify-center gap-2"
+              className="w-full mt-4 rounded-2xl bg-[#1B3E2A] text-white text-sm font-bold py-3.5 hover:bg-[#23513A] active:scale-[0.98] transition-all shadow-lg shadow-[#1B3E2A]/20 disabled:opacity-60 disabled:cursor-not-allowed flex items-center justify-center gap-2"
               disabled={!email || !password || isLoading}
             >
               {isLoading && (
                 <span className="h-4 w-4 border-2 border-white/60 border-t-transparent rounded-full animate-spin" />
               )}
-              <span>{isLoading ? 'Signing in…' : 'Sign in'}</span>
+              <span>{isLoading ? 'Authenticating…' : 'Sign In to Portal'}</span>
             </button>
             {error && (
-              <div className="text-xs text-rose-600 bg-rose-50 border border-rose-100 rounded-2xl px-3 py-2 mt-1">
+              <div className="text-xs font-medium text-rose-600 bg-rose-50 border border-rose-100 rounded-2xl px-4 py-3 mt-2 flex items-center gap-2">
+                <FiAlertCircle className="w-4 h-4" />
                 {error}
               </div>
             )}
@@ -883,7 +1011,7 @@ function App() {
 
   return (
     <ErrorBoundary>
-      <div className="flex h-screen overflow-hidden bg-[#F5F6F5] text-[#1A1F1B]">
+      <div className="main-app-container flex h-screen overflow-hidden bg-white text-[#1A1F1B] opacity-0">
         {/* New Auto-Expanding Sidebar */}
         <AutoExpandingSidebar
           activePage={activePage}
@@ -902,188 +1030,210 @@ function App() {
         />
 
         {/* Main Content Area */}
+        <div 
+          ref={progressRef} 
+          className="fixed top-[70px] left-0 right-0 h-0.5 bg-[#F0C000] z-50 origin-left scale-x-0"
+        />
         <main
-          className={`flex-1 flex flex-col overflow-y-auto min-h-0 transition-all duration-300 ease-[cubic-bezier(0.4,0,0.2,1)] mt-[70px] mb-[40px] ${
+          ref={mainContentRef}
+          className={`flex-1 flex flex-col overflow-y-auto min-h-0 transition-all duration-500 ease-[cubic-bezier(0.4,0,0.2,1)] mt-[70px] mb-[40px] ${
             isSidebarExpanded ? 'ml-[280px]' : 'ml-[70px]'
           }`}
-          style={{ transitionTimingFunction: 'cubic-bezier(0.4, 0, 0.2, 1)', transitionDuration: '0.3s' }}
         >
           <div className="flex-1 flex flex-col w-full mx-auto p-4 md:p-6 lg:p-8">
             <div className="flex-1 flex gap-6 min-h-0">
               <section className="flex-1 flex flex-col gap-6 min-h-0">
                 {activePage === 'dashboard' && (
                   <>
-                    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
-                      <SummaryCard
-                        title="Website Visitors (Monthly)"
-                        value={String(
-                          (trafficChartData.find((e) => e.month === currentMonthName)?.visitors || 0).toLocaleString('en-PH')
-                        )}
-                        subtitle={`This month (${selectedYear})`}
-                        tone="yellow"
-                      />
-                      <SummaryCard
-                        title="Active Published Programs"
-                        value="2"
-                        subtitle="Live on website"
-                        tone="sage"
-                      />
-                      <SummaryCard
-                        title="Pending Website Inquiries"
-                        value="2"
-                        subtitle="Unread messages"
-                        tone="yellow"
-                      />
-                      <SummaryCard
-                        title="Draft Website Content"
-                        value="0"
-                        subtitle="Unpublished items"
-                        tone="default"
-                      />
+                    <div ref={cardsContainerRef} className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
+                      <div className="summary-card-anim">
+                        <SummaryCard
+                          title="Website Visitors (Monthly)"
+                          value={String(
+                            (trafficChartData.find((e) => e.month === currentMonthName)?.visitors || 0).toLocaleString('en-PH')
+                          )}
+                          subtitle={`This month (${selectedYear})`}
+                          tone="yellow"
+                        />
+                      </div>
+                      <div className="summary-card-anim">
+                        <SummaryCard
+                          title="Active Published Programs"
+                          value="2"
+                          subtitle="Live on website"
+                          tone="sage"
+                        />
+                      </div>
+                      <div className="summary-card-anim">
+                        <SummaryCard
+                          title="Pending Website Inquiries"
+                          value="2"
+                          subtitle="Unread messages"
+                          tone="yellow"
+                        />
+                      </div>
+                      <div className="summary-card-anim">
+                        <SummaryCard
+                          title="Draft Website Content"
+                          value="0"
+                          subtitle="Unpublished items"
+                          tone="default"
+                        />
+                      </div>
                     </div>
 
-                    <div className="bg-white rounded-3xl border border-[#E8EAE8] shadow-sm p-6">
-                      <div className="flex flex-wrap items-center justify-between gap-4 mb-6">
-                        <div>
-                          <h2 className="text-lg font-bold text-[#1A1F1B]">Statistics</h2>
-                          <p className="text-sm text-[#5C6560]">Monthly donations vs disbursements</p>
-                        </div>
-                        <div className="flex items-center gap-3 text-sm text-[#5C6560]">
-                          {selectedStatTab === 'donations' && (
-                            <>
-                              <LegendDot color="bg-[#F0C000]" label="Donations Received" />
-                              <LegendDot color="bg-[#7EB88A]" label="Disbursements / Expenses" />
-                            </>
-                          )}
-                          {selectedStatTab === 'traffic' && <LegendDot color="bg-[#F0C000]" label="Visitors" />}
-                          {selectedStatTab === 'inquiries' && <LegendDot color="bg-[#F0C000]" label="Inquiries" />}
-                          {selectedStatTab === 'engagement' && <LegendDot color="bg-[#F0C000]" label="Engagement" />}
-                          <div className="ml-2 inline-flex items-center rounded-full bg-[#FAFAFA] border border-[#E8EAE8] p-0.5">
-                            <button
-                              className={`px-2 py-1 rounded-full ${selectedStatTab === 'donations' ? 'bg-white text-[#1A1F1B] border border-[#E8EAE8]' : 'text-[#5C6560]'}`}
-                              onClick={() => setSelectedStatTab('donations')}
-                            >
-                              Donations
-                            </button>
-                            <button
-                              className={`px-2 py-1 rounded-full ${selectedStatTab === 'traffic' ? 'bg-white text-[#1A1F1B] border border-[#E8EAE8]' : 'text-[#5C6560]'}`}
-                              onClick={() => setSelectedStatTab('traffic')}
-                            >
-                              Website Traffic
-                            </button>
-                            <button
-                              className={`px-2 py-1 rounded-full ${selectedStatTab === 'inquiries' ? 'bg-white text-[#1A1F1B] border border-[#E8EAE8]' : 'text-[#5C6560]'}`}
-                              onClick={() => setSelectedStatTab('inquiries')}
-                            >
-                              Inquiries
-                            </button>
-                            <button
-                              className={`px-2 py-1 rounded-full ${selectedStatTab === 'engagement' ? 'bg-white text-[#1A1F1B] border border-[#E8EAE8]' : 'text-[#5C6560]'}`}
-                              onClick={() => setSelectedStatTab('engagement')}
-                            >
-                              Engagement
-                            </button>
+                    <div className="bg-[#F8F9F8] rounded-3xl border border-[#E8EAE8] shadow-sm p-6 relative overflow-hidden group">
+                      <div className="absolute inset-0 bg-gradient-to-br from-[#7EB88A]/5 via-transparent to-[#F0C000]/5 opacity-50 pointer-events-none" />
+                      <div className="relative z-10">
+                        <div className="flex flex-wrap items-center justify-between gap-4 mb-6">
+                          <div>
+                            <h2 className="text-lg font-bold text-[#1A1F1B]">Statistics</h2>
+                            <p className="text-sm text-[#5C6560]">Monthly donations vs disbursements</p>
                           </div>
-                          <select
-                            className="ml-2 rounded-full border border-[#E8EAE8] bg-white px-3 py-1 text-xs focus:outline-none focus:ring-2 focus:ring-[#F0C000]"
-                            value={selectedYear}
-                            onChange={(event) => setSelectedYear(event.target.value)}
-                          >
-                            <option value="2025">2025</option>
-                            <option value="2024">2024</option>
-                          </select>
-                        </div>
-                      </div>
-
-                      <div className="h-[300px] w-full">
-                        <ResponsiveContainer width="100%" height="100%">
-                          <AreaChart data={currentChartData} margin={{ top: 10, right: 10, left: 0, bottom: 0 }}>
-                            <defs>
-                              <linearGradient id="donations" x1="0" y1="0" x2="0" y2="1">
-                                <stop offset="5%" stopColor="#F0C000" stopOpacity={0.5} />
-                                <stop offset="95%" stopColor="#F0C000" stopOpacity={0} />
-                              </linearGradient>
-                              <linearGradient id="disbursements" x1="0" y1="0" x2="0" y2="1">
-                                <stop offset="5%" stopColor="#7EB88A" stopOpacity={0.5} />
-                                <stop offset="95%" stopColor="#7EB88A" stopOpacity={0} />
-                              </linearGradient>
-                              <linearGradient id="visitors" x1="0" y1="0" x2="0" y2="1">
-                                <stop offset="5%" stopColor="#F0C000" stopOpacity={0.5} />
-                                <stop offset="95%" stopColor="#F0C000" stopOpacity={0} />
-                              </linearGradient>
-                              <linearGradient id="uniqueVisitors" x1="0" y1="0" x2="0" y2="1">
-                                <stop offset="5%" stopColor="#A8CDB0" stopOpacity={0.5} />
-                                <stop offset="95%" stopColor="#A8CDB0" stopOpacity={0} />
-                              </linearGradient>
-                              <linearGradient id="inquiries" x1="0" y1="0" x2="0" y2="1">
-                                <stop offset="5%" stopColor="#F0C000" stopOpacity={0.5} />
-                                <stop offset="95%" stopColor="#F0C000" stopOpacity={0} />
-                              </linearGradient>
-                              <linearGradient id="engagement" x1="0" y1="0" x2="0" y2="1">
-                                <stop offset="5%" stopColor="#F0C000" stopOpacity={0.5} />
-                                <stop offset="95%" stopColor="#F0C000" stopOpacity={0} />
-                              </linearGradient>
-                            </defs>
-                            <CartesianGrid strokeDasharray="3 3" stroke="#E8EAE8" vertical={false} />
-                            <XAxis
-                              dataKey="month"
-                              tickLine={false}
-                              axisLine={false}
-                              tick={{ fill: '#9CA89F', fontSize: 12 }}
-                            />
-                            <YAxis tickLine={false} axisLine={false} tick={{ fill: '#9CA89F', fontSize: 12 }} />
-                            <Tooltip
-                              contentStyle={{
-                                borderRadius: '0.75rem',
-                                border: '1px solid #E8EAE8',
-                                boxShadow: '0 10px 40px rgba(26, 31, 27, 0.1)',
-                                padding: '0.5rem 0.75rem',
-                              }}
-                              labelStyle={{ fontSize: 12, color: '#5C6560' }}
-                              labelFormatter={(label) => `Month: ${label}`}
-                              formatter={(value, name) => [
-                                selectedStatTab === 'donations'
-                                  ? formatCurrency(value)
-                                  : typeof value === 'number'
-                                  ? value.toLocaleString('en-PH')
-                                  : value,
-                                selectedStatTab === 'donations'
-                                  ? name === 'donations'
-                                    ? 'Donations Received'
-                                    : 'Disbursements / Expenses'
-                                  : selectedStatTab === 'traffic'
-                                  ? name === 'visitors'
-                                    ? 'Visitors'
-                                    : 'Unique Visitors'
-                                  : selectedStatTab === 'inquiries'
-                                  ? 'Inquiries'
-                                  : 'Engagement',
-                              ]}
-                            />
+                          <div className="flex items-center gap-3 text-sm text-[#5C6560]">
                             {selectedStatTab === 'donations' && (
                               <>
-                                <Area type="monotone" dataKey="donations" stroke="#F0C000" strokeWidth={2.5} fillOpacity={1} fill="url(#donations)" />
-                                <Area type="monotone" dataKey="disbursements" stroke="#7EB88A" strokeWidth={2.5} fillOpacity={1} fill="url(#disbursements)" />
+                                <LegendDot color="bg-[#F0C000]" label="Donations Received" />
+                                <LegendDot color="bg-[#7EB88A]" label="Disbursements / Expenses" />
                               </>
                             )}
-                            {selectedStatTab === 'traffic' && (
-                              <>
-                                <Area type="monotone" dataKey="visitors" stroke="#F0C000" strokeWidth={2.5} fillOpacity={1} fill="url(#visitors)" />
-                                <Area type="monotone" dataKey="uniqueVisitors" stroke="#A8CDB0" strokeWidth={2.5} fillOpacity={1} fill="url(#uniqueVisitors)" />
-                              </>
-                            )}
-                            {selectedStatTab === 'inquiries' && (
-                              <Area type="monotone" dataKey="inquiries" stroke="#F0C000" strokeWidth={2.5} fillOpacity={1} fill="url(#inquiries)" />
-                            )}
-                            {selectedStatTab === 'engagement' && (
-                              <Area type="monotone" dataKey="engagement" stroke="#F0C000" strokeWidth={2.5} fillOpacity={1} fill="url(#engagement)" />
-                            )}
-                          </AreaChart>
-                        </ResponsiveContainer>
+                            {selectedStatTab === 'traffic' && <LegendDot color="bg-[#F0C000]" label="Visitors" />}
+                            {selectedStatTab === 'inquiries' && <LegendDot color="bg-[#F0C000]" label="Inquiries" />}
+                            {selectedStatTab === 'engagement' && <LegendDot color="bg-[#F0C000]" label="Engagement" />}
+                            <div className="ml-2 inline-flex items-center rounded-full bg-[#FAFAFA] border border-[#E8EAE8] p-0.5">
+                              <button
+                                className={`px-2 py-1 rounded-full transition-all ${selectedStatTab === 'donations' ? 'bg-white text-[#1A1F1B] border border-[#E8EAE8] shadow-sm' : 'text-[#5C6560] hover:text-[#1A1F1B]'}`}
+                                onClick={() => setSelectedStatTab('donations')}
+                              >
+                                Donations
+                              </button>
+                              <button
+                                className={`px-2 py-1 rounded-full transition-all ${selectedStatTab === 'traffic' ? 'bg-white text-[#1A1F1B] border border-[#E8EAE8] shadow-sm' : 'text-[#5C6560] hover:text-[#1A1F1B]'}`}
+                                onClick={() => setSelectedStatTab('traffic')}
+                              >
+                                Website Traffic
+                              </button>
+                              <button
+                                className={`px-2 py-1 rounded-full transition-all ${selectedStatTab === 'inquiries' ? 'bg-white text-[#1A1F1B] border border-[#E8EAE8] shadow-sm' : 'text-[#5C6560] hover:text-[#1A1F1B]'}`}
+                                onClick={() => setSelectedStatTab('inquiries')}
+                              >
+                                Inquiries
+                              </button>
+                              <button
+                                className={`px-2 py-1 rounded-full transition-all ${selectedStatTab === 'engagement' ? 'bg-white text-[#1A1F1B] border border-[#E8EAE8] shadow-sm' : 'text-[#5C6560] hover:text-[#1A1F1B]'}`}
+                                onClick={() => setSelectedStatTab('engagement')}
+                              >
+                                Engagement
+                              </button>
+                            </div>
+                            <select
+                              className="ml-2 rounded-full border border-[#E8EAE8] bg-white px-3 py-1 text-xs focus:outline-none focus:ring-2 focus:ring-[#F0C000] transition-shadow"
+                              value={selectedYear}
+                              onChange={(event) => setSelectedYear(event.target.value)}
+                            >
+                              <option value="2025">2025</option>
+                              <option value="2024">2024</option>
+                            </select>
+                          </div>
+                        </div>
+
+                        <div className="h-[300px] w-full chart-anim">
+                          <ResponsiveContainer width="100%" height="100%">
+                            <AreaChart data={currentChartData} margin={{ top: 10, right: 10, left: 0, bottom: 0 }}>
+                              <defs>
+                                <linearGradient id="donations" x1="0" y1="0" x2="0" y2="1">
+                                  <stop offset="5%" stopColor="#F0C000" stopOpacity={0.5} />
+                                  <stop offset="95%" stopColor="#F0C000" stopOpacity={0} />
+                                </linearGradient>
+                                <linearGradient id="disbursements" x1="0" y1="0" x2="0" y2="1">
+                                  <stop offset="5%" stopColor="#7EB88A" stopOpacity={0.5} />
+                                  <stop offset="95%" stopColor="#7EB88A" stopOpacity={0} />
+                                </linearGradient>
+                                <linearGradient id="visitors" x1="0" y1="0" x2="0" y2="1">
+                                  <stop offset="5%" stopColor="#F0C000" stopOpacity={0.5} />
+                                  <stop offset="95%" stopColor="#F0C000" stopOpacity={0} />
+                                </linearGradient>
+                                <linearGradient id="uniqueVisitors" x1="0" y1="0" x2="0" y2="1">
+                                  <stop offset="5%" stopColor="#A8CDB0" stopOpacity={0.5} />
+                                  <stop offset="95%" stopColor="#A8CDB0" stopOpacity={0} />
+                                </linearGradient>
+                                <linearGradient id="inquiries" x1="0" y1="0" x2="0" y2="1">
+                                  <stop offset="5%" stopColor="#F0C000" stopOpacity={0.5} />
+                                  <stop offset="95%" stopColor="#F0C000" stopOpacity={0} />
+                                </linearGradient>
+                                <linearGradient id="engagement" x1="0" y1="0" x2="0" y2="1">
+                                  <stop offset="5%" stopColor="#F0C000" stopOpacity={0.5} />
+                                  <stop offset="95%" stopColor="#F0C000" stopOpacity={0} />
+                                </linearGradient>
+                              </defs>
+                              <CartesianGrid strokeDasharray="3 3" stroke="#E8EAE8" vertical={false} />
+                              <XAxis
+                                dataKey="month"
+                                tickLine={false}
+                                axisLine={false}
+                                tick={{ fill: '#9CA89F', fontSize: 12 }}
+                              />
+                              <YAxis tickLine={false} axisLine={false} tick={{ fill: '#9CA89F', fontSize: 12 }} />
+                              <Tooltip
+                                contentStyle={{
+                                  borderRadius: '1rem',
+                                  border: '1px solid #E8EAE8',
+                                  boxShadow: '0 20px 50px rgba(26, 31, 27, 0.15)',
+                                  padding: '0.75rem 1rem',
+                                  background: 'rgba(255, 255, 255, 0.95)',
+                                  backdropFilter: 'blur(10px)',
+                                }}
+                                itemStyle={{ padding: '2px 0' }}
+                                labelStyle={{ fontSize: 13, fontWeight: 700, color: '#1A1F1B', marginBottom: '4px' }}
+                                labelFormatter={(label) => `Month: ${label}`}
+                                animationDuration={400}
+                                animationEasing="ease-out"
+                                formatter={(value, name) => [
+                                  selectedStatTab === 'donations'
+                                    ? formatCurrency(value)
+                                    : typeof value === 'number'
+                                    ? value.toLocaleString('en-PH')
+                                    : value,
+                                  selectedStatTab === 'donations'
+                                    ? name === 'donations'
+                                      ? 'Donations Received'
+                                      : 'Disbursements / Expenses'
+                                    : selectedStatTab === 'traffic'
+                                    ? name === 'visitors'
+                                      ? 'Visitors'
+                                      : 'Unique Visitors'
+                                    : selectedStatTab === 'inquiries'
+                                    ? name === 'inquiries'
+                                      ? 'Inquiries'
+                                      : 'Engagement'
+                                    : 'Engagement',
+                                ]}
+                              />
+                              {selectedStatTab === 'donations' && (
+                                <>
+                                  <Area type="monotone" dataKey="donations" stroke="#F0C000" strokeWidth={2.5} fillOpacity={1} fill="url(#donations)" animationDuration={1200} animationEasing="ease-in-out" />
+                                  <Area type="monotone" dataKey="disbursements" stroke="#7EB88A" strokeWidth={2.5} fillOpacity={1} fill="url(#disbursements)" animationDuration={1200} animationEasing="ease-in-out" />
+                                </>
+                              )}
+                              {selectedStatTab === 'traffic' && (
+                                <>
+                                  <Area type="monotone" dataKey="visitors" stroke="#F0C000" strokeWidth={2.5} fillOpacity={1} fill="url(#visitors)" animationDuration={1200} animationEasing="ease-in-out" />
+                                  <Area type="monotone" dataKey="uniqueVisitors" stroke="#A8CDB0" strokeWidth={2.5} fillOpacity={1} fill="url(#uniqueVisitors)" animationDuration={1200} animationEasing="ease-in-out" />
+                                </>
+                              )}
+                              {selectedStatTab === 'inquiries' && (
+                                <Area type="monotone" dataKey="inquiries" stroke="#F0C000" strokeWidth={2.5} fillOpacity={1} fill="url(#inquiries)" animationDuration={1200} animationEasing="ease-in-out" />
+                              )}
+                              {selectedStatTab === 'engagement' && (
+                                <Area type="monotone" dataKey="engagement" stroke="#F0C000" strokeWidth={2.5} fillOpacity={1} fill="url(#engagement)" animationDuration={1200} animationEasing="ease-in-out" />
+                              )}
+                            </AreaChart>
+                          </ResponsiveContainer>
+                        </div>
                       </div>
                     </div>
 
-                    <div className="bg-white rounded-3xl border border-[#E8EAE8] shadow-sm p-6">
+                    <div className="bg-[#F8F9F8] rounded-3xl border border-[#E8EAE8] shadow-sm p-6 mt-6">
                       <div className="flex items-center justify-between mb-6">
                         <h2 className="text-lg font-bold text-[#1A1F1B]">Top Partners & Sponsors</h2>
                       </div>
@@ -1232,11 +1382,12 @@ function App() {
                 )}
                 {activePage === 'news' && <NewsManager />}
                 {activePage === 'messages' && (
-                  <ContactsSection
-                    messages={messages}
-                    selectedMessageId={selectedMessageId}
-                    onSelectMessage={handleSelectMessage}
-                    onToggleMessageRead={handleToggleMessageRead}
+                  <AddAccountForm 
+                    onCancel={() => setActivePage('dashboard')}
+                    onSave={(data) => {
+                      console.log('Account created:', data);
+                      // Removed window.alert and redirect
+                    }}
                   />
                 )}
                 {activePage === 'orgchart' && <OrgChartHtmlSection />}
@@ -1277,38 +1428,37 @@ function App() {
 
               {activePage === 'dashboard' && (
                 <aside className="w-80 flex flex-col gap-6">
-                  <div className="bg-white rounded-3xl border border-[#E8EAE8] shadow-sm p-6 flex-1 flex flex-col min-h-0">
+                  <div className="bg-[#F8F9F8] rounded-3xl border border-[#E8EAE8] shadow-sm p-6 flex-1 flex flex-col min-h-0">
                     <div className="flex items-center justify-between mb-6">
                       <h2 className="text-lg font-bold text-[#1A1F1B]">Upcoming Events</h2>
                       <span className="text-xs font-medium text-[#9CA89F]">Today</span>
                     </div>
-                    <div className="space-y-3 overflow-y-auto pr-1 flex-1 max-h-[400px]">
+                    <div ref={eventsRef} className="space-y-3 overflow-y-auto pr-1 flex-1 max-h-[400px]">
                       {events.length === 0 && (
                         <div className="text-center py-8 text-[#9CA89F]">
                           <FiCalendar className="w-8 h-8 mx-auto mb-2 opacity-50" />
                           <p className="text-sm">No events found</p>
                         </div>
                       )}
-                      {events.map((event) => {
-                        const eventDate = toSafeDate(event?.nextRunAt)
-                        const isPast = eventDate && eventDate < new Date()
+                      {events.map((event, idx) => {
+                        const eventDate = toSafeDate(event.nextRunAt)
+                        const now = new Date()
+                        const isPast = eventDate && eventDate < now
+                        const isSoon = eventDate && !isPast && (eventDate.getTime() - now.getTime() < 86400000)
                         const timeText = eventDate
-                          ? eventDate.toLocaleString('en-PH', {
-                              month: 'short',
-                              day: 'numeric',
-                              hour: 'numeric',
-                              minute: '2-digit',
-                            })
+                          ? eventDate.toLocaleDateString('en-US', { month: 'short', day: 'numeric' })
                           : 'No date'
-                        
+
                         return (
                           <div
-                            key={event.id}
+                            key={event.id || idx}
                             onClick={() => {
                               setSelectedEvent(event)
                               setShowEventModal(true)
                             }}
-                            className={`flex items-start gap-3 rounded-2xl px-3 py-3 hover:bg-[#FAFAFA] transition-colors cursor-pointer group ${
+                            onMouseEnter={(e) => gsap.to(e.currentTarget, { x: 4, backgroundColor: '#FAFAFA', duration: 0.3 })}
+                            onMouseLeave={(e) => gsap.to(e.currentTarget, { x: 0, backgroundColor: 'transparent', duration: 0.3 })}
+                            className={`event-item-anim flex items-start gap-3 rounded-2xl px-3 py-3 transition-colors cursor-pointer group ${
                               isPast ? 'opacity-60' : ''
                             }`}
                           >
@@ -1321,7 +1471,7 @@ function App() {
                               <div className="flex items-center justify-between mb-0.5">
                                 <div className="text-sm font-bold text-[#1A1F1B] truncate">{event.title}</div>
                                 <div className={`text-[10px] font-medium whitespace-nowrap ml-2 ${
-                                  isPast ? 'text-[#D97070]' : 'text-[#9CA89F]'
+                                  isPast ? 'text-[#D97070]' : isSoon ? 'text-[#F0C000] animate-pulse' : 'text-[#9CA89F]'
                                 }`}>
                                   {isPast ? 'Done' : timeText}
                                 </div>
@@ -1434,56 +1584,96 @@ function App() {
         {showEventModal && selectedEvent && (
           (typeof document !== 'undefined' && document.body
             ? createPortal(
-                <div
-                  className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-[9999] p-4"
-                  onClick={() => setShowEventModal(false)}
-                >
-                  <div
-                    className="bg-white rounded-3xl shadow-2xl max-w-md w-full p-6 relative"
-                    onClick={(e) => e.stopPropagation()}
-                  >
-                    <div className="flex items-center justify-between mb-4">
-                      <h3 className="text-xl font-bold text-[#1A1F1B]">Event Details</h3>
-                      <button
-                        onClick={() => setShowEventModal(false)}
-                        className="p-2 hover:bg-[#FAFAFA] rounded-xl transition-colors"
-                      >
-                        <FiX className="h-5 w-5 text-[#5C6560]" />
-                      </button>
-                    </div>
-
-                    <div className="space-y-4">
-                      <p className="text-lg font-bold">{selectedEvent?.title || 'Untitled event'}</p>
-                      <p className="text-sm text-gray-600">{selectedEvent?.description || 'No description'}</p>
-                      <p className="text-sm text-gray-600">
-                        {(() => {
-                          const d = toSafeDate(selectedEvent?.nextRunAt)
-                          if (!d) return 'No date set'
-                          return d.toLocaleString('en-PH', {
-                            month: 'long',
-                            day: 'numeric',
-                            year: 'numeric',
-                            hour: 'numeric',
-                            minute: '2-digit',
-                          })
-                        })()}
-                      </p>
-                    </div>
-
+                <ModalWrapper onClose={() => setShowEventModal(false)}>
+                  <div className="flex items-center justify-between mb-4">
+                    <h3 className="text-xl font-bold text-[#1A1F1B]">Event Details</h3>
                     <button
                       onClick={() => setShowEventModal(false)}
-                      className="w-full mt-6 rounded-xl bg-[#F0C000] px-6 py-3 text-sm font-bold text-white hover:bg-[#B8920A] transition-all"
+                      className="p-2 hover:bg-[#FAFAFA] rounded-xl transition-colors"
                     >
-                      Close
+                      <FiX className="h-5 w-5 text-[#5C6560]" />
                     </button>
                   </div>
-                </div>,
+
+                  <div className="space-y-4">
+                    <p className="text-lg font-bold">{selectedEvent?.title || 'Untitled event'}</p>
+                    <p className="text-sm text-gray-600">{selectedEvent?.description || 'No description'}</p>
+                    <p className="text-sm text-gray-600">
+                      {(() => {
+                        const d = toSafeDate(selectedEvent?.nextRunAt)
+                        if (!d) return 'No date set'
+                        return d.toLocaleString('en-PH', {
+                          month: 'long',
+                          day: 'numeric',
+                          year: 'numeric',
+                          hour: 'numeric',
+                          minute: '2-digit',
+                        })
+                      })()}
+                    </p>
+                  </div>
+
+                  <button
+                    onClick={() => setShowEventModal(false)}
+                    className="w-full mt-6 rounded-xl bg-[#F0C000] px-6 py-3 text-sm font-bold text-white hover:bg-[#B8920A] transition-all"
+                  >
+                    Close
+                  </button>
+                </ModalWrapper>,
                 document.body,
               )
             : null)
         )}
       </div>
     </ErrorBoundary>
+  )
+}
+
+function ModalWrapper({ children, onClose }) {
+  const overlayRef = useRef(null)
+  const modalRef = useRef(null)
+  const fieldsRef = useRef(null)
+
+  useEffect(() => {
+    const tl = gsap.timeline()
+    tl.fromTo(overlayRef.current, { opacity: 0 }, { opacity: 1, duration: 0.3, ease: 'power2.out' })
+    tl.fromTo(modalRef.current, 
+      { opacity: 0, scale: 0.88, y: 30 }, 
+      { opacity: 1, scale: 1, y: 0, duration: 0.5, ease: 'back.out(1.7)' },
+      '-=0.2'
+    )
+    
+    // Stagger animate form fields if they exist
+    const fields = modalRef.current.querySelectorAll('input, textarea, select, button:not(.close-btn)')
+    if (fields.length > 0) {
+      tl.fromTo(fields,
+        { opacity: 0, y: 20 },
+        { opacity: 1, y: 0, duration: 0.4, stagger: 0.05, ease: 'power2.out' },
+        '-=0.3'
+      )
+    }
+  }, [])
+
+  const handleClose = () => {
+    const tl = gsap.timeline({ onComplete: onClose })
+    tl.to(modalRef.current, { opacity: 0, scale: 0.88, y: 20, duration: 0.3, ease: 'power2.in' })
+    tl.to(overlayRef.current, { opacity: 0, duration: 0.2 }, '-=0.1')
+  }
+
+  return (
+    <div
+      ref={overlayRef}
+      className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-[9999] p-4"
+      onClick={handleClose}
+    >
+      <div
+        ref={modalRef}
+        className="bg-white rounded-3xl shadow-2xl max-w-md w-full p-6 relative"
+        onClick={(e) => e.stopPropagation()}
+      >
+        {children}
+      </div>
+    </div>
   )
 }
 
@@ -1814,30 +2004,97 @@ function MediaLibrarySection() {
 }
 
 function SummaryCard({ title, value, subtitle, tone = 'default' }) {
+  const cardRef = useRef(null)
+  const numberRef = useRef(null)
+  const iconRef = useRef(null)
+
+  useEffect(() => {
+    // CountUp animation
+    const numericValue = parseFloat(String(value).replace(/[^0-9.]/g, ''))
+    if (!isNaN(numericValue)) {
+      const obj = { val: 0 }
+      gsap.to(obj, {
+        val: numericValue,
+        duration: 1.5,
+        ease: 'power2.out',
+        onUpdate: () => {
+          if (numberRef.current) {
+            numberRef.current.innerText = Math.floor(obj.val).toLocaleString('en-PH')
+            if (String(value).includes('₱') || String(value).includes('PHP')) {
+              numberRef.current.innerText = '₱' + numberRef.current.innerText
+            }
+          }
+        }
+      })
+    }
+  }, [value])
+
+  const handleMouseMove = (e) => {
+    const rect = cardRef.current.getBoundingClientRect()
+    const x = (e.clientX - rect.left) / rect.width - 0.5
+    const y = (e.clientY - rect.top) / rect.height - 0.5
+    
+    gsap.to(cardRef.current, {
+      rotateY: x * 10,
+      rotateX: -y * 10,
+      y: -5,
+      boxShadow: '0 20px 40px rgba(0,0,0,0.1)',
+      duration: 0.4,
+      ease: 'power2.out'
+    })
+
+    if (iconRef.current) {
+      gsap.to(iconRef.current, {
+        scale: 1.2,
+        duration: 0.3,
+        ease: 'back.out(1.7)'
+      })
+    }
+  }
+
+  const handleMouseLeave = () => {
+    gsap.to(cardRef.current, {
+      rotateY: 0,
+      rotateX: 0,
+      y: 0,
+      boxShadow: '0 1px 2px 0 rgba(0, 0, 0, 0.05)',
+      duration: 0.6,
+      ease: 'elastic.out(1, 0.3)'
+    })
+
+    if (iconRef.current) {
+      gsap.to(iconRef.current, {
+        scale: 1,
+        duration: 0.4,
+        ease: 'power2.out'
+      })
+    }
+  }
+
   const tones = {
     yellow: {
-      bg: 'bg-white',
+      bg: 'bg-[#F8F9F8]',
       border: 'border-[#E8EAE8]',
       text: 'text-[#1A1F1B]',
       iconBg: 'bg-[#FFFAE8]',
       iconText: 'text-[#F0C000]',
-      shadow: 'shadow-sm hover:shadow-md',
+      shadow: 'shadow-sm',
     },
     sage: {
-      bg: 'bg-white',
+      bg: 'bg-[#F8F9F8]',
       border: 'border-[#E8EAE8]',
       text: 'text-[#1A1F1B]',
       iconBg: 'bg-[#F0F8F1]',
       iconText: 'text-[#7EB88A]',
-      shadow: 'shadow-sm hover:shadow-md',
+      shadow: 'shadow-sm',
     },
     default: {
-      bg: 'bg-white',
+      bg: 'bg-[#F8F9F8]',
       border: 'border-[#E8EAE8]',
       text: 'text-[#1A1F1B]',
       iconBg: 'bg-[#FAFAFA]',
       iconText: 'text-[#5C6560]',
-      shadow: 'shadow-sm hover:shadow-md',
+      shadow: 'shadow-sm',
     },
   }
 
@@ -1846,10 +2103,16 @@ function SummaryCard({ title, value, subtitle, tone = 'default' }) {
 
   return (
     <div
-      className={`group flex flex-col p-5 rounded-3xl border ${t.border} ${t.bg} ${t.shadow} transition-all duration-300 hover:-translate-y-1`}
+      ref={cardRef}
+      onMouseMove={handleMouseMove}
+      onMouseLeave={handleMouseLeave}
+      className={`group flex flex-col p-5 rounded-3xl border ${t.border} ${t.bg} ${t.shadow} transition-shadow relative overflow-hidden`}
+      style={{ perspective: '1000px', transformStyle: 'preserve-3d' }}
     >
-      <div className="flex items-center gap-4 mb-3">
+      <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/20 to-transparent -translate-x-full group-hover:animate-shimmer pointer-events-none" />
+      <div className="flex items-center gap-4 mb-3" style={{ transform: 'translateZ(20px)' }}>
         <div
+          ref={iconRef}
           className={`h-10 w-10 rounded-2xl ${t.iconBg} ${t.iconText} flex items-center justify-center font-bold text-lg shadow-inner`}
         >
           {firstLetter}
@@ -1860,10 +2123,10 @@ function SummaryCard({ title, value, subtitle, tone = 'default' }) {
           </p>
         </div>
       </div>
-      <div className="flex items-baseline gap-2">
-        <h3 className={`text-2xl font-bold ${t.text}`}>{value}</h3>
+      <div className="flex items-baseline gap-2" style={{ transform: 'translateZ(30px)' }}>
+        <h3 ref={numberRef} className={`text-2xl font-bold ${t.text}`}>{value}</h3>
       </div>
-      <p className="text-xs text-[#5C6560] mt-1">{subtitle}</p>
+      <p className="text-xs text-[#5C6560] mt-1" style={{ transform: 'translateZ(10px)' }}>{subtitle}</p>
     </div>
   )
 }
@@ -2744,8 +3007,8 @@ function ContactsSection({ messages, selectedMessageId, onSelectMessage, onToggl
             <FiSearch className="h-5 w-5" />
           </div>
           <div>
-            <h2 className="text-lg font-bold text-[#1A1F1B]">Messages / Inquiries</h2>
-            <p className="text-xs text-[#5C6560]">Managing {messages.length.toLocaleString()} website inquiries</p>
+            <h2 className="text-lg font-bold text-[#1A1F1B]">Add Accounts</h2>
+            <p className="text-xs text-[#5C6560]">Managing user accounts and access levels</p>
           </div>
         </div>
       </div>
@@ -2755,9 +3018,9 @@ function ContactsSection({ messages, selectedMessageId, onSelectMessage, onToggl
           <table className="w-full text-sm text-left">
             <thead>
               <tr className="bg-[#FAFAFA] text-[#5C6560] font-semibold border-b border-[#E8EAE8]">
-                <th className="py-4 px-6 uppercase tracking-wider text-[11px]">From</th>
-                <th className="py-4 px-6 uppercase tracking-wider text-[11px]">Subject</th>
-                <th className="py-4 px-6 uppercase tracking-wider text-[11px]">Received</th>
+                <th className="py-4 px-6 uppercase tracking-wider text-[11px]">User</th>
+                <th className="py-4 px-6 uppercase tracking-wider text-[11px]">Role / Purpose</th>
+                <th className="py-4 px-6 uppercase tracking-wider text-[11px]">Date Created</th>
                 <th className="py-4 px-6 uppercase tracking-wider text-[11px]">Status</th>
                 <th className="py-4 px-6 uppercase tracking-wider text-[11px] text-right">Action</th>
               </tr>
@@ -2766,7 +3029,7 @@ function ContactsSection({ messages, selectedMessageId, onSelectMessage, onToggl
             {sortedMessages.length === 0 && (
               <tr>
                 <td colSpan={5} className="py-12 text-center text-[#9CA89F] italic">
-                  No messages available.
+                  No accounts available.
                 </td>
               </tr>
             )}
@@ -2800,7 +3063,7 @@ function ContactsSection({ messages, selectedMessageId, onSelectMessage, onToggl
                           : 'bg-[#F0F8F1] text-[#4A8058] border-[#D6EDD9]'
                       }`}
                     >
-                      {message.read ? 'Read' : 'Unread'}
+                      {message.read ? 'Active' : 'Pending'}
                     </span>
                   </td>
                   <td className="py-4 px-6">
@@ -2819,7 +3082,7 @@ function ContactsSection({ messages, selectedMessageId, onSelectMessage, onToggl
                             : 'bg-[#1A1F1B] border-[#1A1F1B] text-white hover:bg-black shadow-sm'
                         }`}
                         onClick={() => onToggleMessageRead(message.id)}
-                        title={message.read ? 'Mark unread' : 'Mark read'}
+                        title={message.read ? 'Deactivate' : 'Activate'}
                       >
                         {message.read ? <FiAlertCircle className="h-4 w-4" /> : <FiCheckCircle className="h-4 w-4" />}
                       </button>

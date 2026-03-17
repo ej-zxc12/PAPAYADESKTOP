@@ -21,6 +21,7 @@ import {
 import { uiText } from '../../../core/constants/uiText'
 import { formatPersonName, includesQuery } from '../utils/sf10FeatureUtils'
 import sf10FormPng from '../../../shared/assets/sf10.png'
+import sf10BackPng from '../../../shared/assets/sf10back.png'
 
 function downloadMockPdf({ filename, payload }) {
   const blob = new Blob([JSON.stringify(payload, null, 2)], { type: 'application/pdf' })
@@ -779,13 +780,13 @@ export function SF10View({ student, record, onBack }) {
              - scale: 100%
           */
           @page {
-            size: A4;
+            size: A4 landscape;
             margin: 0;
           }
 
           @media print {
             html, body {
-              width: 210mm;
+              width: 420mm;
               height: 297mm;
               margin: 0;
               padding: 0;
@@ -794,6 +795,21 @@ export function SF10View({ student, record, onBack }) {
             body {
               -webkit-print-color-adjust: exact;
               print-color-adjust: exact;
+            }
+          }
+
+          .sf10-container {
+            display: flex;
+            flex-direction: row;
+            gap: 20px;
+            justify-content: center;
+            padding: 20px;
+          }
+
+          @media print {
+            .sf10-container {
+              gap: 0;
+              padding: 0;
             }
           }
 
@@ -866,194 +882,205 @@ export function SF10View({ student, record, onBack }) {
       </div>
 
       <div className="sf10-page-wrap">
-        <div
-          className="sf10-page"
-          style={{ backgroundImage: `url(${sf10FormPng})` }}
-          aria-label="SF10 Print Template"
-        >
-        {/* Student Last Name goes here */}
-        <span id="sf10-student-lastName" data-field="student.lastName" className="sf10-field" style={{ left: '12mm', top: '30mm', width: '55mm' }} />
-        {/* Student First Name goes here */}
-        <span id="sf10-student-firstName" data-field="student.firstName" className="sf10-field" style={{ left: '72mm', top: '30mm', width: '55mm' }} />
-        {/* Student Name Extn (Jr/I/II) goes here */}
-        <span id="sf10-student-nameExtn" data-field="student.nameExtn" className="sf10-field" style={{ left: '130mm', top: '30mm', width: '25mm' }} />
-        {/* Student Middle Name goes here */}
-        <span id="sf10-student-middleName" data-field="student.middleName" className="sf10-field" style={{ left: '160mm', top: '30mm', width: '38mm' }} />
+        <div className="sf10-container">
+          <div
+            className="sf10-page"
+            style={{ backgroundImage: `url(${sf10FormPng})` }}
+            aria-label="SF10 Front Template"
+          >
+          {/* Student Last Name goes here */}
+          <span id="sf10-student-lastName" data-field="student.lastName" className="sf10-field" style={{ left: '12mm', top: '30mm', width: '55mm' }} />
+          {/* Student First Name goes here */}
+          <span id="sf10-student-firstName" data-field="student.firstName" className="sf10-field" style={{ left: '72mm', top: '30mm', width: '55mm' }} />
+          {/* Student Name Extn (Jr/I/II) goes here */}
+          <span id="sf10-student-nameExtn" data-field="student.nameExtn" className="sf10-field" style={{ left: '130mm', top: '30mm', width: '25mm' }} />
+          {/* Student Middle Name goes here */}
+          <span id="sf10-student-middleName" data-field="student.middleName" className="sf10-field" style={{ left: '160mm', top: '30mm', width: '38mm' }} />
 
-        {/* Learner Reference Number (LRN) goes here */}
-        <span id="sf10-student-lrn" data-field="student.lrn" className="sf10-field" style={{ left: '12mm', top: '37mm', width: '85mm' }} />
-        {/* Birthdate (mm/dd/yyyy) goes here */}
-        <span id="sf10-student-birthdate" data-field="student.birthdate" className="sf10-field" style={{ left: '103mm', top: '37mm', width: '42mm' }} />
-        {/* Sex goes here */}
-        <span id="sf10-student-sex" data-field="student.sex" className="sf10-field sf10-field-center" style={{ left: '181mm', top: '37mm', width: '17mm' }} />
+          {/* Learner Reference Number (LRN) goes here */}
+          <span id="sf10-student-lrn" data-field="student.lrn" className="sf10-field" style={{ left: '12mm', top: '37mm', width: '85mm' }} />
+          {/* Birthdate (mm/dd/yyyy) goes here */}
+          <span id="sf10-student-birthdate" data-field="student.birthdate" className="sf10-field" style={{ left: '103mm', top: '37mm', width: '42mm' }} />
+          {/* Sex goes here */}
+          <span id="sf10-student-sex" data-field="student.sex" className="sf10-field sf10-field-center" style={{ left: '181mm', top: '37mm', width: '17mm' }} />
 
-        {/* Name of School goes here */}
-        <span id="sf10-school-name" data-field="school.name" className="sf10-field" style={{ left: '12mm', top: '52mm', width: '120mm' }} />
-        {/* School ID goes here */}
-        <span id="sf10-school-id" data-field="school.id" className="sf10-field" style={{ left: '141mm', top: '52mm', width: '57mm' }} />
+          {/* Name of School goes here */}
+          <span id="sf10-school-name" data-field="school.name" className="sf10-field" style={{ left: '12mm', top: '52mm', width: '120mm' }} />
+          {/* School ID goes here */}
+          <span id="sf10-school-id" data-field="school.id" className="sf10-field" style={{ left: '141mm', top: '52mm', width: '57mm' }} />
 
-        {/* Eligibility / Date of Examination/Assessment goes here */}
-        <span id="sf10-eligibility-examDate" data-field="eligibility.examDate" className="sf10-field" style={{ left: '92mm', top: '62mm', width: '48mm' }} />
-        {/* Eligibility / Others (Pls Specify) goes here */}
-        <span id="sf10-eligibility-others" data-field="eligibility.others" className="sf10-field" style={{ left: '155mm', top: '62mm', width: '43mm' }} />
-        {/* Eligibility / Remarks goes here */}
-        <span id="sf10-eligibility-remarks" data-field="eligibility.remarks" className="sf10-field" style={{ left: '12mm', top: '70mm', width: '186mm' }} />
+          {/* Eligibility / Date of Examination/Assessment goes here */}
+          <span id="sf10-eligibility-examDate" data-field="eligibility.examDate" className="sf10-field" style={{ left: '92mm', top: '62mm', width: '48mm' }} />
+          {/* Eligibility / Others (Pls Specify) goes here */}
+          <span id="sf10-eligibility-others" data-field="eligibility.others" className="sf10-field" style={{ left: '155mm', top: '62mm', width: '43mm' }} />
+          {/* Eligibility / Remarks goes here */}
+          <span id="sf10-eligibility-remarks" data-field="eligibility.remarks" className="sf10-field" style={{ left: '12mm', top: '70mm', width: '186mm' }} />
 
-        {/* Scholastic Record (Top Left) School goes here */}
-        <span id="sf10-topLeft-school" data-field="topLeft.school" className="sf10-field" style={{ left: '12mm', top: '83mm', width: '52mm' }} />
-        {/* Scholastic Record (Top Left) School ID goes here */}
-        <span id="sf10-topLeft-schoolId" data-field="topLeft.schoolId" className="sf10-field" style={{ left: '72mm', top: '83mm', width: '25mm' }} />
-        {/* Scholastic Record (Top Left) District goes here */}
-        <span id="sf10-topLeft-district" data-field="topLeft.district" className="sf10-field" style={{ left: '12mm', top: '88mm', width: '35mm' }} />
-        {/* Scholastic Record (Top Left) Division goes here */}
-        <span id="sf10-topLeft-division" data-field="topLeft.division" className="sf10-field" style={{ left: '50mm', top: '88mm', width: '30mm' }} />
-        {/* Scholastic Record (Top Left) Region goes here */}
-        <span id="sf10-topLeft-region" data-field="topLeft.region" className="sf10-field" style={{ left: '84mm', top: '88mm', width: '27mm' }} />
-        {/* Scholastic Record (Top Left) Classified as Grade goes here */}
-        <span id="sf10-topLeft-grade" data-field="topLeft.grade" className="sf10-field" style={{ left: '12mm', top: '93mm', width: '35mm' }} />
-        {/* Scholastic Record (Top Left) Section goes here */}
-        <span id="sf10-topLeft-section" data-field="topLeft.section" className="sf10-field" style={{ left: '50mm', top: '93mm', width: '30mm' }} />
-        {/* Scholastic Record (Top Left) School Year goes here */}
-        <span id="sf10-topLeft-schoolYear" data-field="topLeft.schoolYear" className="sf10-field" style={{ left: '84mm', top: '93mm', width: '27mm' }} />
-        {/* Scholastic Record (Top Left) Adviser/Teacher goes here */}
-        <span id="sf10-topLeft-teacher" data-field="topLeft.teacher" className="sf10-field" style={{ left: '12mm', top: '98mm', width: '75mm' }} />
-        {/* Scholastic Record (Top Left) Signature goes here */}
-        <span id="sf10-topLeft-signature" data-field="topLeft.signature" className="sf10-field" style={{ left: '90mm', top: '98mm', width: '22mm' }} />
+          {/* Scholastic Record (Top Left) School goes here */}
+          <span id="sf10-topLeft-school" data-field="topLeft.school" className="sf10-field" style={{ left: '12mm', top: '83mm', width: '52mm' }} />
+          {/* Scholastic Record (Top Left) School ID goes here */}
+          <span id="sf10-topLeft-schoolId" data-field="topLeft.schoolId" className="sf10-field" style={{ left: '72mm', top: '83mm', width: '25mm' }} />
+          {/* Scholastic Record (Top Left) District goes here */}
+          <span id="sf10-topLeft-district" data-field="topLeft.district" className="sf10-field" style={{ left: '12mm', top: '88mm', width: '35mm' }} />
+          {/* Scholastic Record (Top Left) Division goes here */}
+          <span id="sf10-topLeft-division" data-field="topLeft.division" className="sf10-field" style={{ left: '50mm', top: '88mm', width: '30mm' }} />
+          {/* Scholastic Record (Top Left) Region goes here */}
+          <span id="sf10-topLeft-region" data-field="topLeft.region" className="sf10-field" style={{ left: '84mm', top: '88mm', width: '27mm' }} />
+          {/* Scholastic Record (Top Left) Classified as Grade goes here */}
+          <span id="sf10-topLeft-grade" data-field="topLeft.grade" className="sf10-field" style={{ left: '12mm', top: '93mm', width: '35mm' }} />
+          {/* Scholastic Record (Top Left) Section goes here */}
+          <span id="sf10-topLeft-section" data-field="topLeft.section" className="sf10-field" style={{ left: '50mm', top: '93mm', width: '30mm' }} />
+          {/* Scholastic Record (Top Left) School Year goes here */}
+          <span id="sf10-topLeft-schoolYear" data-field="topLeft.schoolYear" className="sf10-field" style={{ left: '84mm', top: '93mm', width: '27mm' }} />
+          {/* Scholastic Record (Top Left) Adviser/Teacher goes here */}
+          <span id="sf10-topLeft-teacher" data-field="topLeft.teacher" className="sf10-field" style={{ left: '12mm', top: '98mm', width: '75mm' }} />
+          {/* Scholastic Record (Top Left) Signature goes here */}
+          <span id="sf10-topLeft-signature" data-field="topLeft.signature" className="sf10-field" style={{ left: '90mm', top: '98mm', width: '22mm' }} />
 
-        {/* Scholastic Record (Top Right) School goes here */}
-        <span id="sf10-topRight-school" data-field="topRight.school" className="sf10-field" style={{ left: '109mm', top: '83mm', width: '52mm' }} />
-        {/* Scholastic Record (Top Right) School ID goes here */}
-        <span id="sf10-topRight-schoolId" data-field="topRight.schoolId" className="sf10-field" style={{ left: '169mm', top: '83mm', width: '29mm' }} />
-        {/* Scholastic Record (Top Right) District goes here */}
-        <span id="sf10-topRight-district" data-field="topRight.district" className="sf10-field" style={{ left: '109mm', top: '88mm', width: '35mm' }} />
-        {/* Scholastic Record (Top Right) Division goes here */}
-        <span id="sf10-topRight-division" data-field="topRight.division" className="sf10-field" style={{ left: '147mm', top: '88mm', width: '25mm' }} />
-        {/* Scholastic Record (Top Right) Region goes here */}
-        <span id="sf10-topRight-region" data-field="topRight.region" className="sf10-field" style={{ left: '174mm', top: '88mm', width: '24mm' }} />
-        {/* Scholastic Record (Top Right) Classified as Grade goes here */}
-        <span id="sf10-topRight-grade" data-field="topRight.grade" className="sf10-field" style={{ left: '109mm', top: '93mm', width: '35mm' }} />
-        {/* Scholastic Record (Top Right) Section goes here */}
-        <span id="sf10-topRight-section" data-field="topRight.section" className="sf10-field" style={{ left: '147mm', top: '93mm', width: '25mm' }} />
-        {/* Scholastic Record (Top Right) School Year goes here */}
-        <span id="sf10-topRight-schoolYear" data-field="topRight.schoolYear" className="sf10-field" style={{ left: '174mm', top: '93mm', width: '24mm' }} />
-        {/* Scholastic Record (Top Right) Adviser/Teacher goes here */}
-        <span id="sf10-topRight-teacher" data-field="topRight.teacher" className="sf10-field" style={{ left: '109mm', top: '98mm', width: '75mm' }} />
-        {/* Scholastic Record (Top Right) Signature goes here */}
-        <span id="sf10-topRight-signature" data-field="topRight.signature" className="sf10-field" style={{ left: '187mm', top: '98mm', width: '11mm' }} />
+          {/* Scholastic Record (Top Right) School goes here */}
+          <span id="sf10-topRight-school" data-field="topRight.school" className="sf10-field" style={{ left: '109mm', top: '83mm', width: '52mm' }} />
+          {/* Scholastic Record (Top Right) School ID goes here */}
+          <span id="sf10-topRight-schoolId" data-field="topRight.schoolId" className="sf10-field" style={{ left: '169mm', top: '83mm', width: '29mm' }} />
+          {/* Scholastic Record (Top Right) District goes here */}
+          <span id="sf10-topRight-district" data-field="topRight.district" className="sf10-field" style={{ left: '109mm', top: '88mm', width: '35mm' }} />
+          {/* Scholastic Record (Top Right) Division goes here */}
+          <span id="sf10-topRight-division" data-field="topRight.division" className="sf10-field" style={{ left: '147mm', top: '88mm', width: '25mm' }} />
+          {/* Scholastic Record (Top Right) Region goes here */}
+          <span id="sf10-topRight-region" data-field="topRight.region" className="sf10-field" style={{ left: '174mm', top: '88mm', width: '24mm' }} />
+          {/* Scholastic Record (Top Right) Classified as Grade goes here */}
+          <span id="sf10-topRight-grade" data-field="topRight.grade" className="sf10-field" style={{ left: '109mm', top: '93mm', width: '35mm' }} />
+          {/* Scholastic Record (Top Right) Section goes here */}
+          <span id="sf10-topRight-section" data-field="topRight.section" className="sf10-field" style={{ left: '147mm', top: '93mm', width: '25mm' }} />
+          {/* Scholastic Record (Top Right) School Year goes here */}
+          <span id="sf10-topRight-schoolYear" data-field="topRight.schoolYear" className="sf10-field" style={{ left: '174mm', top: '93mm', width: '24mm' }} />
+          {/* Scholastic Record (Top Right) Adviser/Teacher goes here */}
+          <span id="sf10-topRight-teacher" data-field="topRight.teacher" className="sf10-field" style={{ left: '109mm', top: '98mm', width: '75mm' }} />
+          {/* Scholastic Record (Top Right) Signature goes here */}
+          <span id="sf10-topRight-signature" data-field="topRight.signature" className="sf10-field" style={{ left: '187mm', top: '98mm', width: '11mm' }} />
 
-        {/* Scholastic Record (Top Left) learning areas + quarter grades go here */}
-        {renderScholasticRows({
-          prefix: 'sf10-topLeft',
-          baseLeftMm: 12,
-          baseTopMm: 111,
-          rowHeightMm: 5.0,
-          rowCount: 22,
-          col: 'wide',
-        })}
-        {/* Scholastic Record (Top Right) learning areas + quarter grades go here */}
-        {renderScholasticRows({
-          prefix: 'sf10-topRight',
-          baseLeftMm: 109,
-          baseTopMm: 111,
-          rowHeightMm: 5.0,
-          rowCount: 22,
-          col: 'narrow',
-        })}
+          {/* Scholastic Record (Top Left) learning areas + quarter grades go here */}
+          {renderScholasticRows({
+            prefix: 'sf10-topLeft',
+            baseLeftMm: 12,
+            baseTopMm: 111,
+            rowHeightMm: 5.0,
+            rowCount: 22,
+            col: 'wide',
+          })}
+          {/* Scholastic Record (Top Right) learning areas + quarter grades go here */}
+          {renderScholasticRows({
+            prefix: 'sf10-topRight',
+            baseLeftMm: 109,
+            baseTopMm: 111,
+            rowHeightMm: 5.0,
+            rowCount: 22,
+            col: 'narrow',
+          })}
 
-        {/* Scholastic Record (Top Left) General Average goes here */}
-        <span id="sf10-topLeft-generalAverage" data-field="topLeft.generalAverage" className="sf10-field sf10-field-center" style={{ left: '59mm', top: '222mm', width: '20mm' }} />
-        {/* Scholastic Record (Top Right) General Average goes here */}
-        <span id="sf10-topRight-generalAverage" data-field="topRight.generalAverage" className="sf10-field sf10-field-center" style={{ left: '156mm', top: '222mm', width: '20mm' }} />
+          {/* Scholastic Record (Top Left) General Average goes here */}
+          <span id="sf10-topLeft-generalAverage" data-field="topLeft.generalAverage" className="sf10-field sf10-field-center" style={{ left: '59mm', top: '222mm', width: '20mm' }} />
+          {/* Scholastic Record (Top Right) General Average goes here */}
+          <span id="sf10-topRight-generalAverage" data-field="topRight.generalAverage" className="sf10-field sf10-field-center" style={{ left: '156mm', top: '222mm', width: '20mm' }} />
 
-        {/* Remedial classes (Top Left) Conducted from goes here */}
-        <span id="sf10-topLeft-remedial-from" data-field="topLeft.remedial.from" className="sf10-field" style={{ left: '46mm', top: '232mm', width: '25mm' }} />
-        {/* Remedial classes (Top Left) Conducted to goes here */}
-        <span id="sf10-topLeft-remedial-to" data-field="topLeft.remedial.to" className="sf10-field" style={{ left: '72mm', top: '232mm', width: '25mm' }} />
-        {/* Remedial classes (Top Left) rows go here */}
-        {renderRemedialRows({ prefix: 'sf10-topLeft-remedial', baseLeftMm: 12, baseTopMm: 241, rowHeightMm: 5.0, count: 2 })}
+          {/* Remedial classes (Top Left) Conducted from goes here */}
+          <span id="sf10-topLeft-remedial-from" data-field="topLeft.remedial.from" className="sf10-field" style={{ left: '46mm', top: '232mm', width: '25mm' }} />
+          {/* Remedial classes (Top Left) Conducted to goes here */}
+          <span id="sf10-topLeft-remedial-to" data-field="topLeft.remedial.to" className="sf10-field" style={{ left: '72mm', top: '232mm', width: '25mm' }} />
+          {/* Remedial classes (Top Left) rows go here */}
+          {renderRemedialRows({ prefix: 'sf10-topLeft-remedial', baseLeftMm: 12, baseTopMm: 241, rowHeightMm: 5.0, count: 2 })}
 
-        {/* Remedial classes (Top Right) Conducted from goes here */}
-        <span id="sf10-topRight-remedial-from" data-field="topRight.remedial.from" className="sf10-field" style={{ left: '143mm', top: '232mm', width: '25mm' }} />
-        {/* Remedial classes (Top Right) Conducted to goes here */}
-        <span id="sf10-topRight-remedial-to" data-field="topRight.remedial.to" className="sf10-field" style={{ left: '169mm', top: '232mm', width: '25mm' }} />
-        {/* Remedial classes (Top Right) rows go here */}
-        {renderRemedialRows({ prefix: 'sf10-topRight-remedial', baseLeftMm: 109, baseTopMm: 241, rowHeightMm: 5.0, count: 2 })}
+          {/* Remedial classes (Top Right) Conducted from goes here */}
+          <span id="sf10-topRight-remedial-from" data-field="topRight.remedial.from" className="sf10-field" style={{ left: '143mm', top: '232mm', width: '25mm' }} />
+          {/* Remedial classes (Top Right) Conducted to goes here */}
+          <span id="sf10-topRight-remedial-to" data-field="topRight.remedial.to" className="sf10-field" style={{ left: '169mm', top: '232mm', width: '25mm' }} />
+          {/* Remedial classes (Top Right) rows go here */}
+          {renderRemedialRows({ prefix: 'sf10-topRight-remedial', baseLeftMm: 109, baseTopMm: 241, rowHeightMm: 5.0, count: 2 })}
 
-        {/* Scholastic Record (Bottom Left) School goes here */}
-        <span id="sf10-bottomLeft-school" data-field="bottomLeft.school" className="sf10-field" style={{ left: '12mm', top: '170mm', width: '52mm' }} />
-        {/* Scholastic Record (Bottom Left) School ID goes here */}
-        <span id="sf10-bottomLeft-schoolId" data-field="bottomLeft.schoolId" className="sf10-field" style={{ left: '72mm', top: '170mm', width: '25mm' }} />
-        {/* Scholastic Record (Bottom Left) District goes here */}
-        <span id="sf10-bottomLeft-district" data-field="bottomLeft.district" className="sf10-field" style={{ left: '12mm', top: '175mm', width: '35mm' }} />
-        {/* Scholastic Record (Bottom Left) Division goes here */}
-        <span id="sf10-bottomLeft-division" data-field="bottomLeft.division" className="sf10-field" style={{ left: '50mm', top: '175mm', width: '30mm' }} />
-        {/* Scholastic Record (Bottom Left) Region goes here */}
-        <span id="sf10-bottomLeft-region" data-field="bottomLeft.region" className="sf10-field" style={{ left: '84mm', top: '175mm', width: '27mm' }} />
-        {/* Scholastic Record (Bottom Left) Classified as Grade goes here */}
-        <span id="sf10-bottomLeft-grade" data-field="bottomLeft.grade" className="sf10-field" style={{ left: '12mm', top: '180mm', width: '35mm' }} />
-        {/* Scholastic Record (Bottom Left) Section goes here */}
-        <span id="sf10-bottomLeft-section" data-field="bottomLeft.section" className="sf10-field" style={{ left: '50mm', top: '180mm', width: '30mm' }} />
-        {/* Scholastic Record (Bottom Left) School Year goes here */}
-        <span id="sf10-bottomLeft-schoolYear" data-field="bottomLeft.schoolYear" className="sf10-field" style={{ left: '84mm', top: '180mm', width: '27mm' }} />
-        {/* Scholastic Record (Bottom Left) Adviser/Teacher goes here */}
-        <span id="sf10-bottomLeft-teacher" data-field="bottomLeft.teacher" className="sf10-field" style={{ left: '12mm', top: '185mm', width: '75mm' }} />
-        {/* Scholastic Record (Bottom Left) Signature goes here */}
-        <span id="sf10-bottomLeft-signature" data-field="bottomLeft.signature" className="sf10-field" style={{ left: '90mm', top: '185mm', width: '22mm' }} />
+          {/* Scholastic Record (Bottom Left) School goes here */}
+          <span id="sf10-bottomLeft-school" data-field="bottomLeft.school" className="sf10-field" style={{ left: '12mm', top: '170mm', width: '52mm' }} />
+          {/* Scholastic Record (Bottom Left) School ID goes here */}
+          <span id="sf10-bottomLeft-schoolId" data-field="bottomLeft.schoolId" className="sf10-field" style={{ left: '72mm', top: '170mm', width: '25mm' }} />
+          {/* Scholastic Record (Bottom Left) District goes here */}
+          <span id="sf10-bottomLeft-district" data-field="bottomLeft.district" className="sf10-field" style={{ left: '12mm', top: '175mm', width: '35mm' }} />
+          {/* Scholastic Record (Bottom Left) Division goes here */}
+          <span id="sf10-bottomLeft-division" data-field="bottomLeft.division" className="sf10-field" style={{ left: '50mm', top: '175mm', width: '30mm' }} />
+          {/* Scholastic Record (Bottom Left) Region goes here */}
+          <span id="sf10-bottomLeft-region" data-field="bottomLeft.region" className="sf10-field" style={{ left: '84mm', top: '175mm', width: '27mm' }} />
+          {/* Scholastic Record (Bottom Left) Classified as Grade goes here */}
+          <span id="sf10-bottomLeft-grade" data-field="bottomLeft.grade" className="sf10-field" style={{ left: '12mm', top: '180mm', width: '35mm' }} />
+          {/* Scholastic Record (Bottom Left) Section goes here */}
+          <span id="sf10-bottomLeft-section" data-field="bottomLeft.section" className="sf10-field" style={{ left: '50mm', top: '180mm', width: '30mm' }} />
+          {/* Scholastic Record (Bottom Left) School Year goes here */}
+          <span id="sf10-bottomLeft-schoolYear" data-field="bottomLeft.schoolYear" className="sf10-field" style={{ left: '84mm', top: '180mm', width: '27mm' }} />
+          {/* Scholastic Record (Bottom Left) Adviser/Teacher goes here */}
+          <span id="sf10-bottomLeft-teacher" data-field="bottomLeft.teacher" className="sf10-field" style={{ left: '12mm', top: '185mm', width: '75mm' }} />
+          {/* Scholastic Record (Bottom Left) Signature goes here */}
+          <span id="sf10-bottomLeft-signature" data-field="bottomLeft.signature" className="sf10-field" style={{ left: '90mm', top: '185mm', width: '22mm' }} />
 
-        {/* Scholastic Record (Bottom Right) School goes here */}
-        <span id="sf10-bottomRight-school" data-field="bottomRight.school" className="sf10-field" style={{ left: '109mm', top: '170mm', width: '52mm' }} />
-        {/* Scholastic Record (Bottom Right) School ID goes here */}
-        <span id="sf10-bottomRight-schoolId" data-field="bottomRight.schoolId" className="sf10-field" style={{ left: '169mm', top: '170mm', width: '29mm' }} />
-        {/* Scholastic Record (Bottom Right) District goes here */}
-        <span id="sf10-bottomRight-district" data-field="bottomRight.district" className="sf10-field" style={{ left: '109mm', top: '175mm', width: '35mm' }} />
-        {/* Scholastic Record (Bottom Right) Division goes here */}
-        <span id="sf10-bottomRight-division" data-field="bottomRight.division" className="sf10-field" style={{ left: '147mm', top: '175mm', width: '25mm' }} />
-        {/* Scholastic Record (Bottom Right) Region goes here */}
-        <span id="sf10-bottomRight-region" data-field="bottomRight.region" className="sf10-field" style={{ left: '174mm', top: '175mm', width: '24mm' }} />
-        {/* Scholastic Record (Bottom Right) Classified as Grade goes here */}
-        <span id="sf10-bottomRight-grade" data-field="bottomRight.grade" className="sf10-field" style={{ left: '109mm', top: '180mm', width: '35mm' }} />
-        {/* Scholastic Record (Bottom Right) Section goes here */}
-        <span id="sf10-bottomRight-section" data-field="bottomRight.section" className="sf10-field" style={{ left: '147mm', top: '180mm', width: '25mm' }} />
-        {/* Scholastic Record (Bottom Right) School Year goes here */}
-        <span id="sf10-bottomRight-schoolYear" data-field="bottomRight.schoolYear" className="sf10-field" style={{ left: '174mm', top: '180mm', width: '24mm' }} />
-        {/* Scholastic Record (Bottom Right) Adviser/Teacher goes here */}
-        <span id="sf10-bottomRight-teacher" data-field="bottomRight.teacher" className="sf10-field" style={{ left: '109mm', top: '185mm', width: '75mm' }} />
-        {/* Scholastic Record (Bottom Right) Signature goes here */}
-        <span id="sf10-bottomRight-signature" data-field="bottomRight.signature" className="sf10-field" style={{ left: '187mm', top: '185mm', width: '11mm' }} />
+          {/* Scholastic Record (Bottom Right) School goes here */}
+          <span id="sf10-bottomRight-school" data-field="bottomRight.school" className="sf10-field" style={{ left: '109mm', top: '170mm', width: '52mm' }} />
+          {/* Scholastic Record (Bottom Right) School ID goes here */}
+          <span id="sf10-bottomRight-schoolId" data-field="bottomRight.schoolId" className="sf10-field" style={{ left: '169mm', top: '170mm', width: '29mm' }} />
+          {/* Scholastic Record (Bottom Right) District goes here */}
+          <span id="sf10-bottomRight-district" data-field="bottomRight.district" className="sf10-field" style={{ left: '109mm', top: '175mm', width: '35mm' }} />
+          {/* Scholastic Record (Bottom Right) Division goes here */}
+          <span id="sf10-bottomRight-division" data-field="bottomRight.division" className="sf10-field" style={{ left: '147mm', top: '175mm', width: '25mm' }} />
+          {/* Scholastic Record (Bottom Right) Region goes here */}
+          <span id="sf10-bottomRight-region" data-field="bottomRight.region" className="sf10-field" style={{ left: '174mm', top: '175mm', width: '24mm' }} />
+          {/* Scholastic Record (Bottom Right) Classified as Grade goes here */}
+          <span id="sf10-bottomRight-grade" data-field="bottomRight.grade" className="sf10-field" style={{ left: '109mm', top: '180mm', width: '35mm' }} />
+          {/* Scholastic Record (Bottom Right) Section goes here */}
+          <span id="sf10-bottomRight-section" data-field="bottomRight.section" className="sf10-field" style={{ left: '147mm', top: '180mm', width: '25mm' }} />
+          {/* Scholastic Record (Bottom Right) School Year goes here */}
+          <span id="sf10-bottomRight-schoolYear" data-field="bottomRight.schoolYear" className="sf10-field" style={{ left: '174mm', top: '180mm', width: '24mm' }} />
+          {/* Scholastic Record (Bottom Right) Adviser/Teacher goes here */}
+          <span id="sf10-bottomRight-teacher" data-field="bottomRight.teacher" className="sf10-field" style={{ left: '109mm', top: '185mm', width: '75mm' }} />
+          {/* Scholastic Record (Bottom Right) Signature goes here */}
+          <span id="sf10-bottomRight-signature" data-field="bottomRight.signature" className="sf10-field" style={{ left: '187mm', top: '185mm', width: '11mm' }} />
 
-        {/* Scholastic Record (Bottom Left) learning areas + quarter grades go here */}
-        {renderScholasticRows({
-          prefix: 'sf10-bottomLeft',
-          baseLeftMm: 12,
-          baseTopMm: 198,
-          rowHeightMm: 4.6,
-          rowCount: 18,
-          col: 'wide',
-        })}
-        {/* Scholastic Record (Bottom Right) learning areas + quarter grades go here */}
-        {renderScholasticRows({
-          prefix: 'sf10-bottomRight',
-          baseLeftMm: 109,
-          baseTopMm: 198,
-          rowHeightMm: 4.6,
-          rowCount: 18,
-          col: 'narrow',
-        })}
+          {/* Scholastic Record (Bottom Left) learning areas + quarter grades go here */}
+          {renderScholasticRows({
+            prefix: 'sf10-bottomLeft',
+            baseLeftMm: 12,
+            baseTopMm: 198,
+            rowHeightMm: 4.6,
+            rowCount: 18,
+            col: 'wide',
+          })}
+          {/* Scholastic Record (Bottom Right) learning areas + quarter grades go here */}
+          {renderScholasticRows({
+            prefix: 'sf10-bottomRight',
+            baseLeftMm: 109,
+            baseTopMm: 198,
+            rowHeightMm: 4.6,
+            rowCount: 18,
+            col: 'narrow',
+          })}
 
-        {/* Bottom left General Average goes here */}
-        <span id="sf10-bottomLeft-generalAverage" data-field="bottomLeft.generalAverage" className="sf10-field sf10-field-center" style={{ left: '59mm', top: '281mm', width: '20mm' }} />
-        {/* Bottom right General Average goes here */}
-        <span id="sf10-bottomRight-generalAverage" data-field="bottomRight.generalAverage" className="sf10-field sf10-field-center" style={{ left: '156mm', top: '281mm', width: '20mm' }} />
+          {/* Bottom left General Average goes here */}
+          <span id="sf10-bottomLeft-generalAverage" data-field="bottomLeft.generalAverage" className="sf10-field sf10-field-center" style={{ left: '59mm', top: '281mm', width: '20mm' }} />
+          {/* Bottom right General Average goes here */}
+          <span id="sf10-bottomRight-generalAverage" data-field="bottomRight.generalAverage" className="sf10-field sf10-field-center" style={{ left: '156mm', top: '281mm', width: '20mm' }} />
 
-        {/* Remedial classes (Bottom Left) Conducted from goes here */}
-        <span id="sf10-bottomLeft-remedial-from" data-field="bottomLeft.remedial.from" className="sf10-field" style={{ left: '46mm', top: '288mm', width: '25mm' }} />
-        {/* Remedial classes (Bottom Left) Conducted to goes here */}
-        <span id="sf10-bottomLeft-remedial-to" data-field="bottomLeft.remedial.to" className="sf10-field" style={{ left: '72mm', top: '288mm', width: '25mm' }} />
+          {/* Remedial classes (Bottom Left) Conducted from goes here */}
+          <span id="sf10-bottomLeft-remedial-from" data-field="bottomLeft.remedial.from" className="sf10-field" style={{ left: '46mm', top: '288mm', width: '25mm' }} />
+          {/* Remedial classes (Bottom Left) Conducted to goes here */}
+          <span id="sf10-bottomLeft-remedial-to" data-field="bottomLeft.remedial.to" className="sf10-field" style={{ left: '72mm', top: '288mm', width: '25mm' }} />
 
-        {/* Remedial classes (Bottom Right) Conducted from goes here */}
-        <span id="sf10-bottomRight-remedial-from" data-field="bottomRight.remedial.from" className="sf10-field" style={{ left: '143mm', top: '288mm', width: '25mm' }} />
-        {/* Remedial classes (Bottom Right) Conducted to goes here */}
-        <span id="sf10-bottomRight-remedial-to" data-field="bottomRight.remedial.to" className="sf10-field" style={{ left: '169mm', top: '288mm', width: '25mm' }} />
+          {/* Remedial classes (Bottom Right) Conducted from goes here */}
+          <span id="sf10-bottomRight-remedial-from" data-field="bottomRight.remedial.from" className="sf10-field" style={{ left: '143mm', top: '288mm', width: '25mm' }} />
+          {/* Remedial classes (Bottom Right) Conducted to goes here */}
+          <span id="sf10-bottomRight-remedial-to" data-field="bottomRight.remedial.to" className="sf10-field" style={{ left: '169mm', top: '288mm', width: '25mm' }} />
+          </div>
+
+          <div
+            className="sf10-page"
+            style={{ backgroundImage: `url(${sf10BackPng})` }}
+            aria-label="SF10 Back Template"
+          >
+            {/* Back page content can be added here once data structure is defined */}
+            {/* For now it just displays the background image next to the front page */}
+          </div>
         </div>
       </div>
     </div>

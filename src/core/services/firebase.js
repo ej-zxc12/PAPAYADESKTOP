@@ -1,5 +1,5 @@
 import { initializeApp, getApps } from 'firebase/app'
-import { getAuth } from 'firebase/auth'
+import { getAuth, setPersistence, browserLocalPersistence } from 'firebase/auth'
 import { getFirestore } from 'firebase/firestore'
 import { getStorage } from 'firebase/storage'
 
@@ -17,17 +17,23 @@ let cachedAuth
 let cachedDb
 let cachedStorage
 
-function getFirebaseApp() {
-  return getApps().length ? getApps()[0] : initializeApp(firebaseConfig)
+export function getFirebaseApp() {
+  return getApps().length ? getApps().find(app => app.name === '[DEFAULT]') || getApps()[0] : initializeApp(firebaseConfig)
+}
+
+export function getSecondaryFirebaseApp() {
+  const secondaryName = 'secondary-auth-app';
+  const existingApp = getApps().find(app => app.name === secondaryName);
+  return existingApp || initializeApp(firebaseConfig, secondaryName);
 }
 
 export function getFirebaseAuth() {
   if (cachedAuth) return cachedAuth
 
   try {
-    // Initialize Firebase only if it hasn't been initialized yet
     const app = getFirebaseApp()
     cachedAuth = getAuth(app)
+    setPersistence(cachedAuth, browserLocalPersistence)
     console.log('Firebase auth initialized successfully')
     return cachedAuth
   } catch (error) {
