@@ -1,9 +1,11 @@
-import React, { useState, useEffect, useRef } from 'react'
+import React, { useState, useEffect, useRef, useMemo } from 'react'
 import { gsap } from 'gsap'
 import { createPortal } from 'react-dom'
 import {
   AreaChart,
   Area,
+  BarChart,
+  Bar,
   XAxis,
   YAxis,
   CartesianGrid,
@@ -1428,6 +1430,7 @@ function App() {
 
               {activePage === 'dashboard' && (
                 <aside className="w-80 flex flex-col gap-6">
+                  <EventFrequencyChart events={events} />
                   <div className="bg-[#F8F9F8] rounded-3xl border border-[#E8EAE8] shadow-sm p-6 flex-1 flex flex-col min-h-0">
                     <div className="flex items-center justify-between mb-6">
                       <h2 className="text-lg font-bold text-[#1A1F1B]">Upcoming Events</h2>
@@ -1999,6 +2002,71 @@ function MediaLibrarySection() {
         <p className="text-xs text-slate-500">Manage images and files for the website</p>
       </div>
       <div className="text-xs text-slate-500">This is a placeholder for uploading and organizing media.</div>
+    </div>
+  )
+}
+
+function EventFrequencyChart({ events }) {
+  const chartData = useMemo(() => {
+    const counts = {}
+    const now = new Date()
+    const months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec']
+    
+    // Initialize months
+    months.forEach(m => counts[m] = 0)
+    
+    events.forEach(event => {
+      const date = toSafeDate(event.nextRunAt)
+      if (date && date.getFullYear() === now.getFullYear()) {
+        const month = months[date.getMonth()]
+        counts[month]++
+      }
+    })
+    
+    return months.map(m => ({ month: m, count: counts[m] }))
+  }, [events])
+
+  return (
+    <div className="bg-[#F8F9F8] rounded-3xl border border-[#E8EAE8] shadow-sm p-5 mb-6">
+      <div className="flex items-center justify-between mb-4">
+        <div>
+          <h3 className="text-sm font-bold text-[#1A1F1B]">Event Frequency</h3>
+          <p className="text-[10px] text-[#5C6560]">Monthly event distribution ({new Date().getFullYear()})</p>
+        </div>
+        <div className="h-8 w-8 rounded-xl bg-[#F0F8F1] flex items-center justify-center text-[#7EB88A]">
+          <FiCalendar className="h-4 w-4" />
+        </div>
+      </div>
+      <div className="h-[120px] w-full">
+        <ResponsiveContainer width="100%" height="100%">
+            <BarChart data={chartData}>
+            <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#E8EAE8" />
+            <XAxis 
+              dataKey="month" 
+              axisLine={false} 
+              tickLine={false} 
+              tick={{ fill: '#9CA89F', fontSize: 9 }}
+            />
+            <Tooltip
+              cursor={{ fill: '#FAFAFA' }}
+              contentStyle={{
+                borderRadius: '0.75rem',
+                border: '1px solid #E8EAE8',
+                boxShadow: '0 10px 25px rgba(26, 31, 27, 0.1)',
+                padding: '0.5rem',
+                fontSize: '11px'
+              }}
+            />
+            <Bar 
+              dataKey="count" 
+              fill="#7EB88A" 
+              radius={[4, 4, 0, 0]} 
+              barSize={12}
+              animationDuration={1500}
+            />
+          </BarChart>
+        </ResponsiveContainer>
+      </div>
     </div>
   )
 }
